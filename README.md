@@ -1,58 +1,35 @@
-规范Dubbo接口定义
+一、Dubbo工程依赖可不再依赖dubbo库
 
-关于Dubbo target.jar执行说明,
-1、若dependencies jar不放在最终执行target.jar中,则需要将所有dependencies拷贝到一个引导目录中。
-<!-- 将依赖的包拷贝到一个目录 -->
-<plugin>
-	<groupId>org.apache.maven.plugins</groupId>
-	<artifactId>maven-dependency-plugin</artifactId>
-	<executions>
-		<execution>
-			<id>copy-dependencies</id>
-			<phase>package</phase>
-			<goals>
-				<goal>copy-dependencies</goal>
-			</goals>
-			<configuration>
-				<type>jar</type>
-				<includeTypes>jar</includeTypes>
-				<overWriteReleases>false</overWriteReleases>
-				<overWriteSnapshots>false</overWriteSnapshots>
-				<overWriteIfNewer>true</overWriteIfNewer>
-				<outputDirectory>
-					${project.build.directory}/dependencies_libs
-				</outputDirectory>
-			</configuration>
-		</execution>
-	</executions>
-</plugin>
+二、SpringMVC、Servlet工程依赖注意web.xml配置需要监控的请求<br>
 
-此时执行采用命令:
-下面的方法废弃,-dirs启动在ExtClassLoader中,dubbo内部没有考虑此问题(此坑很深)
-#java -Djava.ext.dirs=dependencies_libs -cp target.jar com.alibaba.dubbo.container.Main
-java -cp dependencies_libs/*:target.jar com.alibaba.dubbo.container.Main
+如下：web.xml中<br>
+``` 
+ <filter>
+    <filter-name>ESBServletFilter</filter-name>
+    <filter-class>com.venus.esb.servlet.filter.ESBRequestFilter</filter-class>
+ </filter>
+ <filter-mapping>
+    <filter-name>ESBServletFilter</filter-name>
+    <url-pattern>/*</url-pattern>
+ </filter-mapping>
+ 
 
-2、若dependencies jar放在最终执行target.jar中,需要配置pom的build
-<!-- 将依赖的包拷贝到一个jar中 -->
-<plugin>
-	<groupId>org.apache.maven.plugins</groupId>
-	<artifactId>maven-dependency-plugin</artifactId>
-	<executions>
-		<execution>
-			<id>copy-dependencies</id>
-			<!-- 注意放在package前面 -->
-			<phase>prepare-package</phase>
-			<goals>
-				<goal>copy-dependencies</goal>
-			</goals>
-			<configuration>
-			    <!-- 注意目录位置也不要随意改,放在classes里面 -->
-				<outputDirectory>${project.build.directory}/classes/lib</outputDirectory>
-				<overWriteReleases>false</overWriteReleases>
-				<overWriteSnapshots>false</overWriteSnapshots>
-				<overWriteIfNewer>true</overWriteIfNewer>
-			</configuration>
-		</execution>
-	</executions>
-</plugin>
-此种方法没有测试成功过,jar引用到一起,无法执行sub jar中的类(坑)
+```
+
+三、SpringBoot工程请添加Scan包名
+```
+
+// Spring Boot 应用的标识
+@SpringBootApplication
+@MapperScan("org.spring.springboot.dao")// mapper 接口类扫描包配置
+@ServletComponentScan("com.venus.esb.servlet.filter") //filter加载
+public class Application {
+
+    public static void main(String[] args) {
+        // 程序启动入口
+        // 启动嵌入式的 Tomcat 并初始化 Spring 环境及其各 Spring 组件
+        SpringApplication.run(Application.class,args);
+    }
+}
+
+```

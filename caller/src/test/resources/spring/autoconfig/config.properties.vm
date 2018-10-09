@@ -1,0 +1,40 @@
+# dubbo配置
+dubbo.application.name=${dubbo.application.name}
+dubbo.registry.url=${dubbo.registry.url}
+dubbo.reference.version=${dubbo.reference.version}
+dubbo.reference.timeout=${dubbo.reference.timeout}
+dubbo.reference.retries=${dubbo.reference.retries}
+dubbo.generic.filter=
+
+# http调用配置
+http.connect.timeout=${http.connect.timeout}
+http.read.timeout=${http.read.timeout}
+
+# esb配置
+com.venus.esb.loader=
+com.venus.esb.invoker=
+com.venus.esb.parser=
+com.venus.esb.verify=
+com.venus.esb.mocker=
+com.venus.esb.observer=
+com.venus.esb.logger=
+com.venus.esb.risky=
+com.venus.esb.api.capacity.size=
+
+# esb 认证相关
+com.venus.esb.rsa.pub.key=${com.venus.esb.rsa.pub.key}
+com.venus.esb.rsa.pri.key=${com.venus.esb.rsa.pri.key}
+com.venus.esb.aes.key=${com.venus.esb.aes.key}
+com.venus.esb.static.sign.key=${com.venus.esb.static.sign.key}
+
+# esb api加载目录
+com.venus.esb.apis.dir=/admin/home/apis/
+com.venus.esb.apis.json.list.path=
+
+# brave配置
+com.venus.esb.open.brave=${com.venus.esb.open.brave}
+com.venus.esb.zipkin.host=${com.venus.esb.zipkin.host}
+com.venus.esb.zipkin.brave.log.dir=
+
+# log配置
+com.venus.template.log.home=/admin/home/logs/esb/

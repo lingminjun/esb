@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<config description="esb.config">
+    <group name="dubbo">
+        <property name="dubbo.application.name" description="工程名" required="false"/>
+        <property name="dubbo.registry.url" description="Dubbo服务注册地址" required="true"/>
+        <property name="dubbo.reference.version" description="Dubbo服务引用版本号" required="true"/>
+        <property name="dubbo.reference.timeout" description="Dubbo服务调用超时时间" required="false"/>
+        <property name="dubbo.reference.retries" description="Dubbo服务暴调用重试次数" required="false"/>
+    </group>
+    <group name="http">
+        <property name="http.connect.timeout" description="http服务链接超时时间" required="false"/>
+        <property name="http.read.timeout" description="http服务调用超时时间" required="false"/>
+    </group>
+    <group name="secret">
+        <property name="com.venus.esb.rsa.pub.key" description="esb验证rsa公钥" required="true"/>
+        <property name="com.venus.esb.rsa.pri.key" description="esb验证rsa私钥" required="true"/>
+        <property name="com.venus.esb.aes.key" description="esb验证aes私钥" required="true"/>
+        <property name="com.venus.esb.static.sign.key" description="esb静态验证md5掩码" required="true"/>
+    </group>
+    <group name="brave">
+        <property name="com.venus.esb.open.brave" description="上报链路监控日志" required="false"/>
+        <property name="com.venus.esb.zipkin.host" description="zipkin服务地址" required="false"/>
+    </group>
+
+    <script>
+        <generate template="config.properties.vm" destfile="config.properties" charset="UTF-8"/>
+    </script>
+</config>

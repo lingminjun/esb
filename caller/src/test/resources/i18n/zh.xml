@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <copywriting>
+        <key>仅仅一个中文文档的例子</key>
+        <value>仅仅一个中文文档的例子</value>
+    </copywriting>
+    <copywriting>
+        <key>简单的例子</key>
+        <value><![CDATA[原始文件例子,防止一些xml符号,如<>这些符号被xml解释]]></value>
+    </copywriting>
+    <copywriting>
+        <key>解析数据出错</key>
+        <value><![CDATA[解析数据出错]]></value>
+    </copywriting>
+</resources>

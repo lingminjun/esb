@@ -1,0 +1,2 @@
+esbecho=com.venus.esb.dubbo.filter.ESBEchoFilter
+esbfilter=com.venus.esb.dubbo.filter.ESBRPCFilter

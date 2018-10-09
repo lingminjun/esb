@@ -27,7 +27,7 @@ import java.io.IOException;
 @WebFilter(urlPatterns={"/*"}, asyncSupported=true, dispatcherTypes={DispatcherType.REQUEST},
         initParams=@WebInitParam(name="param1", value="value1"))*/
 
-@WebFilter(urlPatterns={"/*"}, asyncSupported=true, dispatcherTypes={DispatcherType.REQUEST})
+@WebFilter(urlPatterns={"/*"}, asyncSupported=true, dispatcherTypes={DispatcherType.REQUEST}, filterName = "ESBRequestFilter")
 public class ESBRequestFilter implements Filter {
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {

@@ -1,8 +1,14 @@
 package com.venus.esb.servlet.filter;
 
+import com.alibaba.fastjson.JSON;
+import com.venus.esb.config.ESBConfigCenter;
+
 import javax.servlet.*;
 import javax.servlet.annotation.WebFilter;
+import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Created by lingminjun on 17/8/10.
@@ -24,8 +30,22 @@ import java.io.IOException;
  * @ServletComponentScan("com.venus.esb.servlet.filter")
  */
 
-//@WebFilter(urlPatterns={"/*"}, asyncSupported=true, dispatcherTypes={DispatcherType.REQUEST}, filterName = "ESBRequestFilter")
+@WebFilter(urlPatterns={"/*"}, asyncSupported=true, dispatcherTypes={DispatcherType.REQUEST}, filterName = "ESBRequestFilter")
 public class ESBRequestFilter implements Filter {
+
+    Set<String> excludes = new HashSet<String>();
+    {
+        excludes.add("/");
+        excludes.add(".ico");
+        excludes.add(".jsp");
+        excludes.add(".html");
+        excludes.add(".htm");
+        excludes.add(".css");
+        excludes.add(".js");
+        excludes.add(".jpg");
+        excludes.add(".png");
+    }
+
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {
 
@@ -36,7 +56,13 @@ public class ESBRequestFilter implements Filter {
         try {
             long before = System.currentTimeMillis();
             System.out.println("===========》》》》before doFilter");
-            filterChain.doFilter(servletRequest, servletResponse);
+            String requestUri = ((HttpServletRequest) servletRequest).getRequestURI();
+            System.out.println("requestUri: " + requestUri);
+            if (!ESBConfigCenter.instance().isEsbCloseFilter() || checkUri(requestUri)) {
+                filterChain.doFilter(servletRequest, servletResponse);
+            } else {
+                // filter逻辑
+            }
             long after = System.currentTimeMillis();
             System.out.println("===========》》》》after doFilter cost=" + (after-before));
         } catch (Exception ex) {
@@ -49,5 +75,16 @@ public class ESBRequestFilter implements Filter {
     @Override
     public void destroy() {
 
+    }
+
+    private boolean checkUri (String requestUri) {
+        boolean flag = false;
+        for (String execlude : excludes) {
+            if (execlude.equals(requestUri) || requestUri.endsWith(execlude)) {
+                flag = true;
+                break;
+            }
+        }
+        return flag;
     }
 }

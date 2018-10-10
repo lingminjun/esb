@@ -46,6 +46,8 @@ public final class ESBConfigCenter {
     private String braveDir;//zipkin brave日志目录
     private boolean brave;//开启监控
 
+    private boolean esbCloseFilter;//关闭ESBRequestFilter过滤
+
     private ESBConfigCenter() {
 
         Properties prop = new Properties();
@@ -138,6 +140,8 @@ public final class ESBConfigCenter {
         }
         brave = ESBT.bool(prop.getProperty("com.venus.esb.open.brave"));
 
+        esbCloseFilter = ESBT.bool(prop.getProperty("com.venus.esb.exclude.servlet.filter"));
+
         if (input != null) {
             try {
                 input.close();
@@ -147,7 +151,9 @@ public final class ESBConfigCenter {
         }
     }
 
-    public static ESBConfigCenter instance() {return SingletonHolder.INSTANCE;}
+    public static ESBConfigCenter instance() {
+        return SingletonHolder.INSTANCE;
+    }
 
     public String getAppName() {
         return appName;
@@ -252,6 +258,8 @@ public final class ESBConfigCenter {
     public boolean openBrave() {
         return brave;
     }
+
+    public boolean isEsbCloseFilter() { return esbCloseFilter; }
 
     private static class SingletonHolder {
         private static ESBConfigCenter INSTANCE = new ESBConfigCenter();

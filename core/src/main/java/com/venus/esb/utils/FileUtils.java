@@ -59,6 +59,20 @@ public final class FileUtils {
         try {
 //            System.out.println("以字节为单位读取文件内容，一次读多个字节：");
             // 一次读多个字节
+            byte[] tempbytes = readFile(in);
+            if (tempbytes != null) {
+                return new String(tempbytes, encoding);
+            }
+        } catch (Exception e1) {
+            e1.printStackTrace();
+        }
+        return null;
+    }
+
+    public static byte[] readFile(InputStream in) throws IOException {
+        try {
+//            System.out.println("以字节为单位读取文件内容，一次读多个字节：");
+            // 一次读多个字节
             byte[] tempbytes = new byte[1024];
             int byteread = 0;
             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -68,7 +82,7 @@ public final class FileUtils {
                 out.write(tempbytes,0,byteread);
 //                System.out.write(tempbytes, 0, byteread);
             }
-            return new String(out.toByteArray(), encoding);
+            return out.toByteArray();
         } catch (Exception e1) {
             e1.printStackTrace();
         }
@@ -76,6 +90,18 @@ public final class FileUtils {
     }
 
     public static String readFile(String path, Charset encoding) throws IOException {
+        try {
+            byte[] tempbytes = readFile(path);
+            if (tempbytes != null) {
+                return new String(tempbytes, encoding);
+            }
+        } catch (Exception e1) {
+            e1.printStackTrace();
+        }
+        return null;
+    }
+
+    public static byte[] readFile(String path) {
         InputStream in = null;
         try {
 
@@ -96,7 +122,7 @@ public final class FileUtils {
                 out.write(tempbytes,0,byteread);
 //                System.out.write(tempbytes, 0, byteread);
             }
-            return new String(out.toByteArray(), encoding);
+            return out.toByteArray();
         } catch (Exception e1) {
             e1.printStackTrace();
         } finally {
@@ -108,8 +134,6 @@ public final class FileUtils {
             }
         }
         return null;
-//        byte[] encoded = Files.readAllBytes(Paths.get(path));
-//        return new String(encoded, encoding);
     }
 
     public static boolean writeFile(String path, String content, Charset encoding) throws IOException {

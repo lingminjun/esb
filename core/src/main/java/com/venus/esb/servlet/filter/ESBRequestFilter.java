@@ -22,12 +22,9 @@ import java.io.IOException;
  *
  * 或者启动配置扫描目录（SpringBoot工程）
  * @ServletComponentScan("com.venus.esb.servlet.filter")
- *
-/*
-@WebFilter(urlPatterns={"/*"}, asyncSupported=true, dispatcherTypes={DispatcherType.REQUEST},
-        initParams=@WebInitParam(name="param1", value="value1"))*/
+ */
 
-@WebFilter(urlPatterns={"/*"}, asyncSupported=true, dispatcherTypes={DispatcherType.REQUEST}, filterName = "ESBRequestFilter")
+//@WebFilter(urlPatterns={"/*"}, asyncSupported=true, dispatcherTypes={DispatcherType.REQUEST}, filterName = "ESBRequestFilter")
 public class ESBRequestFilter implements Filter {
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {

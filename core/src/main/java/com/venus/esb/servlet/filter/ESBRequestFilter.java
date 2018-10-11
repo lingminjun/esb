@@ -57,12 +57,11 @@ public class ESBRequestFilter implements Filter {
             long before = System.currentTimeMillis();
             System.out.println("===========》》》》before doFilter");
             String requestUri = ((HttpServletRequest) servletRequest).getRequestURI();
-            System.out.println("requestUri: " + requestUri);
-            if (!ESBConfigCenter.instance().isEsbCloseFilter() || checkUri(requestUri)) {
-                filterChain.doFilter(servletRequest, servletResponse);
-            } else {
-                // filter逻辑
+            if (ESBConfigCenter.instance().isEsbCloseFilter() && !checkUri(requestUri)) {
+                // filter 逻辑
+                System.out.println("filter ...");
             }
+            filterChain.doFilter(servletRequest, servletResponse);
             long after = System.currentTimeMillis();
             System.out.println("===========》》》》after doFilter cost=" + (after-before));
         } catch (Exception ex) {

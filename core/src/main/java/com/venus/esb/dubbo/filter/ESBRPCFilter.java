@@ -8,6 +8,7 @@ import com.alibaba.dubbo.rpc.*;
 import com.alibaba.dubbo.rpc.support.ProtocolUtils;
 import com.github.kristofa.brave.Brave;
 import com.venus.esb.brave.ESBBraveFactory;
+import com.venus.esb.brave.Utils;
 import com.venus.esb.dubbo.brave.DubboClientRequestAdapter;
 import com.venus.esb.dubbo.brave.DubboResponseAdapter;
 import com.venus.esb.dubbo.brave.DubboServerRequestAdapter;
@@ -79,9 +80,9 @@ public class ESBRPCFilter implements Filter {
             if (esbcxt.getPid() != null) {
                 context.setAttachment(ESBSTDKeys.PID_KEY, esbcxt.getPid());
             }
-            if (ESBThreadLocal.get(ESBSTDKeys.MOCK_FLAG_KEY) != null) {
-                context.setAttachment(ESBSTDKeys.MOCK_FLAG_KEY, ESBThreadLocal.get(ESBSTDKeys.MOCK_FLAG_KEY));
-            }
+//            if (ESBThreadLocal.get(ESBSTDKeys.MOCK_FLAG_KEY) != null) {
+//                context.setAttachment(ESBSTDKeys.MOCK_FLAG_KEY, ESBThreadLocal.get(ESBSTDKeys.MOCK_FLAG_KEY));
+//            }
 
             //用于日志
             tid = esbcxt.getTid();
@@ -113,7 +114,7 @@ public class ESBRPCFilter implements Filter {
             ESBMDC.put(ESBSTDKeys.UID_KEY,context.getAttachment(ESBSTDKeys.UID_KEY));
             ESBMDC.put(ESBSTDKeys.PID_KEY,context.getAttachment(ESBSTDKeys.PID_KEY));
 
-            ESBThreadLocal.put(ESBSTDKeys.MOCK_FLAG_KEY, context.getAttachment(ESBSTDKeys.MOCK_FLAG_KEY));
+//            ESBThreadLocal.put(ESBSTDKeys.MOCK_FLAG_KEY, context.getAttachment(ESBSTDKeys.MOCK_FLAG_KEY));
 
             //用于日志
             tid = context.getAttachment(ESBSTDKeys.TID_KEY);
@@ -142,7 +143,7 @@ public class ESBRPCFilter implements Filter {
             Result e = invoker.invoke(invocation);
             var7 = e;
             if(e.hasException()){
-                exceptoinMessage = getExceptionStackTrace(e.getException());//不是很通用,关键的错误原因并没记录下来
+                exceptoinMessage = Utils.getExceptionStackTrace(e.getException());//不是很通用,关键的错误原因并没记录下来
             } else {
                 if (esbcxt != null) {
                     if (consumer) {//RpcContext已经完成使命，清除数据
@@ -159,13 +160,13 @@ public class ESBRPCFilter implements Filter {
             }
         } catch (ESBRuntimeException var11) {//将runtime exception转esb exception
             ESBException exception = var11.getException();
-            exceptoinMessage = getExceptionStackTrace(exception);//不是很通用,关键的错误原因并没记录下来
+            exceptoinMessage = Utils.getExceptionStackTrace(exception);//不是很通用,关键的错误原因并没记录下来
             throw new RpcException(exception);
         } catch (RpcException var11) {
-            exceptoinMessage = getExceptionStackTrace(var11);//不是很通用,关键的错误原因并没记录下来
+            exceptoinMessage = Utils.getExceptionStackTrace(var11);//不是很通用,关键的错误原因并没记录下来
             throw var11;
         } catch (Throwable e) {
-            exceptoinMessage = getExceptionStackTrace(e);//不是很通用,关键的错误原因并没记录下来
+            exceptoinMessage = Utils.getExceptionStackTrace(e);//不是很通用,关键的错误原因并没记录下来
             throw new RpcException(e);
         } finally {
             if(consumer) {
@@ -188,7 +189,7 @@ public class ESBRPCFilter implements Filter {
                 ESBThreadLocal.remove(ESBSTDKeys.UID_KEY);
                 ESBThreadLocal.remove(ESBSTDKeys.PID_KEY);
 
-                ESBThreadLocal.remove(ESBSTDKeys.MOCK_FLAG_KEY);
+//                ESBThreadLocal.remove(ESBSTDKeys.MOCK_FLAG_KEY);
 
             }
 
@@ -213,17 +214,6 @@ public class ESBRPCFilter implements Filter {
             result.setAttachment(entry.getKey(),entry.getValue());
         }
 //        result.addAttachments(esbcxt.getDubboExts());
-    }
-
-    private static String getExceptionStackTrace(Throwable e) {
-        String msg = e.getMessage();
-        StringBuilder builder = new StringBuilder(msg == null ? "" : msg);
-        for(StackTraceElement elem : e.getStackTrace()) {
-            builder.append("\t" + elem.toString() + "\n");
-        }
-        String var = builder.toString();
-        e.printStackTrace();
-        return var;
     }
 
     private static boolean isEchoTesting(Invocation inv) {

@@ -139,10 +139,10 @@ public final class HTTP {
      * @return success response
      * @throws Exception
      */
-    public static String post(String url, Map<String, String> params, Map<String,String> header) throws Exception {
+    public static String post(String url, Map<String, String> params, Map<String,String> header, int connectTimeout, int readTimeout) throws Exception {
         try {
             String charset = ESBConsts.UTF8_STR;
-            HttpURLConnection httpURLConnection = postConnection(new URL(url),0,0, ContentType.form, charset,null);
+            HttpURLConnection httpURLConnection = postConnection(new URL(url),connectTimeout,readTimeout, ContentType.form, charset,null);
             if (null == httpURLConnection) {
                 throw new Exception("Create httpURLConnection Failure");
             }
@@ -161,6 +161,16 @@ public final class HTTP {
 //            e.printStackTrace();
             throw e;
         }
+    }
+
+    /**
+     * 发送信息到服务端
+     * @param params
+     * @return success response
+     * @throws Exception
+     */
+    public static String post(String url, Map<String, String> params, Map<String,String> header) throws Exception {
+        return post(url,params,header,0,60);
     }
 
     /**
@@ -193,10 +203,10 @@ public final class HTTP {
      * @return success response
      * @throws Exception
      */
-    public static String postJSON(String url, Object object, Map<String,String> header) throws Exception {
+    public static String postJSON(String url, Object object, Map<String,String> header, int connectTimeout, int readTimeout) throws Exception {
         try {
             String charset = ESBConsts.UTF8_STR;
-            HttpURLConnection httpURLConnection = postConnection(new URL(url),0,0, ContentType.json, charset,null);
+            HttpURLConnection httpURLConnection = postConnection(new URL(url),connectTimeout,readTimeout, ContentType.json, charset,null);
             if (null == httpURLConnection) {
                 throw new Exception("Create httpURLConnection Failure");
             }
@@ -221,6 +231,16 @@ public final class HTTP {
 //            e.printStackTrace();
             throw e;
         }
+    }
+
+    /**
+     * 发送信息到服务端
+     * @param object
+     * @return success response
+     * @throws Exception
+     */
+    public static String postJSON(String url, Object object, Map<String,String> header) throws Exception {
+        return postJSON(url,object,header,0,60);
     }
 
     /**
@@ -253,10 +273,10 @@ public final class HTTP {
      * @return success response
      * @throws Exception
      */
-    public static String putJSON(String url, Object object, Map<String,String> header) throws Exception {
+    public static String putJSON(String url, Object object, Map<String,String> header,int connectTimeout, int readTimeout) throws Exception {
         try {
             String charset = ESBConsts.UTF8_STR;
-            HttpURLConnection httpURLConnection = postConnection(Method.PUT, new URL(url),0,0, ContentType.json, charset,null);
+            HttpURLConnection httpURLConnection = postConnection(Method.PUT, new URL(url),connectTimeout,readTimeout, ContentType.json, charset,null);
             if (null == httpURLConnection) {
                 throw new Exception("Create httpURLConnection Failure");
             }
@@ -289,6 +309,16 @@ public final class HTTP {
      * @return success response
      * @throws Exception
      */
+    public static String putJSON(String url, Object object, Map<String,String> header) throws Exception {
+        return putJSON(url,object,header,0,60);
+    }
+
+    /**
+     * 发送信息到服务端
+     * @param object
+     * @return success response
+     * @throws Exception
+     */
     public static String putJSON(String url, Object object, String authorization) throws Exception {
         HashMap<String,String> map = new HashMap<String,String>();
         if (authorization != null) {
@@ -313,10 +343,10 @@ public final class HTTP {
      * @return success response
      * @throws Exception
      */
-    public static String postData(String url, byte[] data, String fileName, Map<String,String> header) throws Exception {
+    public static String postData(String url, byte[] data, String fileName, Map<String,String> header, int connectTimeout, int readTimeout) throws Exception {
         try {
             String boundary = "------WebKitFormBoundary" + randomString();
-            HttpURLConnection httpURLConnection = postConnection(new URL(url),0,0, ContentType.data,null,boundary);
+            HttpURLConnection httpURLConnection = postConnection(new URL(url),connectTimeout,readTimeout, ContentType.data,null,boundary);
             if (null == httpURLConnection) {
                 throw new Exception("Create httpURLConnection Failure");
             }
@@ -336,6 +366,16 @@ public final class HTTP {
 //            e.printStackTrace();
             throw e;
         }
+    }
+
+    /**
+     * 发送信息到服务端
+     * @param data
+     * @return success response
+     * @throws Exception
+     */
+    public static String postData(String url, byte[] data, String fileName, Map<String,String> header) throws Exception {
+        return postData(url,data,fileName,header,0,60);
     }
 
     /**
@@ -369,10 +409,10 @@ public final class HTTP {
      * @return response code
      * @throws Exception
      */
-    public static int send(String url, String content, Map<String,String> header) throws Exception {
+    public static int send(String url, String content, Map<String,String> header,int connectTimeout, int readTimeout) throws Exception {
         try {
             String charset = ESBConsts.UTF8_STR;
-            HttpURLConnection httpURLConnection = postConnection(new URL(url),0,0, ContentType.text, charset,null);
+            HttpURLConnection httpURLConnection = postConnection(new URL(url),connectTimeout,readTimeout, ContentType.text, charset,null);
             if (null == httpURLConnection) {
                 throw new Exception("Create httpURLConnection Failure");
             }
@@ -387,6 +427,16 @@ public final class HTTP {
 //            e.printStackTrace();
             throw e;
         }
+    }
+
+    /**
+     * 发送信息到服务端
+     * @param content
+     * @return response code
+     * @throws Exception
+     */
+    public static int send(String url, String content, Map<String,String> header) throws Exception {
+        return send(url,content,header,0,60);
     }
 
     /**
@@ -469,10 +519,10 @@ public final class HTTP {
      * @return response code
      * @throws Exception
      */
-    public static int sendJSON(String url, Object object, Map<String,String> header) throws Exception {
+    public static int sendJSON(String url, Object object, Map<String,String> header, int connectTimeout, int readTimeout) throws Exception {
         try {
             String charset = ESBConsts.UTF8_STR;
-            HttpURLConnection httpURLConnection = postConnection(new URL(url), 0, 0, ContentType.json, charset, null);
+            HttpURLConnection httpURLConnection = postConnection(new URL(url), connectTimeout, readTimeout, ContentType.json, charset, null);
             if (null == httpURLConnection) {
                 throw new Exception("Create httpURLConnection Failure");
             }
@@ -493,6 +543,16 @@ public final class HTTP {
 //            e.printStackTrace();
             throw e;
         }
+    }
+
+    /**
+     * 发送信息到服务端
+     * @param object
+     * @return response code
+     * @throws Exception
+     */
+    public static int sendJSON(String url, Object object, Map<String,String> header) throws Exception {
+        return sendJSON(url,object,header,0,60);
     }
 
     /**
@@ -525,10 +585,10 @@ public final class HTTP {
      * @return response code
      * @throws Exception
      */
-    public static int sendData(String url, byte[] data, String fileName, Map<String,String> header) throws Exception {
+    public static int sendData(String url, byte[] data, String fileName, Map<String,String> header, int connectTimeout, int readTimeout) throws Exception {
         try {
             String boundary = "------WebKitFormBoundary" + randomString();
-            HttpURLConnection httpURLConnection = postConnection(new URL(url),0,0, ContentType.data,null,boundary);
+            HttpURLConnection httpURLConnection = postConnection(new URL(url),connectTimeout,readTimeout, ContentType.data,null,boundary);
             if (null == httpURLConnection) {
                 throw new Exception("Create httpURLConnection Failure");
             }
@@ -543,6 +603,16 @@ public final class HTTP {
 //            e.printStackTrace();
             throw e;
         }
+    }
+
+    /**
+     * 发送信息到服务端
+     * @param data
+     * @return response code
+     * @throws Exception
+     */
+    public static int sendData(String url, byte[] data, String fileName, Map<String,String> header) throws Exception {
+        return sendData(url,data,fileName,header,0,60);
     }
 
     /**
@@ -574,7 +644,7 @@ public final class HTTP {
      * @return success response
      * @throws Exception
      */
-    public static String get(String url, Map<String, String> params, Map<String,String> header, Map<String,String> cookie) throws Exception {
+    public static String get(String url, Map<String, String> params, Map<String,String> header, Map<String,String> cookie, int connectTimeout, int readTimeout) throws Exception {
         try {
             String charset = ESBConsts.UTF8_STR;
             URL u = new URL(url);
@@ -586,7 +656,7 @@ public final class HTTP {
             }
             u = new URL(u.getProtocol()+ "://" + u.getHost() + (u.getPort() > 0 ? ":" + u.getPort() : "") + u.getPath() + "?" + q);
 
-            HttpURLConnection httpURLConnection = getConnection(u,0,60, ContentType.form, charset);
+            HttpURLConnection httpURLConnection = getConnection(u,connectTimeout,readTimeout, ContentType.form, charset);
             if(null == httpURLConnection){
                 throw new Exception("创建联接失败");
             }
@@ -606,6 +676,15 @@ public final class HTTP {
         } catch (Exception e) {
             throw e;
         }
+    }
+
+    /**
+     * 发送信息到服务端 GET方式
+     * @return success response
+     * @throws Exception
+     */
+    public static String get(String url, Map<String, String> params, Map<String,String> header, Map<String,String> cookie) throws Exception {
+        return get(url,params,header,cookie,0,120);
     }
 
     /**
@@ -644,7 +723,7 @@ public final class HTTP {
      * @return success response
      * @throws Exception
      */
-    public static String delete(String url, Map<String, String> params, Map<String,String> header, Map<String,String> cookie) throws Exception {
+    public static String delete(String url, Map<String, String> params, Map<String,String> header, Map<String,String> cookie, int connectTimeout, int readTimeout) throws Exception {
         try {
             String charset = ESBConsts.UTF8_STR;
             URL u = new URL(url);
@@ -656,7 +735,7 @@ public final class HTTP {
             }
             u = new URL(u.getProtocol()+ "://" + u.getHost() + (u.getPort() > 0 ? ":" + u.getPort() : "") + u.getPath() + "?" + q);
 
-            HttpURLConnection httpURLConnection = getConnection(Method.DELETE, u,0,60, ContentType.form, charset);
+            HttpURLConnection httpURLConnection = getConnection(Method.DELETE, u,connectTimeout,readTimeout, ContentType.form, charset);
             if(null == httpURLConnection){
                 throw new Exception("创建联接失败");
             }
@@ -683,6 +762,15 @@ public final class HTTP {
      * @return success response
      * @throws Exception
      */
+    public static String delete(String url, Map<String, String> params, Map<String,String> header, Map<String,String> cookie) throws Exception {
+        return delete(url,params,header,cookie,0,60);
+    }
+
+        /**
+         * 发送信息到服务端 DELETE方式
+         * @return success response
+         * @throws Exception
+         */
     public static String delete(String url, Map<String, String> params, Map<String,String> header) throws Exception {
         return delete(url,params,header,null);
     }

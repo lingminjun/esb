@@ -1,4 +1,4 @@
-package com.venus.esb.dubbo.brave;
+package com.venus.esb.servlet.brave;
 
 import com.alibaba.dubbo.common.Constants;
 import com.alibaba.dubbo.common.URL;
@@ -9,63 +9,61 @@ import com.github.kristofa.brave.ClientRequestAdapter;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.internal.Nullable;
+import com.twitter.zipkin.gen.Endpoint;
 import com.venus.esb.lang.ESBConsts;
 import com.venus.esb.lang.ESBSTDKeys;
 import com.venus.esb.lang.ESBThreadLocal;
 import com.venus.esb.sign.ESBUUID;
 import com.venus.esb.utils.Hex;
-import com.twitter.zipkin.gen.Endpoint;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.util.*;
 
 /**
  * Created by lmj on 17/9/1.
  * 客户端发起请求
  */
-public class DubboClientRequestAdapter implements ClientRequestAdapter {
-//    private Invoker<?> invoker;
-//    private Invocation invocation;
-//    private final static DubboSpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
-//    private final static DubboServerNameProvider serverNameProvider = new DefaultServerNameProvider();
+public class HTTPClientRequestAdapter implements ClientRequestAdapter {
 
-    private final String spanName;
-    private final RpcContext context;
-    private final Invocation invocation;
+//    private final String spanName;
+    private final Map<String,String> headers;
+    private final Map<String,String> params;
+    private final String method;
+    private final String url;
+    private final String body;
 
-    public DubboClientRequestAdapter(RpcContext context, Invocation invocation, String spanName) {
-        this.context = context;
-        this.invocation = invocation;
-        this.spanName = spanName;
+    public HTTPClientRequestAdapter(Map<String,String> headers, Map<String,String> params, String body, String method, String url) {
+        this.headers = headers;
+        this.params = params;
+        this.method = method;
+        this.url = url;
+        this.body = body;
     }
 
     @Override
     public String getSpanName() {
-        if (spanName != null) {
-            return spanName;
+        try {
+            java.net.URL u = new java.net.URL(this.url);
+            return method+" "+u.getPath();
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
         }
-        String className = context.getUrl().getPath();
+//        String className = context.getUrl().getPath();
 //        String simpleName = className.substring(className.lastIndexOf(".")+1);
-        return className+"."+context.getMethodName();
+        return method + " " + url;
     }
 
     @Override
     public void addSpanIdToRequest(@Nullable SpanId spanId) {
 //        System.out.println("client spanId:" + spanId);
         if (spanId != null) {//不监控
-            context.setAttachment(ESBConsts.ZIPKIN_BRAVE_SPAN_ID_KEY, Hex.encodeHexString(spanId.bytes()));
+            // slueth zipkin（spring-cloud-sleuth-zipkin）以下两个字段，是否兼容处理
+            // X-B3-SpanId: fbf39ca6e571f294
+            // X-B3-TraceId: fbf39ca6e571f294
+            headers.put(ESBConsts.ZIPKIN_BRAVE_SPAN_ID_KEY,Hex.encodeHexString(spanId.bytes()));
+            headers.put("X-B3-SpanId",Hex.encodeHexString(spanId.bytes()));
         }
-//        String application = RpcContext.getContext().getUrl().getParameter("application");
-//        RpcContext.getContext().setAttachment("clientName", application);
-//        if (spanId == null) {
-//            RpcContext.getContext().setAttachment("sampled", "0");
-//        }else{
-//            RpcContext.getContext().setAttachment("traceId", IdConversion.convertToString(spanId.traceId));
-//            RpcContext.getContext().setAttachment("spanId", IdConversion.convertToString(spanId.spanId));
-//            if (spanId.nullableParentId() != null) {
-//                RpcContext.getContext().setAttachment("parentId", IdConversion.convertToString(spanId.parentId));
-//            }
-//        }
     }
 
 
@@ -134,7 +132,7 @@ public class DubboClientRequestAdapter implements ClientRequestAdapter {
 
         //应该被记录下来的参数 [参数记录]
         //pid=27410&retries=0&revision=DEV1&side=consumer&timeout=2000&timestamp=1504277024944&version=DEV1
-        URL url = context.getUrl();
+//        URL url = context.getUrl();
 
         Collection<KeyValueAnnotation> annotations = new ArrayList<KeyValueAnnotation>();
 
@@ -142,8 +140,7 @@ public class DubboClientRequestAdapter implements ClientRequestAdapter {
         addESBParameters(annotations);
 
         //拉取参数
-        Map<String,String> map = url.toMap();
-        Iterator<Map.Entry<String,String>> entries = map.entrySet().iterator();
+        Iterator<Map.Entry<String,String>> entries = params.entrySet().iterator();
         StringBuilder builder = new StringBuilder();
         boolean isFirst = true;
         while (entries.hasNext()) {
@@ -163,15 +160,17 @@ public class DubboClientRequestAdapter implements ClientRequestAdapter {
                 }
                 builder.append(key+"="+entry.getValue());
             }
-//            System.out.println("Key = " + entry.getKey() + ", Value = " + entry.parseValue());
         }
 
-        //取参数
-        addDubboParameters(annotations,invocation);
-
+        // query参数化
         String parameters = builder.toString();
-        if (parameters != null && parameters.length() > 0) {//dubbo的其他参数
-            annotations.add(KeyValueAnnotation.create("dubbo", parameters));
+        if (parameters != null && parameters.length() > 0) {//http query参数
+            annotations.add(KeyValueAnnotation.create("query", parameters));
+        }
+
+        // body参数
+        if (body != null && body.length() > 0) {
+            annotations.add(KeyValueAnnotation.create("body", body));
         }
 
         //设置client进程
@@ -180,42 +179,8 @@ public class DubboClientRequestAdapter implements ClientRequestAdapter {
         return annotations;
     }
 
-    private static void addDubboParameters(Collection<KeyValueAnnotation> annotations, Invocation inv) {
-        Object[] args = inv.getArguments();
-        if(Constants.$INVOKE.equals(inv.getMethodName())
-                && args != null
-                && args.length == 3) {
-            args = (Object[])args[2];
-        }
-
-        if (args != null && args.length > 0) {
-            for (int i = 0; i < args.length; i++) {
-                Object obj = args[i];
-                if (obj != null) {//采用dubbo的方式
-                    String json = null;
-                    try {
-                        json = JSON.json(obj);
-                    } catch (IOException e) {
-                        json = obj.toString();
-                    }
-                    /*//因为上报会做压缩,所以不考虑压缩问题
-                    if (json.length() >= com.venus.esb.brave.Constants.BRAVE_CONTENT_MAX_LENGTH) {//超过则做压缩存储
-                        json = GZIP.compressToBase64String(json,ESBConsts.UTF8_STR);
-                        annotations.add(KeyValueAnnotation.create("_var" + i, json));
-                        annotations.add(KeyValueAnnotation.create("_var_zip" + i, "true"));
-                    } else {
-                    */
-                        annotations.add(KeyValueAnnotation.create("_var" + i, json));
-                    /*}*/
-                } else {
-                    annotations.add(KeyValueAnnotation.create("_var" + i, "null"));
-                }
-            }
-        }
-    }
-
     private static void addESBParameters(Collection<KeyValueAnnotation> annotations) {
-        annotations.add(KeyValueAnnotation.create("protocol", "dubbo"));
+        annotations.add(KeyValueAnnotation.create("protocol", "http"));
 
         String v = ESBThreadLocal.get(ESBSTDKeys.TID_KEY);//主要是方便与日志对应起来
         if (v != null) {

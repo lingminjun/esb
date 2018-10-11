@@ -347,20 +347,13 @@ public final class ESBSTDKeys {
         _nkeys.add(POST_BODY_KEY);
     }
 
-    @ESBDesc("mock flag 专门用于录制回放测试")
-    public static final String MOCK_FLAG_KEY = "_mock_flag";
-    static {
-        _keys.add(MOCK_FLAG_KEY);
-        _nkeys.add(MOCK_FLAG_KEY);
-    }
+//    @ESBDesc("mock flag 专门用于录制回放测试")
+//    public static final String MOCK_FLAG_KEY = "_mock_flag";
+//    static {
+//        _keys.add(MOCK_FLAG_KEY);
+//        _nkeys.add(MOCK_FLAG_KEY);
+//    }
 
-//    @Deprecated //直接换成cid
-    @ESBDesc(value = "zipkin span id专用", ignore = true)
-    public static final String ZIPKIN_BRAVE_SPAN_ID_KEY = "_spanId";
-    static {
-        _keys.add(ZIPKIN_BRAVE_SPAN_ID_KEY);
-        _nkeys.add(ZIPKIN_BRAVE_SPAN_ID_KEY);
-    }
 
     public static boolean isSTDKey(String key) {
         return _keys.contains(key);

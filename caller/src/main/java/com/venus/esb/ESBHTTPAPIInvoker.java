@@ -1,11 +1,22 @@
 package com.venus.esb;
 
 import com.alibaba.dubbo.common.utils.StringUtils;
+import com.alibaba.dubbo.rpc.RpcContext;
+import com.github.kristofa.brave.Brave;
 import com.venus.esb.ESBAPIInfo;
 import com.venus.esb.ESBInvocation;
+import com.venus.esb.brave.ESBBraveFactory;
+import com.venus.esb.brave.Utils;
+import com.venus.esb.config.ESBConfigCenter;
+import com.venus.esb.dubbo.brave.DubboClientRequestAdapter;
+import com.venus.esb.dubbo.brave.DubboResponseAdapter;
+import com.venus.esb.dubbo.brave.DubboServerRequestAdapter;
 import com.venus.esb.lang.*;
+import com.venus.esb.servlet.brave.HTTPClientRequestAdapter;
+import com.venus.esb.servlet.brave.HTTPResponseAdapter;
 import com.venus.esb.utils.HTTP;
 
+import java.net.URL;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
@@ -24,7 +35,6 @@ import java.util.Map;
  * Time: 下午5:05
  */
 public final class ESBHTTPAPIInvoker {
-
 
     public static Object httpInvoke(ESBAPIInfo info, ESBInvocation invocation, ESBAPIContext context, Map<String, String> params, Map<String, ESBCookie> cookies, int index) throws ESBException {
         return http(info,invocation,context,params,cookies,index);
@@ -70,6 +80,7 @@ public final class ESBHTTPAPIInvoker {
         //参数映射列表,如果配置了映射关系的话
         Map<Integer, String> map = info.getInject(invocation.getMD5());
         Map<String, ParamDesc> fields = new HashMap<>();
+        Map<String, String> querys = new HashMap<>();
         String lastKey = "";//记录最后一个key，如果post和put时做pojo写入
         for (int idx = 0; idx < invocation.paramTypes.length; idx++) {
             ESBField field = invocation.paramTypes[idx];
@@ -97,26 +108,118 @@ public final class ESBHTTPAPIInvoker {
                 paramDesc.key = key;
                 paramDesc.field = field;
 
+
+
                 if (decode != null) {
                     paramDesc.value = encode.serialized(decode.deserialized(value,field.getDeclareType(), field.isList));
                 } else {
                     paramDesc.value = value;
                 }
                 fields.put(key,paramDesc);
+                querys.put(key,paramDesc.value);
             }
 
             lastKey = key;
         }
 
         String url = "";
+        String body = null;
         if (HTTP.Method.POST.name().equalsIgnoreCase(invocation.method)
                 || HTTP.Method.PUT.name().equalsIgnoreCase(invocation.method)) {
             url = buildUrl(invocation,context,fields,lastKey);
+            //取body
+            ParamDesc paramDesc = fields.get(lastKey);
+            if (paramDesc != null && paramDesc.value != null) {
+                body = paramDesc.value;
+            }
+            querys.remove(lastKey);
         } else {//get请求
             url = buildUrl(invocation,context,fields,"");
         }
 
         //是否添加authority
+        Map<String,String> headers = new HashMap<>();
+        addTracingHeader(headers);
+        addAuthHeader(headers,context);
+        try {// 支持zipkin
+            zipkinTracingRequest(headers,querys, body, invocation.method, url);
+        } catch (Throwable e) {}
+
+        int connectTimeout = ESBConfigCenter.instance().getHttpConnectTimeout() / 1000;
+        int readTimeout = ESBConfigCenter.instance().getHttpReadTimeout() / 1000;
+
+        String result = null;
+        boolean success = true;
+        String err = null;
+        try {
+            if (HTTP.Method.POST.name().equalsIgnoreCase(invocation.method)) {
+                result = HTTP.postJSON(url, body, headers, connectTimeout, readTimeout);
+            } else if (HTTP.Method.PUT.name().equalsIgnoreCase(invocation.method)) {
+                result = HTTP.putJSON(url, body, headers, connectTimeout, readTimeout);
+            } else if (HTTP.Method.DELETE.name().equalsIgnoreCase(invocation.method)) {
+                result = HTTP.delete(url, null, headers, null, connectTimeout, readTimeout);
+            } else {
+                result = HTTP.get(url, null, headers, null, connectTimeout, readTimeout);
+            }
+        } catch (Throwable e) {
+            success = false;
+            err = Utils.getExceptionStackTrace(e);
+            throw ESBExceptionCodes.INTERNAL_SERVER_ERROR("HTTP服务转调错误").setCoreCause(e);
+        } finally {
+            try {// 支持zipkin
+                zipkinTracingResponse(success,result,err);
+            } catch (Throwable e) {}
+        }
+
+        ESBAPISerializer fdecode = getDecodeSerializer(context);
+        return fdecode.deserialized(result,null,false);
+    }
+
+    private static void addTracingHeader(Map<String,String> map) {
+        ESBContext context = ESBContext.getContext();
+
+        //Spring Cloud Sleuth使用zipkin会自动添加如下头字段，所以不要替换
+        //X-B3-SpanId: fbf39ca6e571f294
+        //X-B3-TraceId: fbf39ca6e571f294
+
+        StringBuilder tracing = new StringBuilder();
+        tracing.append(context.getCid());
+        tracing.append(ESBConsts.HTTP_ESB_SPLIT);
+        tracing.append(context.getTid());
+        tracing.append(ESBConsts.HTTP_ESB_SPLIT);
+        if (ESBThreadLocal.get(ESBSTDKeys.PARENT_CID_KEY) != null) {
+            tracing.append(ESBThreadLocal.get(ESBSTDKeys.PARENT_CID_KEY));
+        }
+        tracing.append(ESBConsts.HTTP_ESB_SPLIT);
+        tracing.append(ESBT.getServiceName());
+        map.put(ESBConsts.HTTP_ESB_TRACING_HEADER,tracing.toString());
+
+        StringBuilder ctxstr = new StringBuilder();
+        if (context.getL10n() != null && context.getL10n().length() > 0) {
+            ctxstr.append(context.getL10n());
+        }
+        ctxstr.append(ESBConsts.HTTP_ESB_SPLIT);
+
+        //必要的业务数据
+        if (context.getAid() != null) {
+            ctxstr.append(context.getAid());
+        }
+        ctxstr.append(ESBConsts.HTTP_ESB_SPLIT);
+        if (context.getDid() != null) {
+            ctxstr.append(context.getDid());
+        }
+        ctxstr.append(ESBConsts.HTTP_ESB_SPLIT);
+        if (context.getUid() != null) {
+            ctxstr.append(context.getUid());
+        }
+        ctxstr.append(ESBConsts.HTTP_ESB_SPLIT);
+        if (context.getPid() != null) {
+            ctxstr.append(context.getPid());
+        }
+    }
+
+    private static void addAuthHeader(Map<String,String> map, ESBAPIContext context) {
+        //添加token
         String authorization = null;
         if (context.utoken != null && context.utoken.length() > 0) {
             authorization = context.utoken;
@@ -124,33 +227,25 @@ public final class ESBHTTPAPIInvoker {
             authorization = context.ttoken;
         }
 
-        String result = null;
-        try {
-            if (HTTP.Method.POST.name().equalsIgnoreCase(invocation.method)) {
-                ParamDesc paramDesc = fields.get(lastKey);
-                String body = null;
-                if (paramDesc != null && paramDesc.value != null) {
-                    body = paramDesc.value;
-                }
-                result = HTTP.postJSON(url, body, authorization);
-            } else if (HTTP.Method.PUT.name().equalsIgnoreCase(invocation.method)) {
-                ParamDesc paramDesc = fields.get(lastKey);
-                String body = null;
-                if (paramDesc != null && paramDesc.value != null) {
-                    body = paramDesc.value;
-                }
-                result = HTTP.putJSON(url, body, authorization);
-            } else if (HTTP.Method.DELETE.name().equalsIgnoreCase(invocation.method)) {
-                result = HTTP.delete(url, null, authorization);
-            } else {
-                result = HTTP.get(url, null, authorization);
-            }
-        } catch (Throwable e) {
-            throw ESBExceptionCodes.INTERNAL_SERVER_ERROR("HTTP服务转调错误").setCoreCause(e);
+        if (authorization != null) {
+            map.put("Authorization",authorization);
         }
+    }
 
-        ESBAPISerializer fdecode = getDecodeSerializer(context);
-        return fdecode.deserialized(result,null,false);
+    private static void zipkinTracingRequest(Map<String,String> map, Map<String,String> params,String body, String method, String url) {
+        Brave brave = ESBBraveFactory.getBrave();
+        if (brave == null) {
+            return;
+        }
+        brave.clientRequestInterceptor().handle(new HTTPClientRequestAdapter(map,params,body,method,url));
+    }
+
+    private static void zipkinTracingResponse(boolean success,String result, String exceptoinMessage) {
+        Brave brave = ESBBraveFactory.getBrave();
+        if (brave == null) {
+            return;
+        }
+        brave.clientResponseInterceptor().handle(new HTTPResponseAdapter(true, success, result, exceptoinMessage));
     }
 
     private static void parseQuery(String queryString, Map<String, String> query) {

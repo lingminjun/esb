@@ -1,10 +1,9 @@
-package com.venus.esb.dubbo.brave;
+package com.venus.esb.servlet.brave;
 
 import com.alibaba.dubbo.rpc.RpcContext;
 import com.github.kristofa.brave.*;
-import com.venus.esb.lang.ESBConsts;
-import com.venus.esb.lang.ESBSTDKeys;
 import com.venus.esb.brave.IPV4Conversion;
+import com.venus.esb.lang.ESBSTDKeys;
 import com.venus.esb.lang.ESBT;
 import com.venus.esb.sign.ESBUUID;
 import com.venus.esb.utils.Hex;
@@ -12,13 +11,12 @@ import com.venus.esb.utils.Hex;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 
 /**
  * Created by lmj on 17/9/1.
  * 服务端收到请求(收到就汇报)
  */
-public class DubboServerRequestAdapter implements ServerRequestAdapter {
+public class HTTPServerRequestAdapter implements ServerRequestAdapter {
 
     private final RpcContext context;
     private final String spanName;
@@ -33,7 +31,7 @@ public class DubboServerRequestAdapter implements ServerRequestAdapter {
 
 
 
-    public DubboServerRequestAdapter(Brave brave, RpcContext context, String spanName) {
+    public HTTPServerRequestAdapter(Brave brave, RpcContext context, String spanName) {
         this.brave = brave;
         this.context = context;
         this.spanName = spanName;
@@ -44,7 +42,7 @@ public class DubboServerRequestAdapter implements ServerRequestAdapter {
 
     @Override
     public TraceData getTraceData() {
-        String span = context.getAttachment(ESBConsts.ZIPKIN_BRAVE_SPAN_ID_KEY);
+        String span = context.getAttachment(ESBSTDKeys.ZIPKIN_BRAVE_SPAN_ID_KEY);
         if (span != null) {
             SpanId spanId = SpanId.fromBytes(Hex.decodeHexString(span));
             return TraceData.builder().sample(true).spanId(spanId).build();

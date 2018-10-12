@@ -1,12 +1,10 @@
 package com.venus.esb.servlet.brave;
 
-import com.alibaba.dubbo.common.json.JSON;
-import com.alibaba.dubbo.rpc.Result;
 import com.github.kristofa.brave.ClientResponseAdapter;
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.ServerResponseAdapter;
 
-import java.io.IOException;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -54,7 +52,7 @@ public class HTTPResponseAdapter implements ClientResponseAdapter,ServerResponse
             annotations.add(keyValueAnnotation);
 
             //参数处理
-            if (!client) {//服务端写一次结果数据就可以了,状态表明清楚
+            if (client) {//客服端更好处理结果，故客户端处理一次即可
                 if (result != null) {
                     String json = this.result;
                     /*//上报统一压缩,不在参数处理

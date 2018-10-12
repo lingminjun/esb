@@ -93,7 +93,7 @@ public class ESBRPCFilter implements Filter {
 //            System.out.println("consume1:"+ ESBUUID.getProcessID()+"(tid:"+ESBUUID.convertSimplifyCID(esbcxt.getTid())+";cid:"+ESBUUID.convertSimplifyCID(esbcxt.getCid())+")");
 //            System.out.println("consume2:"+ ESBUUID.getProcessID()+"(tid:"+ESBUUID.convertProclaimedCID(ESBUUID.convertSimplifyCID(esbcxt.getTid()))+";cid:"+ESBUUID.convertProclaimedCID(ESBUUID.convertSimplifyCID(esbcxt.getCid()))+")");
         } else {
-//            ESBContext.removeContext();//防止脏数据,效率上不合理
+            ESBContext.getContext().clear();//防止脏数据,效率上不合理
 
             //确保本地数据预置
             ESBThreadLocal.put(ESBSTDKeys.TID_KEY,context.getAttachment(ESBSTDKeys.TID_KEY));//记录tid,继续透传
@@ -125,6 +125,8 @@ public class ESBRPCFilter implements Filter {
 //            System.out.println("provide1:"+ ESBUUID.getProcessID()+"(tid:"+ESBUUID.convertSimplifyCID(context.getAttachment(ESBSTDKeys.TID_KEY))+";cid:"+ESBUUID.convertSimplifyCID(context.getAttachment(ESBSTDKeys.CID_KEY))+")");
 //            System.out.println("provide2:"+ ESBUUID.getProcessID()+"(tid:"+ESBUUID.convertProclaimedCID(ESBUUID.convertSimplifyCID(context.getAttachment(ESBSTDKeys.TID_KEY)))+";cid:"+ESBUUID.convertProclaimedCID(ESBUUID.convertSimplifyCID(context.getAttachment(ESBSTDKeys.CID_KEY)))+")");
 //            System.out.println("provider:"+ ESBUUID.getProcessID()+"(aid:"+context.getAttachment(ESBSTDKeys.AID_KEY)+";uid:"+context.getAttachment(ESBSTDKeys.UID_KEY)+")");
+
+            esbcxt = ESBContext.getContext();//最后生成context
         }
 
         // 先清空Rpc中的Notice，作为媒介处理ext和cookie
@@ -172,9 +174,8 @@ public class ESBRPCFilter implements Filter {
             if(consumer) {
                 //do nothing
             } else {
-                if (esbcxt != null) {//只有consumer端
-                    esbcxt.clear();
-                }
+                //必须清理，放置下次进入脏数据
+                ESBContext.getContext().clear();
 
                 ESBMDC.remove(ESBSTDKeys.CID_KEY);
                 ESBMDC.remove(ESBSTDKeys.TID_KEY);

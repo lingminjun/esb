@@ -1,5 +1,9 @@
 package com.venus.esb.brave;
 
+import com.venus.esb.lang.ESBSTDKeys;
+
+import javax.servlet.http.HttpServletRequest;
+
 /**
  * Created with IntelliJ IDEA.
  * Description:
@@ -22,5 +26,32 @@ public final class Utils {
         String var = builder.toString();
         e.printStackTrace();
         return var;
+    }
+
+    public static String getClientIp(HttpServletRequest request) {
+        String ip = null;
+        if (request != null) {
+            ip = request.getHeader("x-forwarded-for");
+            if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+                ip = request.getHeader("Proxy-Client-IP");
+            }
+            if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+                ip = request.getHeader("http-x-forwarded-for");
+            }
+            if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+                ip = request.getHeader("WL-Proxy-Client-IP");
+            }
+            if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+                ip = request.getHeader("remote-addr");
+            }
+            if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+                ip = request.getHeader(ESBSTDKeys.CIP_KEY);//request.getRemoteAddr();
+            }
+            //
+            if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+                ip = request.getHeader("Remote Address");//request.getRemoteAddr();
+            }
+        }
+        return ip;
     }
 }

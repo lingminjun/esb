@@ -2,6 +2,7 @@ package com.venus.esb.servlet.brave;
 
 import com.alibaba.dubbo.rpc.RpcContext;
 import com.github.kristofa.brave.*;
+import com.sun.jdi.request.StepRequest;
 import com.venus.esb.brave.IPV4Conversion;
 import com.venus.esb.lang.ESBSTDKeys;
 import com.venus.esb.lang.ESBT;
@@ -18,85 +19,59 @@ import java.util.Collection;
  */
 public class HTTPServerRequestAdapter implements ServerRequestAdapter {
 
-    private final RpcContext context;
-    private final String spanName;
     private final Brave brave;
-//    private final String spanId;
-//    private final String traceId;
-//    private final String parentId;
-//    private Invocation invocation;
-//    private ServerTracer serverTracer;
-//    private final static  DubboSpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
-//    private final static  DubboClientNameProvider clientNameProvider = new DefaultClientNameProvider();
+    private final String method;
+    private final String url;
+    private final String path;
+    private final String spanId;
+    private final String clientName;
+    private final String clientIp;
+    private final int clientPort;
+    private final String serverIp;
 
-
-
-    public HTTPServerRequestAdapter(Brave brave, RpcContext context, String spanName) {
+    public HTTPServerRequestAdapter(Brave brave, String method, String url, String path, String spanId, String sip, String client, String cip, int cport) {
         this.brave = brave;
-        this.context = context;
-        this.spanName = spanName;
-//        this.spanId = cid;
-//        this.traceId = tid;
-//        this.parentId = pid;
+        this.method = method;
+        this.url = url;
+        this.path = path;
+        this.spanId = spanId;
+        this.clientName = client;
+        this.clientIp = cip == null ? "127.0.0.1" : cip;
+        this.clientPort = cport;
+        this.serverIp = sip == null ? "127.0.0.1" : sip;
     }
 
     @Override
     public TraceData getTraceData() {
-        String span = context.getAttachment(ESBSTDKeys.ZIPKIN_BRAVE_SPAN_ID_KEY);
+        String span = this.spanId;
         if (span != null) {
             SpanId spanId = SpanId.fromBytes(Hex.decodeHexString(span));
             return TraceData.builder().sample(true).spanId(spanId).build();
         }
-//      String sampled =   invocation.getAttachment("sampled");
-//      if(sampled != null && sampled.equals("0")){
-//          return TraceData.builder().sample(false).build();
-//      }else {
-//          final String parentId = invocation.getAttachment("parentId");
-//          final String spanId = invocation.getAttachment("spanId");
-//          final String traceId = invocation.getAttachment("traceId");
-//          if (traceId != null && spanId != null) {
-//              SpanId span = getSpanId(traceId, spanId, parentId);
-//              return TraceData.builder().sample(true).spanId(span).build();
-//          }
-//      }
-//
-//        if (traceId != null && spanId != null) {
-//            SpanId span = getSpanId(traceId, spanId, parentId);
-//            return TraceData.builder().sample(true).spanId(span).build();
-//        }
         return TraceData.builder().build();
 
     }
 
     @Override
     public String getSpanName() {
-        if (spanName != null) {
-            return spanName;
+        if (path != null && path.length() > 0) {
+            return method + " " + path;
         }
-        String className = context.getUrl().getPath();
-//        String simpleName = className.substring(className.lastIndexOf(".")+1);
-        return className+"."+context.getMethodName();
+        return method + " " + url;
     }
 
     @Override
     public Collection<KeyValueAnnotation> requestAnnotations() {
 
+        int port = this.clientPort;
 
-        int port = context.getUrl().getPort();
-        InetSocketAddress client_ip = context.getRemoteAddress();
-//        ESBThreadLocal.put(ESBSTDKeys.CLIENT_NAME_KEY,context.getAttachment(ESBSTDKeys.CLIENT_NAME_KEY));//作为client写入
-        final String clientName = context.getAttachment(ESBSTDKeys.CLIENT_NAME_KEY);
-
-        //Client Address remote_ip + 端口
-        brave.serverTracer().setServerReceived(IPV4Conversion.convertToInt(client_ip.getAddress().getHostAddress()),port,clientName);
+        brave.serverTracer().setServerReceived(IPV4Conversion.convertToInt(clientIp),port,clientName);
 
         Collection<KeyValueAnnotation> annotations = new ArrayList<KeyValueAnnotation>();
         //Server Address
-        String ipAddr = context.getUrl().getIp();
-        String server = context.getUrl().getParameter("application");
-        if (server == null) {
-            server = ESBT.getServiceName();
-        }
+        String ipAddr = serverIp;
+        String server = ESBT.getServiceName();
+
         annotations.add(KeyValueAnnotation.create("Server Address", ipAddr+":"+port+"("+server+")"));
         annotations.add(KeyValueAnnotation.create("Server PId", ESBUUID.getProcessID()));
         return annotations;

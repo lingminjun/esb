@@ -216,6 +216,7 @@ public final class ESBHTTPAPIInvoker {
         if (context.getPid() != null) {
             ctxstr.append(context.getPid());
         }
+        map.put(ESBConsts.HTTP_ESB_CONTEXT_HEADER,ctxstr.toString());
     }
 
     private static void addAuthHeader(Map<String,String> map, ESBAPIContext context) {

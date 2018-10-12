@@ -50,7 +50,7 @@ public final class ESBConfigCenter {
     private String braveDir;//zipkin brave日志目录
     private boolean brave;//开启监控
 
-    private boolean esbCloseFilter = true;//关闭ESBRequestFilter过滤
+    private boolean esbCloseFilter;//关闭ESBRequestFilter过滤
 
     private ESBConfigCenter() {
 

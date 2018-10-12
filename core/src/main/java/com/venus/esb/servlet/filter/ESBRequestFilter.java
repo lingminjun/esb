@@ -205,7 +205,7 @@ public class ESBRequestFilter implements Filter {
             //请参考写入head时记录
             String tracing = request.getHeader(ESBConsts.HTTP_ESB_TRACING_HEADER);
             if (tracing != null) {
-                String[] strs = tracing.split(ESBConsts.HTTP_ESB_SPLIT);
+                String[] strs = tracing.split(ESBConsts.HTTP_ESB_SPLIT, -1);//防止尾部丢失
                 if (strs.length == 4) {
                     ESBThreadLocal.put(ESBSTDKeys.PARENT_CID_KEY,strs[0]);//从传过来的cid来做parent cid
                     ESBThreadLocal.put(ESBSTDKeys.TID_KEY,strs[1]);//记录tid,继续透传
@@ -223,7 +223,7 @@ public class ESBRequestFilter implements Filter {
 
             String ctxstr = request.getHeader(ESBConsts.HTTP_ESB_CONTEXT_HEADER);
             if (ctxstr != null) {
-                String[] strs = ctxstr.split(ESBConsts.HTTP_ESB_SPLIT);
+                String[] strs = ctxstr.split(ESBConsts.HTTP_ESB_SPLIT, -1);//防止尾部丢失
                 if (strs.length == 5) {
                     ESBThreadLocal.put(ESBSTDKeys.L10N_KEY,strs[0]);//保留上一次的
                     //必要的业务数据传递

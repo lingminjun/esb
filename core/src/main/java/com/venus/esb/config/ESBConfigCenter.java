@@ -2,6 +2,8 @@ package com.venus.esb.config;
 
 import com.alibaba.dubbo.common.utils.StringUtils;
 import com.venus.esb.lang.ESBT;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,6 +13,8 @@ import java.util.Properties;
  * Created by lingminjun on 17/4/30.
  */
 public final class ESBConfigCenter {
+
+    private static final Logger logger = LoggerFactory.getLogger(ESBConfigCenter.class);
 
     private String appName;//
     private String registry;//
@@ -46,7 +50,7 @@ public final class ESBConfigCenter {
     private String braveDir;//zipkin brave日志目录
     private boolean brave;//开启监控
 
-    private boolean esbCloseFilter;//关闭ESBRequestFilter过滤
+    private boolean esbCloseFilter = true;//关闭ESBRequestFilter过滤
 
     private ESBConfigCenter() {
 
@@ -58,7 +62,12 @@ public final class ESBConfigCenter {
             input = loader.getResourceAsStream("config.properties");
             prop.load(input);
         } catch (Throwable e) {
-            throw new RuntimeException("缺少ESB相关配置",e);
+            try {
+                input = loader.getResourceAsStream("application.properties");
+                prop.load(input);
+            } catch (Throwable ee) {}
+            logger.error("缺少ESB相关配置" , e);
+//            throw new RuntimeException("缺少ESB相关配置",e);
         }
 
         appName = ESBT.getServiceName();//直接取服务名

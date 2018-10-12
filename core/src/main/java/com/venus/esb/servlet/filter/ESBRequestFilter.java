@@ -119,8 +119,8 @@ public class ESBRequestFilter implements Filter {
                 braveInvoking(tracing);
             } catch (Throwable e) {e.printStackTrace();}
 
-            long before = System.currentTimeMillis();
-            System.out.println("===========》》》》before doFilter");
+//            long before = System.currentTimeMillis();
+//            System.out.println("===========》》》》before doFilter");
 
             filterChain.doFilter(servletRequest, servletResponse);
 
@@ -135,8 +135,8 @@ public class ESBRequestFilter implements Filter {
                 }
             }
 
-            long after = System.currentTimeMillis();
-            System.out.println("===========》》》》after doFilter cost=" + (after-before));
+//            long after = System.currentTimeMillis();
+//            System.out.println("===========》》》》after doFilter cost=" + (after-before));
 
         } catch (Throwable e) {
             success = false;

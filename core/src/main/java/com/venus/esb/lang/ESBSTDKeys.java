@@ -1,12 +1,8 @@
 package com.venus.esb.lang;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.venus.esb.annotation.ESBDesc;
 
-import java.nio.charset.Charset;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -33,14 +29,14 @@ public final class ESBSTDKeys {
         _nkeys.add(AID_KEY);
     }
 
-    @ESBDesc("call id:客户端调用编号. 支持通过Cookie注入获取url中的值, cookie中存储负值")
+    @ESBDesc("call id:客户端调用编号. ")
     public static final String CID_KEY = "_cid";
     static {
         _keys.add(CID_KEY);
         _nkeys.add(CID_KEY);
     }
 
-    @ESBDesc("device id 设备标示符")
+    @ESBDesc("device id 设备标示符. 支持通过Cookie注入获取url中的值, cookie中存储负值")
     public static final String DID_KEY = "_did";
 //    @ESBDesc("device id 设备标示符, 存储在cookie中的名字")
 //    public static final String cookieDeviceId = "__da";

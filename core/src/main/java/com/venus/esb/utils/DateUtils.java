@@ -8,6 +8,18 @@ import java.util.Date;
  */
 public final class DateUtils {
 
+    public static String toShortYYYY_MM_DD(long utc) {
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy/MM/dd");
+        String dateString = formatter.format(new Date(utc));
+        return dateString;
+    }
+
+    public static String toShortYYYY_MM_DD(Date date) {
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+        String dateString = formatter.format(date);
+        return dateString;
+    }
+
     public static String toYYYY_MM_DD_HH_MM_SS(long utc) {
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String dateString = formatter.format(new Date(utc));

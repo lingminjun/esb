@@ -16,7 +16,7 @@
     <modules>
         <module>core</module>
         <module>caller</module>
-        <module>generator</module>
+        <module>gen</module>
     </modules>
 
     <properties>

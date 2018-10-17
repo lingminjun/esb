@@ -1749,7 +1749,7 @@ public final class HTTP {
             cts.put(".spec","text/x-rpm-spec");
             cts.put(".spl","application/x-shockwave-flash");
             cts.put(".spx","audio/x-speex");
-            cts.put(".sql","text/x-sql");
+            cts.put(".sqls","text/x-sqls");
             cts.put(".sr2","image/x-sony-sr2");
             cts.put(".src","application/x-wais-source");
             cts.put(".srf","image/x-sony-srf");

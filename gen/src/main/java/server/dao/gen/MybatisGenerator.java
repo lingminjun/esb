@@ -1,6 +1,7 @@
 package server.dao.gen;
 
 import com.venus.esb.lang.ESBConsts;
+import com.venus.esb.utils.DateUtils;
 import com.venus.esb.utils.FileUtils;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -125,6 +126,8 @@ public class MybatisGenerator extends Generator {
                 return "Integer";
             } else if (MYSQL_STRING_TYPE.contains(type)) {
                 return "String";
+            } else if (MYSQL_DATE_TYPE.contains(type)) {
+                return "Date";
             } else {
                 return "";
             }
@@ -141,6 +144,8 @@ public class MybatisGenerator extends Generator {
                 return "int";
             } else if (MYSQL_STRING_TYPE.contains(type)) {
                 return "String";
+            } else if (MYSQL_DATE_TYPE.contains(type)) {
+                return "Date";
             } else {
                 return "";
             }
@@ -398,7 +403,7 @@ public class MybatisGenerator extends Generator {
     /**
      * 生成DAO层代码
      * @param packageName 指定包名【必填】
-     * @param sqlsSourcePath    sqls文件资源路径:sqls/xxx.sql【必填】
+     * @param sqlsSourcePath    sqls文件资源路径:sqls/xxx.sqls【必填】
      */
     public MybatisGenerator(String packageName, String sqlsSourcePath) {
         this(packageName,null,sqlsSourcePath,null,null);
@@ -407,7 +412,7 @@ public class MybatisGenerator extends Generator {
     /**
      * 生成DAO层代码
      * @param packageName 指定包名【必填】
-     * @param sqlsSourcePath    sqls文件资源路径:sqls/xxx.sql【必填】
+     * @param sqlsSourcePath    sqls文件资源路径:sqls/xxx.sqls【必填】
      * @param tablePrefix  表定义前缀,只有匹配前缀有效时起作用
      */
     public MybatisGenerator(String packageName, String sqlsSourcePath, String tablePrefix) {
@@ -418,7 +423,7 @@ public class MybatisGenerator extends Generator {
      * 生成DAO层代码
      * @param packageName 指定包名【必填】
      * @param projectDir  项目目录，可以不填
-     * @param sqlsSourcePath    sqls文件资源路径:sqls/xxx.sql【必填】
+     * @param sqlsSourcePath    sqls文件资源路径:sqls/xxx.sqls【必填】
      * @param tablePrefix  表定义前缀,只有匹配前缀有效时起作用
      */
     public MybatisGenerator(String packageName, String projectDir,  String sqlsSourcePath, String tablePrefix) {
@@ -429,7 +434,7 @@ public class MybatisGenerator extends Generator {
      * 生成DAO层代码
      * @param packageName 指定包名【必填】
      * @param projectDir  项目目录，可以不填
-     * @param sqlsSourcePath    sqls文件资源路径:sqls/xxx.sql【必填】
+     * @param sqlsSourcePath    sqls文件资源路径:sqls/xxx.sqls【必填】
      * @param tablePrefix  表定义前缀,只有匹配前缀有效时起作用
      * @param mapperPath  Mybatis Configuration配置文件路径:资源路径
      */
@@ -823,6 +828,8 @@ public class MybatisGenerator extends Generator {
                 dobjContent.append("    public Integer ");
             } else if (MYSQL_STRING_TYPE.contains(cl.type)) {
                 dobjContent.append("    public String  ");
+            } else if (MYSQL_DATE_TYPE.contains(cl.type)) {
+                dobjContent.append("    public Date    ");
             } else {
                 continue;
             }
@@ -1189,7 +1196,30 @@ public class MybatisGenerator extends Generator {
             }
             cols.append("`" + cl.name + "`");
             if (cl.name.equals("create_at") || cl.name.equals("modified_at")) {
-                flds.append("(unix_timestamp() * 1000)");
+                // 优化
+                if (MYSQL_DATE_TYPE.contains(cl.type)) {//日期类型
+                    /*
+                    ---------------------------------------------------------------------------
+                    类型	        字节	格式	                用途	                是否支持设置系统默认值
+                    date	    3	YYYY-MM-DD	        日期值	                不支持
+                    time	    3	HH:MM:SS	        时间值或持续时间	        不支持
+                    year	    1	YYYY	            年份	                    不支持
+                    datetime	8	YYYY-MM-DD HH:MM:SS	日期和时间混合值	        不支持
+                    timestamp	4	YYYYMMDD HHMMSS	    混合日期和时间，可作时间戳	支持
+                    ---------------------------------------------------------------------------
+                    */
+                    if ("date".equalsIgnoreCase(cl.type)) {
+                        flds.append("curdate()");
+                    } else if ("time".equalsIgnoreCase(cl.type)) {
+                        flds.append("curtime()");
+                    } else if ("year".equalsIgnoreCase(cl.type)) {//FIXME:此处可能不成功
+                        flds.append("now()");
+                    } else {
+                        flds.append("now()");
+                    }
+                } else {//说明采用long记录日期
+                    flds.append("(unix_timestamp() * 1000)");
+                }
             } else {
                 flds.append("#{" + toHumpString(cl.name,false) + "}");
             }
@@ -1204,7 +1234,19 @@ public class MybatisGenerator extends Generator {
 
             if (cl.name.equals("modified_at")) {
                 hasModify = true;
-                upBuilder.insert(0,"            modified_at = (unix_timestamp() * 1000) \n");
+                if (MYSQL_DATE_TYPE.contains(cl.type)) {
+                    if ("date".equalsIgnoreCase(cl.type)) {
+                        upBuilder.insert(0, "            modified_at = curdate() \n");
+                    } else if ("time".equalsIgnoreCase(cl.type)) {
+                        upBuilder.insert(0, "            modified_at = curtime() \n");
+                    } else if ("year".equalsIgnoreCase(cl.type)) {//FIXME:此处可能不成功
+                        upBuilder.insert(0, "            modified_at = now() \n");
+                    } else {
+                        upBuilder.insert(0, "            modified_at = now() \n");
+                    }
+                } else {
+                    upBuilder.insert(0,"            modified_at = (unix_timestamp() * 1000) \n");
+                }
             } else {
                 upBuilder.append("        <if test=\""+ toHumpString(cl.name,false) + " != null\">\n");
                     upBuilder.append("            ,");
@@ -1308,7 +1350,7 @@ public class MybatisGenerator extends Generator {
 
         //自定的mapper添加
         if (methods != null && methods.size() > 0) {
-            content.append("    <!-- Custom sql mapper -->\n");
+            content.append("    <!-- Custom sqls mapper -->\n");
             for (MapperMethod mapperMethod : methods) {
                 String sql = mapperMethod.sql.trim();//.toLowerCase();
 

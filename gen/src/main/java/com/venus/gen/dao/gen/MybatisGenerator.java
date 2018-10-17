@@ -1,13 +1,12 @@
-package server.dao.gen;
+package com.venus.gen.dao.gen;
 
 import com.venus.esb.lang.ESBConsts;
-import com.venus.esb.utils.DateUtils;
 import com.venus.esb.utils.FileUtils;
+import com.venus.gen.dao.SQL;
+import com.venus.gen.dao.TableDAO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import server.Generator;
-import server.dao.SQL;
-import server.dao.TableDAO;
+import com.venus.gen.Generator;
 
 import java.io.File;
 import java.io.IOException;

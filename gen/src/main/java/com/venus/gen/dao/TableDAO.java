@@ -1,4 +1,4 @@
-package server.dao;
+package com.venus.gen.dao;
 
 import java.io.Serializable;
 import java.util.List;

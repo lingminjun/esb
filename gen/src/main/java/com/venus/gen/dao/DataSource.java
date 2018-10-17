@@ -1,4 +1,4 @@
-package server.dao;
+package com.venus.gen.dao;
 
 import com.alibaba.druid.pool.DruidDataSource;
 import org.apache.ibatis.session.SqlSessionFactory;

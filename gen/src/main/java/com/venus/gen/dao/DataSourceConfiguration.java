@@ -1,4 +1,4 @@
-package server.dao;
+package com.venus.gen.dao;
 
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.annotation.Value;

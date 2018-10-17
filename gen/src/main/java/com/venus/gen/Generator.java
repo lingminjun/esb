@@ -1,4 +1,4 @@
-package server;
+package com.venus.gen;
 
 import java.io.*;
 import java.net.URL;

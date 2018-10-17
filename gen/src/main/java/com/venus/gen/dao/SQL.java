@@ -1,13 +1,10 @@
-package server.dao;
+package com.venus.gen.dao;
 
-
-import org.apache.ibatis.annotations.Param;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.List;
 
 
 /**

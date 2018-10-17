@@ -27,7 +27,7 @@ import org.springframework.util.StringValueResolver;
         @Override
         @Primary
         @Bean(name = TheDataSource.DATA_SOURCE_BEAN)
-        public javax.sqls.DataSource dataSource() {
+        public javax.sql.DataSource dataSource() {
             return genDataSource();
         }
 

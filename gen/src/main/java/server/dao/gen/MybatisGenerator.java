@@ -806,11 +806,13 @@ public class MybatisGenerator extends Generator {
     private static void writeDObject(File file, String className, String packageName, Table table) {
         StringBuilder dobjContent = new StringBuilder();
         dobjContent.append("package " + packageName + ".vo;\n\r\n\r");
-        dobjContent.append("import java.io.Serializable;\n\r\n\r");
+        dobjContent.append("import java.io.Serializable;\n");
+        dobjContent.append("import java.util.*;\n\r\n\r");
         dobjContent.append("/**\n");
         dobjContent.append(" * Owner: Minjun Ling\n");
-        dobjContent.append(" * Creator: Robot\n");
+        dobjContent.append(" * Creator: ESB MybatisGenerator\n");
         dobjContent.append(" * Version: 1.0.0\n");
+        dobjContent.append(" * GitHub: https://github.com/lingminjun/esb\n");
         dobjContent.append(" * Since: " + new Date() + "\n");
         dobjContent.append(" * Table: " + table.name + "\n");
         dobjContent.append(" */\n");
@@ -999,8 +1001,9 @@ public class MybatisGenerator extends Generator {
         content.append("\n\n");
         content.append("/**\n");
         content.append(" * Owner: Minjun Ling\n");
-        content.append(" * Creator: Robot\n");
+        content.append(" * Creator: ESB MybatisGenerator\n");
         content.append(" * Version: 1.0.0\n");
+        content.append(" * GitHub: https://github.com/lingminjun/esb\n");
         content.append(" * Since: " + new Date() + "\n");
         content.append(" * Table: " + table.name + "\n");
         content.append(" */\n");
@@ -1064,8 +1067,9 @@ public class MybatisGenerator extends Generator {
         content.append("\n\n");
         content.append("/**\n");
         content.append(" * Owner: Minjun Ling\n");
-        content.append(" * Creator: Robot\n");
+        content.append(" * Creator: ESB MybatisGenerator\n");
         content.append(" * Version: 1.0.0\n");
+        content.append(" * GitHub: https://github.com/lingminjun/esb\n");
         content.append(" * Since: " + new Date() + "\n");
         content.append(" * Table: " + table.name + "\n");
         content.append(" */\n");
@@ -1461,7 +1465,7 @@ public class MybatisGenerator extends Generator {
         //开始写入sql-mapper
         content.append("<mappers>\n");
         for (MapperInfo mapperInfo : mappers) {
-            content.append("<mapper resource=\"sqlmap/" + mapperInfo.mapperFileName + "\"  />\n");
+            content.append("        <mapper resource=\"sqlmap/" + mapperInfo.mapperFileName + "\"  />\n");
         }
         content.append("    </mappers>\n");
         content.append("</configuration>");

@@ -91,9 +91,9 @@ public abstract class Generator {
         //从packageName中获取（猜测）
         if (this.packageName != null) {
             String[] strs = this.packageName.split("\\.");
-            for (int i = strs.length; i >= 0; i-- ) {
-                if (!excludes.contains(strs[i])) {
-                    return strs[i];
+            for (int i = strs.length; i > 0; i-- ) {
+                if (!excludes.contains(strs[i-1])) {
+                    return strs[i-1];
                 }
             }
         }
@@ -101,12 +101,12 @@ public abstract class Generator {
         //从project名字中获取（猜测）
         if (this.projectDir != null) {
             String[] strs = this.projectDir.split("\\-");
-            for (int i = strs.length; i >= 0; i-- ) {
-                String s = strs[i];
+            for (int i = strs.length; i > 0; i-- ) {
+                String s = strs[i-1];
                 String[] ss = s.split("_");
-                for (int j = ss.length; j >= 0; j-- ) {
-                    if (!excludes.contains(ss[j])) {
-                        return strs[j];
+                for (int j = ss.length; j > 0; j-- ) {
+                    if (!excludes.contains(ss[j-1])) {
+                        return strs[j-1];
                     }
                 }
             }

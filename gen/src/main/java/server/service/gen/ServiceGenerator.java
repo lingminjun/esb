@@ -133,8 +133,9 @@ public class ServiceGenerator extends Generator {
         pojoContent.append("import java.io.Serializable;\n\r\n\r");
         pojoContent.append("/**\n");
         pojoContent.append(" * Owner: Minjun Ling\n");
-        pojoContent.append(" * Creator: Robot\n");
+        pojoContent.append(" * Creator: ESB ServiceGenerator\n");
         pojoContent.append(" * Version: 1.0.0\n");
+        pojoContent.append(" * GitHub: https://github.com/lingminjun/esb\n");
         pojoContent.append(" * Since: " + new Date() + "\n");
         pojoContent.append(" * Table: " + table.getName() + "\n");
         pojoContent.append(" */\n");
@@ -184,8 +185,9 @@ public class ServiceGenerator extends Generator {
         resultContent.append("import com.lmj.stone.service.PageResults;\n\r\n\r");
         resultContent.append("/**\n");
         resultContent.append(" * Owner: Minjun Ling\n");
-        resultContent.append(" * Creator: Robot\n");
+        resultContent.append(" * Creator: ESB ServiceGenerator\n");
         resultContent.append(" * Version: 1.0.0\n");
+        resultContent.append(" * GitHub: https://github.com/lingminjun/esb\n");
         resultContent.append(" * Since: " + new Date() + "\n");
         resultContent.append(" * Description: " + table.getSimplePOJOClassName() + "结果集\n");
         resultContent.append(" */\n");
@@ -222,8 +224,9 @@ public class ServiceGenerator extends Generator {
         serviceContent.append("import " + table.getPOJOResultsClassName(packageName) + ";\n\r\n\r");
         serviceContent.append("/**\n");
         serviceContent.append(" * Owner: Minjun Ling\n");
-        serviceContent.append(" * Creator: Robot\n");
+        serviceContent.append(" * Creator: ESB ServiceGenerator\n");
         serviceContent.append(" * Version: 1.0.0\n");
+        serviceContent.append(" * GitHub: https://github.com/lingminjun/esb\n");
         serviceContent.append(" * Since: " + new Date() + "\n");
         serviceContent.append(" * Table: " + table.getName() + "\n");
         serviceContent.append(" */\n");
@@ -713,8 +716,9 @@ public class ServiceGenerator extends Generator {
 
         serviceContent.append("/**\n");
         serviceContent.append(" * Owner: Minjun Ling\n");
-        serviceContent.append(" * Creator: Robot\n");
+        serviceContent.append(" * Creator: ESB ServiceGenerator\n");
         serviceContent.append(" * Version: 1.0.0\n");
+        serviceContent.append(" * GitHub: https://github.com/lingminjun/esb\n");
         serviceContent.append(" * Since: " + new Date() + "\n");
         serviceContent.append(" * SQLFile: " + sqlsSourcePath + "\n");
         serviceContent.append(" */\n");

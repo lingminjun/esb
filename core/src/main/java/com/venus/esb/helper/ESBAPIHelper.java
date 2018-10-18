@@ -23,6 +23,7 @@ import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
+import java.sql.Date;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -1230,6 +1231,11 @@ public class ESBAPIHelper {
 
             //基础类型就不用解析了
             if (isBaseType(fd.getTypeClass())) {
+                continue;
+            }
+
+            //日期类型不想下寻找
+            if (fd.getTypeClass().getName().startsWith("java.util.")) {
                 continue;
             }
 

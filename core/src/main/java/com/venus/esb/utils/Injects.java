@@ -3,6 +3,7 @@ package com.venus.esb.utils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.Map;
 
@@ -123,36 +124,72 @@ public final class Injects {
         //支持基础类型的互换兼容
         if (!(type.equals(set.getType()))) {
 
-            //隐士转换基础类型
-            if (isBaseType(set.getType()) && (value instanceof String || isBaseType(value.getClass()))) {
+            //支持时间转换
+            if (type == Date.class && (set.getType() == long.class || set.getType() == Long.class)) {
+                try {
+                    if (set.getType() == Long.class) {
+                        set.set(target, ((Date) value).getTime());
+                    } else {
+                        set.setLong(target, ((Date) value).getTime());
+                    }
+                } catch (Throwable e) {}
+            } else if ((type == long.class || type == Long.class) && set.getType() == Date.class) {
+                try {
+                    set.set(target, new Date(Long.parseLong(value.toString())));
+                } catch (Throwable e) {}
+            } else if (isBaseType(set.getType()) && (value instanceof String || isBaseType(value.getClass()))) {//隐士转换基础类型
                 String string = value.toString();
                 if (string.length() == 0) {return;}
 
                 //byte,char,short,int,long,float,double，boolean
                 if (set.getType() == int.class || set.getType() == Integer.class) {
                     try {
-                        set.setInt(target, Integer.parseInt(string));
+                        if (set.getType() == Integer.class) {
+                            set.set(target, Integer.parseInt(string));
+                        } else {
+                            set.setInt(target, Integer.parseInt(string));
+                        }
                     } catch (Throwable e) {}
                 } else if (set.getType() == long.class || set.getType() == Long.class) {
                     try {
-                        set.setLong(target, Long.parseLong(string));
+                        if (set.getType() == Long.class) {
+                            set.set(target, Long.parseLong(string));
+                        } else {
+                            set.setLong(target, Long.parseLong(string));
+                        }
                     } catch (Throwable e) {}
                 } else if (set.getType() == short.class || set.getType() == Short.class) {
                     try {
-                        set.setShort(target, Short.parseShort(string));
+                        if (set.getType() == Short.class) {
+                            set.set(target, Short.parseShort(string));
+                        } else {
+                            set.setShort(target, Short.parseShort(string));
+                        }
                     } catch (Throwable e) {}
                 } else if (set.getType() == float.class || set.getType() == Float.class) {
                     try {
-                        set.setFloat(target, Float.parseFloat(string));
+                        if (set.getType() == Float.class) {
+                            set.set(target, Float.parseFloat(string));
+                        } else {
+                            set.setFloat(target, Float.parseFloat(string));
+                        }
                     } catch (Throwable e) {}
                 } else if (set.getType() == double.class || set.getType() == Double.class) {
                     try {
-                        set.setDouble(target, Double.parseDouble(string));
+                        if (set.getType() == Double.class) {
+                            set.set(target, Double.parseDouble(string));
+                        } else {
+                            set.setDouble(target, Double.parseDouble(string));
+                        }
                     } catch (Throwable e) {}
                 } else if (set.getType() == char.class || set.getType() == Character.class) {
                     if (string.length() == 1) {
                         try {
-                            set.setChar(target, string.charAt(0));
+                            if (set.getType() == Character.class) {
+                                set.set(target, string.charAt(0));
+                            } else {
+                                set.setChar(target, string.charAt(0));
+                            }
                         } catch (Throwable e) {}
                     }
                 } else if (set.getType() == byte.class || set.getType() == Byte.class) {
@@ -160,14 +197,22 @@ public final class Injects {
                         short v = Short.parseShort(string);
                         if (v >= -127 && v <= 127) {
                             byte b = (byte)v;
-                            set.setByte(target,b);
+                            if (set.getType() == Byte.class) {
+                                set.set(target, b);
+                            } else {
+                                set.setByte(target, b);
+                            }
                         }
                     } catch (Throwable e) {}
                 } else if (set.getType() == boolean.class || set.getType() == Boolean.class) {
                     try {
                         Boolean b = bool(string);
                         if (b != null) {
-                            set.setBoolean(target, b);
+                            if (set.getType() == Boolean.class) {
+                                set.set(target, b);
+                            } else {
+                                set.setBoolean(target, b);
+                            }
                         }
                     } catch (Throwable e) {}
                 }

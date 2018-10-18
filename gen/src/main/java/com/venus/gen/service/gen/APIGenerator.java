@@ -15,107 +15,117 @@ import java.util.*;
  * Date: 2018-10-16
  * Time: 下午11:06
  */
-public class APIGenerator extends Generator {
+class APIGenerator extends Generator {
 
     public final MybatisGenerator mybatisGenerator;
     private List<MybatisGenerator.Table> tables;
-    public final Class exceptionClass;
+    public final Class exceptionsClass;
     public final String groupName;
     public final ESBSecurityLevel security;
-    public final String transactionManager;
+    private final boolean autoMybatisGenerator;
 
     /**
      *
      * @param packageName     项目包名【必填】
      * @param sqlsSourcePath  资源路径【必填】
-     * @param transactionManager  事务管理【必填】
-     * @param exceptionClass  异常类地址【必填】
+     * @param exceptionsClass  异常码地址【必填】
      */
-    public APIGenerator(String packageName, String sqlsSourcePath, String transactionManager, Class exceptionClass) {
-        this(packageName,sqlsSourcePath,transactionManager,exceptionClass,null,ESBSecurityLevel.userAuth);
+    public APIGenerator(String packageName, String sqlsSourcePath, Class exceptionsClass) {
+        this(packageName,sqlsSourcePath,exceptionsClass,null,ESBSecurityLevel.userAuth);
     }
 
     /**
      *
      * @param packageName     项目包名【必填】
      * @param sqlsSourcePath  资源路径【必填】
-     * @param transactionManager  事务管理【必填】
-     * @param exceptionClass  异常类地址【必填】
+     * @param exceptionsClass  异常类地址【必填】
      * @param tablePrefix  table命名前缀【可选】
      */
-    public APIGenerator(String packageName, String sqlsSourcePath, String transactionManager, Class exceptionClass, String tablePrefix) {
-        this(packageName,sqlsSourcePath,transactionManager,exceptionClass,tablePrefix,ESBSecurityLevel.userAuth);
+    public APIGenerator(String packageName, String sqlsSourcePath, Class exceptionsClass, String tablePrefix) {
+        this(packageName,sqlsSourcePath,exceptionsClass,tablePrefix,ESBSecurityLevel.userAuth);
     }
 
     /**
      *
      * @param packageName     项目包名【必填】
      * @param sqlsSourcePath  资源路径【必填】
-     * @param transactionManager  事务管理【必填】
-     * @param exceptionClass  异常类地址【必填】
+     * @param exceptionsClass  异常类地址【必填】
      * @param tablePrefix  table命名前缀【可选】
      * @param security 接口的验权等级，仅仅支持idl API时有用
      */
-    public APIGenerator(String packageName, String sqlsSourcePath, String transactionManager, Class exceptionClass, String tablePrefix, ESBSecurityLevel security) {
-        this(packageName,sqlsSourcePath,transactionManager,exceptionClass,tablePrefix,null,security);
+    public APIGenerator(String packageName, String sqlsSourcePath, Class exceptionsClass, String tablePrefix, ESBSecurityLevel security) {
+        this(packageName,sqlsSourcePath,exceptionsClass,tablePrefix,null,security);
     }
 
     /**
      *
      * @param packageName     项目包名【必填】
      * @param sqlsSourcePath  资源路径【必填】
-     * @param exceptionClass  异常类地址【必填】
+     * @param exceptionsClass  异常类地址【必填】
      * @param tablePrefix      table命名前缀【可选】
      * @param projectDir      工程目录【可选】
      * @param security 接口的验权等级，仅仅支持idl API时有用
      */
-    public APIGenerator(String packageName, String sqlsSourcePath, String transactionManager, Class exceptionClass, String tablePrefix, String projectDir, ESBSecurityLevel security) {
+    public APIGenerator(String packageName, String sqlsSourcePath, Class exceptionsClass, String tablePrefix, String projectDir, ESBSecurityLevel security) {
         super(packageName, projectDir);
 
         // doa包名处理
         String doaPackage = packageName;
         if (packageName.endsWith("service")) {
-            doaPackage = packageName.substring(0,packageName.length() - "service".length()) + "db";
+            doaPackage = packageName.substring(0,packageName.length() - "service".length()) + "persistence";
         } else {//直接放到其子目录
-            doaPackage = packageName + File.separator + "db";
+            doaPackage = packageName + "." + "persistence";
         }
+
         this.mybatisGenerator = new MybatisGenerator(doaPackage, projectDir, sqlsSourcePath, tablePrefix);
         this.tables = mybatisGenerator.getTables();
-        this.exceptionClass = exceptionClass;
-        String[] strs = sqlsSourcePath.split("/");
-        String fileName = strs[strs.length - 1];
-        int idx = fileName.lastIndexOf(".");
-        this.groupName = fileName.substring(0,idx);
+        this.exceptionsClass = exceptionsClass;
+        this.groupName = getProjectSimpleName();
         this.security = security;
-        this.transactionManager = transactionManager;
+        this.autoMybatisGenerator = true;
+    }
+
+    public APIGenerator(ProjectModule rootProject, ProjectModule project, MybatisGenerator mybatisGenerator, Class exceptionsClass, ESBSecurityLevel security) {
+        super(rootProject,project);
+        this.mybatisGenerator = mybatisGenerator;
+        this.tables = mybatisGenerator.getTables();
+        this.exceptionsClass = exceptionsClass;
+        this.groupName = getProjectSimpleName();
+        this.security = security;
+        this.autoMybatisGenerator = false;
     }
 
     @Override
     public boolean gen() {
 
         //先生成DOA
-        if (!mybatisGenerator.gen()) {
-            return false;
+        if (this.autoMybatisGenerator) {
+            if (!mybatisGenerator.gen()) {
+                return false;
+            }
         }
 
         // 构建目录api
-        String entitiesPath = this.packagePath + File.separator + "entities";
+        String entitiesPath = this.packagePath() + File.separator + "entities";
         new File(entitiesPath).mkdirs();
+        // 构建目录api
+        String apisPath = this.packagePath() + File.separator + "api";
+        new File(apisPath).mkdirs();
 
 
         //生成基类
         for (MybatisGenerator.Table table : tables) {
             //产生实体类
             File pojoFile = new File(entitiesPath + File.separator + table.getSimplePOJOClassName() + ".java");
-            writeEntity(pojoFile,packageName,table);
+            writeEntity(pojoFile,this.packageName(),table);
 
             //产生实体类集合
             File pojosFile = new File(entitiesPath + File.separator + table.getSimplePOJOResultsClassName() + ".java");
-            writeEntityResults(pojosFile,packageName,table);
+            writeEntityResults(pojosFile,this.packageName(),table);
 
             //产生服务申明类
-            File serviceFile = new File(this.packagePath + File.separator + table.getSimpleCRUDServiceBeanName() + ".java");
-            writeCRUDService(serviceFile,packageName,mybatisGenerator.packageName,groupName,exceptionClass,security,table);
+            File serviceFile = new File(apisPath + File.separator + table.getSimpleCRUDServiceBeanName() + ".java");
+            writeCRUDService(serviceFile,this.packageName(),mybatisGenerator.packageName(),groupName, exceptionsClass,security,table);
         }
 
         return true;
@@ -174,10 +184,11 @@ public class APIGenerator extends Generator {
                 get = "    public String get";
                 set = "(String value)";
             } else if (MybatisGenerator.MYSQL_DATE_TYPE.contains(cl.getType())) {
+                // 注意，data一律转long
                 pojoContent.append("    @ESBDesc(\"" + cl.getCmmt() + "\")\n");
-                pojoContent.append("    private Date    ");
-                get = "    public Date get";
-                set = "(Date value)";
+                pojoContent.append("    private long    ");
+                get = "    public long get";
+                set = "(long value)";
             } else {
                 continue;
             }
@@ -219,7 +230,7 @@ public class APIGenerator extends Generator {
         StringBuilder resultContent = new StringBuilder();
         resultContent.append("package " + packageName + ".entities;\n\r\n\r");
         resultContent.append("import com.venus.esb.annotation.ESBDesc;\n");
-        resultContent.append("import com.lmj.stone.service.PageResults;\n\r\n\r");
+        resultContent.append("import com.venus.gen.service.PageResults;\n\r\n\r");
         resultContent.append("/**\n");
         resultContent.append(" * Owner: Minjun Ling\n");
         resultContent.append(" * Creator: ESB ServiceGenerator\n");
@@ -245,7 +256,7 @@ public class APIGenerator extends Generator {
         String theSecurity = "ESBSecurityLevel." + security.toString();
 
         StringBuilder serviceContent = new StringBuilder();
-        serviceContent.append("package " + packageName + ";\n\r\n\r");
+        serviceContent.append("package " + packageName + ".api;\n\r\n\r");
         serviceContent.append("import " + exceptionClass.getName() + ";\n");
         serviceContent.append("import com.venus.esb.ESBSecurityLevel;\n");
         serviceContent.append("import com.venus.esb.lang.ESBException;\n");
@@ -255,7 +266,7 @@ public class APIGenerator extends Generator {
         serviceContent.append("import com.venus.esb.annotation.ESBParam;\n");
         serviceContent.append("import java.util.*;\n");
 //        serviceContent.append("import org.springframework.beans.factory.annotation.Autowired;\n");
-        serviceContent.append("import " + table.getDAOClassName(doaPackagaeName) + ";\n");
+//        serviceContent.append("import " + table.getDAOClassName(doaPackagaeName) + ";\n");
 //        serviceContent.append("import " + table.getDObjectClassName(doaPackagaeName) + ";\n");
         serviceContent.append("import " + table.getPOJOClassName(packageName) + ";\n");
         serviceContent.append("import " + table.getPOJOResultsClassName(packageName) + ";\n\r\n\r");
@@ -335,22 +346,16 @@ public class APIGenerator extends Generator {
         }
 
         //实现代码
-        String theDaoBean = "get" + table.getSimpleDAOClassName() + "()";
+        String theDaoBean = "this." + toLowerHeadString(table.getSimpleDAOClassName());
         String dataObj = table.getSimpleDObjectClassName();
 
-        serviceContent.append("        return BlockUtil.en(transactionManager, new BlockUtil.Call<Long>() {\n");
-        serviceContent.append("            @Override\n");
-        serviceContent.append("            public Long run() throws Throwable {\n");
-        serviceContent.append("                " + dataObj + " dobj = new " + dataObj + "();\n");
-        serviceContent.append("                Injects.fill(" + param + ",dobj);\n");
-        serviceContent.append("                if (" + theDaoBean + ".insert(dobj) > 0) {\n");
-        serviceContent.append("                    return (Long)dobj.id;\n");
-        serviceContent.append("                } else {\n");
-        serviceContent.append("                    return -1l;\n");
-        serviceContent.append("                }\n");
-        serviceContent.append("            }\n");
-        serviceContent.append("        });\n");
-
+        serviceContent.append("        " + dataObj + " dobj = new " + dataObj + "();\n");
+        serviceContent.append("        Injects.fill(" + param + ",dobj);\n");
+        serviceContent.append("        if (" + theDaoBean + ".insert(dobj) > 0) {\n");
+        serviceContent.append("            return (Long)dobj.id;\n");
+        serviceContent.append("        } else {\n");
+        serviceContent.append("            return -1l;\n");
+        serviceContent.append("        }\n");
 
         serviceContent.append("    }\n\n");
     }
@@ -382,34 +387,28 @@ public class APIGenerator extends Generator {
         }
 
         //实现代码
-        String theDaoBean = "get" + table.getSimpleDAOClassName() + "()";
+        String theDaoBean = "this." + toLowerHeadString(table.getSimpleDAOClassName());
         String dataObj = table.getSimpleDObjectClassName();
 
         serviceContent.append("        if (ignoreError) {\n");
         serviceContent.append("            for (final " + pojoName + "  pojo : models) {\n");
-        serviceContent.append("                BlockUtil.en(transactionManager, new BlockUtil.Call<Boolean>() {\n");
-        serviceContent.append("                    @Override\n");
-        serviceContent.append("                    public Boolean run() throws Throwable {\n");
-        serviceContent.append("                        " + dataObj + " dobj = new " + dataObj + "();\n");
-        serviceContent.append("                        Injects.fill(pojo,dobj);\n");
-        serviceContent.append("                        " + theDaoBean + ".insert(dobj);\n");
-        serviceContent.append("                        return true;\n");
-        serviceContent.append("                    }\n");
-        serviceContent.append("                });\n");
+
+        serviceContent.append("                " + dataObj + " dobj = new " + dataObj + "();\n");
+        serviceContent.append("                Injects.fill(pojo,dobj);\n");
+        serviceContent.append("                " + theDaoBean + ".insert(dobj);\n");
+        serviceContent.append("                return true;\n");
+
         serviceContent.append("            }\n");
         serviceContent.append("            return true;\n");
         serviceContent.append("        } else {\n");
-        serviceContent.append("           return BlockUtil.en(transactionManager, new BlockUtil.Call<Boolean>() {\n");
-        serviceContent.append("                @Override\n");
-        serviceContent.append("                public Boolean run() throws Throwable {\n");
-        serviceContent.append("                    for (" + pojoName + " pojo : models) {\n");
-        serviceContent.append("                        " + dataObj + " dobj = new " + dataObj + "();\n");
-        serviceContent.append("                        Injects.fill(pojo,dobj);\n");
-        serviceContent.append("                        " + theDaoBean + ".insert(dobj);\n");
-        serviceContent.append("                    }\n");
-        serviceContent.append("                    return true;\n");
-        serviceContent.append("                }\n");
-        serviceContent.append("            });\n");
+
+        serviceContent.append("            for (" + pojoName + " pojo : models) {\n");
+        serviceContent.append("                " + dataObj + " dobj = new " + dataObj + "();\n");
+        serviceContent.append("                Injects.fill(pojo,dobj);\n");
+        serviceContent.append("                " + theDaoBean + ".insert(dobj);\n");
+        serviceContent.append("            }\n");
+        serviceContent.append("            return true;\n");
+
         serviceContent.append("        }\n\n");
 
 
@@ -443,15 +442,10 @@ public class APIGenerator extends Generator {
         }
 
         //实现代码
-        String theDaoBean = "get" + table.getSimpleDAOClassName() + "()";
+        String theDaoBean = "this." + toLowerHeadString(table.getSimpleDAOClassName());
 
-        serviceContent.append("        return BlockUtil.en(transactionManager, new BlockUtil.Call<Boolean>() {\n");
-        serviceContent.append("            @Override\n");
-        serviceContent.append("            public Boolean run() throws Throwable {\n");
-        serviceContent.append("                " + theDaoBean + ".deleteById(id);\n");
-        serviceContent.append("                return true;\n");
-        serviceContent.append("           }\n");
-        serviceContent.append("        });\n");
+        serviceContent.append("        " + theDaoBean + ".deleteById(id);\n");
+        serviceContent.append("        return true;\n");
 
         serviceContent.append("    }\n\n");
 
@@ -501,27 +495,23 @@ public class APIGenerator extends Generator {
         }
 
         //实现代码
-        String theDaoBean = "get" + table.getSimpleDAOClassName() + "()";
+        String theDaoBean = "this." + toLowerHeadString(table.getSimpleDAOClassName());
+
         String dataObj = table.getSimpleDObjectClassName();
 
-        serviceContent.append("        return BlockUtil.en(transactionManager, new BlockUtil.Call<Boolean>() {\n");
-        serviceContent.append("            @Override\n");
-        serviceContent.append("            public Boolean run() throws Throwable {\n");
-        serviceContent.append("                " + dataObj + " dobj = new " + dataObj + "();\n");
+        serviceContent.append("        " + dataObj + " dobj = new " + dataObj + "();\n");
         MybatisGenerator.Column primary = table.getPrimaryColumn();
         if (primary != null) {
-            serviceContent.append("                dobj.id = (" + primary.getDataType() + ")id;\n");
+            serviceContent.append("        dobj.id = (" + primary.getDataType() + ")id;\n");
         } else {
-            serviceContent.append("                dobj.id = id;\n");
+            serviceContent.append("        dobj.id = id;\n");
         }
         for (MybatisGenerator.Column cl : params) {
             String paramName = toHumpString(cl.getName(),false);
-            serviceContent.append("                dobj." + paramName + " = " + paramName + ";\n");
+            serviceContent.append("        dobj." + paramName + " = " + paramName + ";\n");
         }
-        serviceContent.append("                " + theDaoBean + ".update(dobj);\n");
-        serviceContent.append("                return true;\n");
-        serviceContent.append("            }\n");
-        serviceContent.append("        });\n");
+        serviceContent.append("        " + theDaoBean + ".update(dobj);\n");
+        serviceContent.append("        return true;\n");
 
         serviceContent.append("    }\n\n");
     }
@@ -540,8 +530,13 @@ public class APIGenerator extends Generator {
             //serviceContent.append("    @AutoCache(key = \"" + table.getAlias().toUpperCase() + "_#{id}\", async = true, condition=\"!#{noCache}\")\n");
         }
 
-        serviceContent.append("    public " + pojoName + " " + findMethod + "(@ESBParam(name = \"id\", desc = \"对象id\", required = true) final long id");
-        serviceContent.append(",@ESBParam(name = \"noCache\", desc = \"不走缓存\", required = false) final boolean noCache");
+        String defineMethod = "    public " + pojoName + " " + findMethod + "(@ESBParam(name = \"id\", desc = \"对象id\", required = true) final long id";
+        serviceContent.append(defineMethod);
+        String spacing = formatSpaceParam(defineMethod);
+        //是否走缓存
+        serviceContent.append(",\n");
+        serviceContent.append(spacing);
+        serviceContent.append("@ESBParam(name = \"noCache\", desc = \"是否走缓存\", required = false) final boolean noCache");
 
         if (!implement) {
             serviceContent.append(") throws ESBException;\n\n");
@@ -551,7 +546,8 @@ public class APIGenerator extends Generator {
         }
 
         //实现代码
-        String theDaoBean = "get" + table.getSimpleDAOClassName() + "()";
+        String theDaoBean = "this." + toLowerHeadString(table.getSimpleDAOClassName());
+
         String dataObj = table.getSimpleDObjectClassName();
 
         serviceContent.append("        " + dataObj + " dobj = " + theDaoBean + ".getById(id);\n");
@@ -649,7 +645,7 @@ public class APIGenerator extends Generator {
         //是否走缓存
         serviceContent.append(",\n");
         serviceContent.append(spacing);
-        serviceContent.append("@ESBParam(name = \"noCache\", desc = \"不走缓存\", required = false) final boolean noCache");
+        serviceContent.append("@ESBParam(name = \"noCache\", desc = \"是否走缓存\", required = false) final boolean noCache");
 
 
         if (!implement) {
@@ -660,7 +656,8 @@ public class APIGenerator extends Generator {
         }
 
         //实现代码
-        String theDaoBean = "get" + table.getSimpleDAOClassName() + "()";
+        String theDaoBean = "this." + toLowerHeadString(table.getSimpleDAOClassName());
+
         String dataObj = table.getSimpleDObjectClassName();
         String resultsName = table.getSimplePOJOResultsClassName();
         String countMethodName = "count" + queryMethodName.substring(5,queryMethodName.length());

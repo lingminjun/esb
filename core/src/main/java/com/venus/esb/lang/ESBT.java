@@ -812,6 +812,11 @@ public final class ESBT {
             return true;
         }
 
+        // 日期支持
+//        if (Date.class == clazz || Date[].class == clazz) {
+//            return true;
+//        }
+
         return false;
     }
 
@@ -880,6 +885,12 @@ public final class ESBT {
                 ) {
             return true;
         }
+
+        // 日期支持
+//        if (finalType.equals("java.util.Date") || finalType.equals("[Ljava.util.Date;")) {
+//            return true;
+//        }
+
         return false;
     }
 

@@ -397,7 +397,7 @@ public class MybatisGenerator extends Generator {
     public final String tablePrefix;
     protected final List<Table> tables;
 
-    protected boolean genSqlmapConfig;//生成sqlmap配置
+    protected boolean genSqlmapConfig = true;//生成sqlmap配置
 
     /**
      * 生成DAO层代码
@@ -450,6 +450,18 @@ public class MybatisGenerator extends Generator {
         this.tables = parseSqlTables(sqlsSourcePath,tablePrefix);//解析sqls中的tables
     }
 
+    public MybatisGenerator(ProjectModule rootProject, ProjectModule project,  String sqlsSourcePath, String tablePrefix,String mapperPath) {
+        super(rootProject,project);
+        if (mapperPath == null || mapperPath.length() == 0) {
+            mapperPath = SQLMAP_CONFIG_NAME;
+        }
+
+        this.sqlsSourcePath = sqlsSourcePath;
+        this.mapperPath = mapperPath;
+        this.tablePrefix = tablePrefix;
+        this.tables = parseSqlTables(sqlsSourcePath,tablePrefix);//解析sqls中的tables
+    }
+
     // 是否自动生成sqlmap-config.xml
     public void setAutoGenSqlmapConfig(boolean auto) {
         this.genSqlmapConfig = auto;
@@ -466,20 +478,20 @@ public class MybatisGenerator extends Generator {
         String mapDir = null;
 
         //因为考虑有些工程，并不是main/java目录，可能直接就上是java目录[暂时不去兼容]
-        mapDir = this.resourcesPath + File.separator + "sqlmap";
+        mapDir = this.resourcesPath() + File.separator + "sqlmap";
         new File(mapDir).mkdirs();
 
 
         //包名
-        dobjDir = this.packagePath + File.separator + "vo";
+        dobjDir = this.packagePath() + File.separator + "vo";
         new File(dobjDir).mkdirs();
-        daoDir = this.packagePath + File.separator + "dao";
+        daoDir = this.packagePath() + File.separator + "dao";
         new File(daoDir).mkdirs();
 
 
         List<MapperInfo> mappers = new ArrayList<MapperInfo>();
         for (Table table : tables) {
-            MapperInfo mapperInfo = genTheTable(table,packageName,dobjDir,daoDir,mapDir);
+            MapperInfo mapperInfo = genTheTable(table,this.packageName(),dobjDir,daoDir,mapDir);
             if (mapperInfo != null) {
                 mappers.add(mapperInfo);
             }
@@ -491,15 +503,15 @@ public class MybatisGenerator extends Generator {
             String mapperConf = null;
             //mybatis配置路径
             if (mapperPath != null && mapperPath.length() > 0) {
-                mapperConf = this.resourcesPath + File.separator + mapperPath;
+                mapperConf = this.resourcesPath() + File.separator + mapperPath;
             } else {
                 mapperName = SQLMAP_CONFIG_NAME;
-                mapperConf = this.resourcesPath + File.separator + SQLMAP_CONFIG_NAME;
+                mapperConf = this.resourcesPath() + File.separator + SQLMAP_CONFIG_NAME;
             }
             writeMapperSetting(mapperConf,mappers);
 
             //spring bean配置
-            String springConf = this.resourcesPath + File.separator + SPRING_BEAN_XML_NAME;
+            String springConf = this.resourcesPath() + File.separator + SPRING_BEAN_XML_NAME;
             writeSpringXml(springConf,mapperName,mappers,this.getProjectSimpleName());
 
         }

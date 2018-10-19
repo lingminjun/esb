@@ -26,6 +26,13 @@ public interface TableDAO<DO extends Serializable> {
      */
     public long insertOrUpdate(DO entity);
 
+    /**
+     * 批量添加实体
+     *
+     * @param entities 要添加的实体对象
+     * @return
+     */
+    public long batchInsert(List<DO> entities);
 
     /**
      * 保存实体

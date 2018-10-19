@@ -353,7 +353,7 @@ class APIGenerator extends Generator {
 
         serviceContent.append("        " + dataObj + " dobj = new " + dataObj + "();\n");
         serviceContent.append("        Injects.fill(" + param + ",dobj);\n");
-        serviceContent.append("        if (" + theDaoBean + ".insert(dobj) > 0) {\n");
+        serviceContent.append("        if (" + theDaoBean + ".insertOrUpdate(dobj) > 0) {\n");
         serviceContent.append("            return (Long)dobj.id;\n");
         serviceContent.append("        } else {\n");
         serviceContent.append("            return -1l;\n");
@@ -397,18 +397,22 @@ class APIGenerator extends Generator {
 
         serviceContent.append("                " + dataObj + " dobj = new " + dataObj + "();\n");
         serviceContent.append("                Injects.fill(pojo,dobj);\n");
-        serviceContent.append("                " + theDaoBean + ".insert(dobj);\n");
-        serviceContent.append("                return true;\n");
-
+        serviceContent.append("                try {\n");
+        serviceContent.append("                    " + theDaoBean + ".insertOrUpdate(dobj);\n");
+        serviceContent.append("                } catch (Throwable e) {\n");
+        serviceContent.append("                    logger.error(\"batch add " + tableModelName + " error!\", e);\n");
+        serviceContent.append("                }\n");
         serviceContent.append("            }\n");
         serviceContent.append("            return true;\n");
         serviceContent.append("        } else {\n");
 
+        serviceContent.append("            List<DemoDO> lst = new ArrayList<DemoDO>();\n");
         serviceContent.append("            for (" + pojoName + " pojo : models) {\n");
         serviceContent.append("                " + dataObj + " dobj = new " + dataObj + "();\n");
         serviceContent.append("                Injects.fill(pojo,dobj);\n");
-        serviceContent.append("                " + theDaoBean + ".insert(dobj);\n");
+        serviceContent.append("                lst.add(dobj);\n");
         serviceContent.append("            }\n");
+        serviceContent.append("            " + theDaoBean + ".batchInsert(lst);\n");
         serviceContent.append("            return true;\n");
 
         serviceContent.append("        }\n\n");

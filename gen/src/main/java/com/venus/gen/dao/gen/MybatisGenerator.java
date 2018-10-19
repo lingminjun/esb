@@ -1198,18 +1198,20 @@ public class MybatisGenerator extends Generator {
         //将column修改
         StringBuilder flds = new StringBuilder();
         StringBuilder cols = new StringBuilder();
-        boolean isFirst = true;
+
+        StringBuilder inflds = new StringBuilder();
+        StringBuilder item_inflds = new StringBuilder();
+        StringBuilder incols = new StringBuilder();
+
         for (Column cl : table.columns) {
-//            if (cl.name.equals("id")) {
-//                continue;
-//            }
-            if (isFirst) {
-                isFirst = false;
-            } else {
+
+            if (cols.length() > 0) {
                 flds.append(",");
                 cols.append(",");
             }
-            cols.append("`" + cl.name + "`");
+
+            String field;
+            String itemField;
             if (cl.name.equals("create_at") || cl.name.equals("modified_at")) {
                 // 优化
                 if (MYSQL_DATE_TYPE.contains(cl.type)) {//日期类型
@@ -1224,20 +1226,41 @@ public class MybatisGenerator extends Generator {
                     ---------------------------------------------------------------------------
                     */
                     if ("date".equalsIgnoreCase(cl.type)) {
-                        flds.append("curdate()");
+                        field = "curdate()";
+                        itemField = "curdate()";
                     } else if ("time".equalsIgnoreCase(cl.type)) {
-                        flds.append("curtime()");
+                        field = "curtime()";
+                        itemField = "curtime()";
                     } else if ("year".equalsIgnoreCase(cl.type)) {//FIXME:此处可能不成功
-                        flds.append("now()");
+                        field = "now()";
+                        itemField = "now()";
                     } else {
-                        flds.append("now()");
+                        field = "now()";
+                        itemField = "now()";
                     }
                 } else {//说明采用long记录日期
-                    flds.append("(unix_timestamp() * 1000)");
+                    field = "(unix_timestamp() * 1000)";
+                    itemField = "(unix_timestamp() * 1000)";
                 }
             } else {
-                flds.append("#{" + toHumpString(cl.name,false) + "}");
+                field = "#{" + toHumpString(cl.name,false) + "}";
+                itemField = "#{item." + toHumpString(cl.name,false) + "}";
             }
+            cols.append("`" + cl.name + "`");
+            flds.append(field);
+
+            if (cl.name.equals("id")) {
+                continue;
+            }
+            if (incols.length() > 0) {
+                incols.append(",");
+                inflds.append(",");
+                item_inflds.append(",");
+            }
+            incols.append("`" + cl.name + "`");
+            inflds.append(field);
+            item_inflds.append(itemField);
+
         }
 
         StringBuilder upBuilder = new StringBuilder();
@@ -1276,13 +1299,24 @@ public class MybatisGenerator extends Generator {
         //默认的sql文件编写
 //        public void insert(DO entity) throws DataAccessException;
         content.append("    <insert id=\"insert\" useGeneratedKeys=\"true\" keyProperty=\"id\" parameterType=\"" + doName + "\">\n");
-        content.append("        insert into `"+table.name+"` (" + cols.toString() +") values (" + flds.toString() + ")\n");
+        content.append("        insert into `"+table.name+"` (" + incols.toString() +") values (" + inflds.toString() + ")\n");
         content.append("    </insert>\n\n");
 
 //        public void insertOrUpdate(DO entity) throws DataAccessException;
         content.append("    <insert id=\"insertOrUpdate\" useGeneratedKeys=\"true\" keyProperty=\"id\" parameterType=\"" + doName + "\">\n");
-        content.append("        insert into `"+table.name+"` (" + cols.toString() +") values (" + flds.toString() + ") on duplicate key update \n");
+        content.append("        insert into `"+table.name+"` (" + incols.toString() +") values (" + inflds.toString() + ") on duplicate key update \n");
         content.append(upBuilder.toString());
+        content.append("    </insert>\n\n");
+
+        //public long batchInsert(List<DO> entities) throws DataAccessException;
+        content.append("    <insert id=\"batchInsert\" useGeneratedKeys=\"true\" parameterType=\"java.util.List\">\n");
+        content.append("        <selectKey resultType=\"long\" keyProperty=\"id\" order=\"AFTER\">\n");
+        content.append("            SELECT LAST_INSERT_ID()\n");
+        content.append("        </selectKey>\n");
+        content.append("        insert into `"+table.name+"` (" + incols.toString() +") values \n");
+        content.append("        <foreach collection=\"list\" item=\"item\" index=\"index\" separator=\",\" >\n");
+        content.append("            (" + item_inflds.toString() + ")\n");
+        content.append("        </foreach>\n");
         content.append("    </insert>\n\n");
 
 //        public int update(DO entity) throws DataAccessException;

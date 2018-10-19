@@ -147,6 +147,7 @@ public class ServiceGenerator extends Generator {
         serviceContent.append("package " + currentPackageName + ".service;\n\r\n\r");
 //        serviceContent.append("import com.lmj.stone.cache.AutoCache;\n");
         serviceContent.append("import com.venus.esb.utils.Injects;\n");
+        serviceContent.append("import org.slf4j.LoggerFactory;\n");
 //        serviceContent.append("import com.lmj.stone.service.BlockUtil;\n");
         serviceContent.append("import org.springframework.jdbc.datasource.DataSourceTransactionManager;\n");
         serviceContent.append("import " + exceptionClass.getName() + ";\n");
@@ -182,7 +183,8 @@ public class ServiceGenerator extends Generator {
 
 //        serviceContent.append("@Component\n");
         serviceContent.append("@Service\n");
-        serviceContent.append("public class " + table.getSimpleCRUDServiceImplementationName() + " implements " + table.getSimpleCRUDServiceBeanName() + " {\n\n");
+        serviceContent.append("public class " + table.getSimpleCRUDServiceImplementationName() + " implements " + table.getSimpleCRUDServiceBeanName() + " {\n");
+        serviceContent.append("    private static final org.slf4j.Logger logger    = LoggerFactory.getLogger(" + table.getSimpleCRUDServiceImplementationName() + ".class);\n\n");
 
         serviceContent.append("    // 默认加载transactionManager事务，若persistence未配置，请防止出现null point\n");
         serviceContent.append("    @Resource(name = \"transactionManager\")\n");
@@ -230,7 +232,6 @@ public class ServiceGenerator extends Generator {
             APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true,false);
             APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true,true);
         }
-
 
         serviceContent.append("}\n\r\n\r");
 

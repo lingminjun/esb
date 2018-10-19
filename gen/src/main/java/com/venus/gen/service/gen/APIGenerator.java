@@ -300,7 +300,8 @@ class APIGenerator extends Generator {
         writeUpdateMethod(tableModelName,groupName,pojoName,theSecurity,serviceContent,table,false);
 
         //主键查询
-        writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, false);
+        writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, false, false);
+        writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, false, true);
 
         //查询，索引查询，翻页
         Map<String,List<MybatisGenerator.Column>> queryMethods = table.allIndexQueryMethod();
@@ -309,7 +310,8 @@ class APIGenerator extends Generator {
         for (String methodName : methodNames) {
             List<MybatisGenerator.Column> cols = queryMethods.get(methodName);
 
-            writeQueryMethod(tableModelName,groupName,pojoName,methodName,cols,theSecurity,serviceContent,table,false);
+            writeQueryMethod(tableModelName,groupName,pojoName,methodName,cols,theSecurity,serviceContent,table,false,false);
+            writeQueryMethod(tableModelName,groupName,pojoName,methodName,cols,theSecurity,serviceContent,table,false,true);
         }
 
         serviceContent.append("}\n\r\n\r");
@@ -516,15 +518,24 @@ class APIGenerator extends Generator {
         serviceContent.append("    }\n\n");
     }
 
-    public static void writeFindByIdMethod(String tableModelName, String groupName, String pojoName, String theSecurity, StringBuilder serviceContent, MybatisGenerator.Table table, boolean implement) {
+    public static void writeFindByIdMethod(String tableModelName, String groupName, String pojoName, String theSecurity, StringBuilder serviceContent, MybatisGenerator.Table table, boolean implement, boolean hasCache) {
 
         serviceContent.append("    /**\n");
-        serviceContent.append("     * find " + pojoName + " by id\n");
+        if (hasCache) {
+            serviceContent.append("     * backend find " + pojoName + " by id\n");
+        } else {
+            serviceContent.append("     * find " + pojoName + " by id\n");
+        }
         serviceContent.append("     * @return \n");
         serviceContent.append("     */\n");
-        String findMethod = "findThe" + tableModelName;
+        String findMethod = null;
+        if (hasCache) {
+            findMethod = "rawFindThe" + tableModelName;
+        } else {
+            findMethod = "findThe" + tableModelName;
+        }
         if (!implement) {
-            serviceContent.append("    @ESBAPI(module = \"" + groupName + "\",name = \"" + findMethod + "\", desc = \"寻找" + pojoName + "\", security = " + theSecurity + ")\n");
+            serviceContent.append("    @ESBAPI(module = \"" + groupName + "\",name = \"" + findMethod + "\", desc = \"寻找" + pojoName + "\", security = " + (hasCache ? "ESBSecurityLevel.integrated" : theSecurity) + ")\n");
         } else {
             serviceContent.append("    @Override\n");
             //serviceContent.append("    @AutoCache(key = \"" + table.getAlias().toUpperCase() + "_#{id}\", async = true, condition=\"!#{noCache}\")\n");
@@ -533,10 +544,13 @@ class APIGenerator extends Generator {
         String defineMethod = "    public " + pojoName + " " + findMethod + "(@ESBParam(name = \"id\", desc = \"对象id\", required = true) final long id";
         serviceContent.append(defineMethod);
         String spacing = formatSpaceParam(defineMethod);
+
         //是否走缓存
-        serviceContent.append(",\n");
-        serviceContent.append(spacing);
-        serviceContent.append("@ESBParam(name = \"noCache\", desc = \"是否走缓存\", required = false) final boolean noCache");
+        if (hasCache) {
+            serviceContent.append(",\n");
+            serviceContent.append(spacing);
+            serviceContent.append("@ESBParam(name = \"noCache\", desc = \"是否走缓存\", required = false) final boolean noCache");
+        }
 
         if (!implement) {
             serviceContent.append(") throws ESBException;\n\n");
@@ -550,17 +564,27 @@ class APIGenerator extends Generator {
 
         String dataObj = table.getSimpleDObjectClassName();
 
-        serviceContent.append("        " + dataObj + " dobj = " + theDaoBean + ".getById(id);\n");
-        serviceContent.append("        " + pojoName + " pojo = new " + pojoName + "();\n");
-        serviceContent.append("        Injects.fill(dobj,pojo);\n");
-        serviceContent.append("        return pojo;\n");
+        if (!hasCache) {
+            serviceContent.append("        // Please add the cached code here.\n");
+            serviceContent.append("        // String cackeKey = \"" + table.getAlias().toUpperCase() + "_\" + id;\n\n");
+            serviceContent.append("        return this.");
+            serviceContent.append("raw");
+            serviceContent.append(toUpperHeadString(findMethod));
+            serviceContent.append("(id,false);\n");
+        } else {
+            serviceContent.append("        " + dataObj + " dobj = " + theDaoBean + ".getById(id);\n");
+            serviceContent.append("        " + pojoName + " pojo = new " + pojoName + "();\n");
+            serviceContent.append("        Injects.fill(dobj,pojo);\n");
+            serviceContent.append("        return pojo;\n");
+        }
 
         serviceContent.append("    }\n\n");
 
     }
 
-    public static void writeQueryMethod(String tableModelName, String groupName, String pojoName, String queryMethodName, List<MybatisGenerator.Column> columns, String theSecurity, StringBuilder serviceContent, MybatisGenerator.Table table, boolean implement) {
-        String methodName = "query" + tableModelName + queryMethodName.substring(5,queryMethodName.length());//.replace("query", "query" + tableModelName);
+    public static void writeQueryMethod(String tableModelName, String groupName, String pojoName, String queryMethodName, List<MybatisGenerator.Column> columns, String theSecurity, StringBuilder serviceContent, MybatisGenerator.Table table, boolean implement, boolean hasCache) {
+
+        String methodName = (hasCache ? "rawQuery" : "query") + tableModelName + queryMethodName.substring(5,queryMethodName.length());//.replace("query", "query" + tableModelName);
 
         String defineMethod = "    public " + table.getSimplePOJOResultsClassName() + " " + methodName + "(@ESBParam(name = \"pageIndex\", desc = \"页索引，从1开始，传入0或负数无数据返回\", required = true) final int pageIndex";
         String spacing = formatSpaceParam(defineMethod);
@@ -585,13 +609,13 @@ class APIGenerator extends Generator {
                 cacheKeyDef.append("_");
             }
             cacheKeyDef.append(column.getName().toUpperCase());
-            cacheKeyDef.append(":#{");
+            cacheKeyDef.append(":\" + ");
             cacheKeyDef.append(param);
-            cacheKeyDef.append("}");
+            cacheKeyDef.append(" + \"");
         }
 
         //添加分页信息
-        cacheKeyDef.append("_PAGE:#{pageIndex},#{pageSize}");
+        cacheKeyDef.append("_PAGE:\" + pageIndex + \",\" + pageSize + \"");
 
         // 判断是否有delete参数
         boolean hasDeleted = false;
@@ -606,8 +630,7 @@ class APIGenerator extends Generator {
                 methodParamsDef.append(spacing);
                 methodParamsDef.append("@ESBParam(name = \"isDeleted\", desc = \"是否已经被标记删除的\", required = false) final boolean isDeleted");
 
-                cacheKeyDef.append("_DEL:#{isDeleted}");
-
+                cacheKeyDef.append("_DEL:\" + isDeleted + \"");
                 if (theDelete.getDataType().equals("boolean")) {
                     delParamIn = "isDeleted";
                 } else {
@@ -618,11 +641,15 @@ class APIGenerator extends Generator {
 
         //开始编写函数代码
         serviceContent.append("    /**\n");
-        serviceContent.append("     * query " + pojoName + "\n");
+        if (hasCache) {
+            serviceContent.append("     * backend query " + pojoName + "\n");
+        } else {
+            serviceContent.append("     * query " + pojoName + "\n");
+        }
         serviceContent.append("     * @return \n");
         serviceContent.append("     */\n");
         if (!implement) {
-            serviceContent.append("    @ESBAPI(module = \"" + groupName + "\",name = \"" + methodName + "\", desc = \"批量插入" + pojoName + "\", security = " + theSecurity + ")\n");
+            serviceContent.append("    @ESBAPI(module = \"" + groupName + "\",name = \"" + methodName + "\", desc = \"批量插入" + pojoName + "\", security = " + (hasCache ? "ESBSecurityLevel.integrated" : theSecurity) + ")\n");
         } else {
             serviceContent.append("    @Override\n");
             //if (hasDeleted) {
@@ -643,9 +670,11 @@ class APIGenerator extends Generator {
         serviceContent.append(methodParamsDef.toString());
 
         //是否走缓存
-        serviceContent.append(",\n");
-        serviceContent.append(spacing);
-        serviceContent.append("@ESBParam(name = \"noCache\", desc = \"是否走缓存\", required = false) final boolean noCache");
+        if (hasCache) {
+            serviceContent.append(",\n");
+            serviceContent.append(spacing);
+            serviceContent.append("@ESBParam(name = \"noCache\", desc = \"是否走缓存\", required = false) final boolean noCache");
+        }
 
 
         if (!implement) {
@@ -663,34 +692,51 @@ class APIGenerator extends Generator {
         String countMethodName = "count" + queryMethodName.substring(5,queryMethodName.length());
         String methodParamsString = methodParams.toString();
 
+        if (!hasCache) {
+            serviceContent.append("        // Please add the cached code here.\n");
+            serviceContent.append("        // String cackekey = \"" + table.getAlias().toUpperCase() + "_QUERY_BY_" + cacheKeyDef.toString() + "\";\n\n");
+            serviceContent.append("        return this.");
+            serviceContent.append("raw");
+            serviceContent.append(toUpperHeadString(methodName));
 
-        serviceContent.append("        if (pageIndex <= 0 || pageSize <= 0) {\n");
-        serviceContent.append("            throw new ESBException(\"参数错误\",\"" + groupName + "\",-1,\"翻页参数传入错误\");\n");
-        serviceContent.append("        }\n");
-        serviceContent.append("        " + resultsName + " rlt = new " + resultsName + "();\n");
-        serviceContent.append("        rlt.index = pageIndex;\n");
-        serviceContent.append("        rlt.size = pageSize;\n");
-        serviceContent.append("        rlt.total = " + theDaoBean + "." + countMethodName + "(");
-        serviceContent.append(methodParamsString);
-        if (hasDeleted) {
-            serviceContent.append(",");
-            serviceContent.append(delParamIn);
+            serviceContent.append("(pageIndex,pageSize,");
+            serviceContent.append(methodParamsString);
+            if (hasDeleted) {
+                serviceContent.append(",");
+                serviceContent.append(delParamIn);
+            }
+            serviceContent.append(",false);\n");
+        } else {
+
+            serviceContent.append("        if (pageIndex <= 0 || pageSize <= 0) {\n");
+            serviceContent.append("            throw new ESBException(\"参数错误\",\"" + groupName + "\",-1,\"翻页参数传入错误\");\n");
+            serviceContent.append("        }\n");
+            serviceContent.append("        " + resultsName + " rlt = new " + resultsName + "();\n");
+            serviceContent.append("        rlt.setIndex(pageIndex);\n");
+            serviceContent.append("        rlt.setSize(pageSize);\n");
+            serviceContent.append("        rlt.setTotal(" + theDaoBean + "." + countMethodName + "(");
+            serviceContent.append(methodParamsString);
+            if (hasDeleted) {
+                serviceContent.append(",");
+                serviceContent.append(delParamIn);
+            }
+            serviceContent.append("));\n");
+            serviceContent.append("        List<" + dataObj + "> list = " + theDaoBean + "." + queryMethodName + "(");
+            serviceContent.append(methodParamsString);
+            if (hasDeleted) {
+                serviceContent.append(",");
+                serviceContent.append(delParamIn);
+            }
+            serviceContent.append(",null,false,(pageSize * (pageIndex - 1)), pageSize);\n");
+            serviceContent.append("        List<" + pojoName + "> rs = new ArrayList<" + pojoName + ">();\n");
+            serviceContent.append("        for (" + dataObj + " dobj : list) {\n");
+            serviceContent.append("            " + pojoName + " pojo = new " + pojoName + "();\n");
+            serviceContent.append("            Injects.fill(dobj,pojo);\n");
+            serviceContent.append("            rs.add(pojo);\n");
+            serviceContent.append("        }\n");
+            serviceContent.append("        rlt.setResults(rs);");
+            serviceContent.append("        return rlt;\n");
         }
-        serviceContent.append(");\n");
-        serviceContent.append("        List<" + dataObj + "> list = " + theDaoBean + "." + queryMethodName + "(");
-        serviceContent.append(methodParamsString);
-        if (hasDeleted) {
-            serviceContent.append(",");
-            serviceContent.append(delParamIn);
-        }
-        serviceContent.append(",null,false,(pageSize * (pageIndex - 1)), pageSize);\n");
-        serviceContent.append("        rlt.results = new ArrayList<" + pojoName + ">();\n");
-        serviceContent.append("        for (" + dataObj + " dobj : list) {\n");
-        serviceContent.append("            " + pojoName + " pojo = new " + pojoName + "();\n");
-        serviceContent.append("            Injects.fill(dobj,pojo);\n");
-        serviceContent.append("            rlt.results.add(pojo);\n");
-        serviceContent.append("        }\n");
-        serviceContent.append("       return rlt;\n");
 
         serviceContent.append("    }\n\n");
     }

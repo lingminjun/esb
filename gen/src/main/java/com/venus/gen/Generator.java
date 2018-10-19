@@ -415,6 +415,17 @@ public abstract class Generator {
         return head.toLowerCase() + end;
     }
 
+    public static String toUpperHeadString(String string) {
+        if (string.length() == 0) {
+            return string;
+        } else if (string.length() == 1) {
+            return string.toLowerCase();
+        }
+        String head = string.substring(0,1);
+        String end = string.substring(1,string.length());
+        return head.toUpperCase() + end;
+    }
+
     public static File getCurrentProjectDirFile() {
 //        String filePath = System.getProperty("user.dir");//当前运行目录[可能是根目录]
         //当前运行目录

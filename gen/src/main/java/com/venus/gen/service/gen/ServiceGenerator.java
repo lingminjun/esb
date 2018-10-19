@@ -217,7 +217,8 @@ public class ServiceGenerator extends Generator {
         APIGenerator.writeUpdateMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true);
 
         //主键查询
-        APIGenerator.writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true);
+        APIGenerator.writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true,false);
+        APIGenerator.writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true,true);
 
         //查询，索引查询，翻页
         Map<String, List<MybatisGenerator.Column>> queryMethods = table.allIndexQueryMethod();
@@ -226,7 +227,8 @@ public class ServiceGenerator extends Generator {
         for (String methodName : methodNames) {
             List<MybatisGenerator.Column> cols = queryMethods.get(methodName);
 
-            APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true);
+            APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true,false);
+            APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true,true);
         }
 
 

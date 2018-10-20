@@ -2,6 +2,7 @@ package com.venus.gen.dao.gen;
 
 import com.venus.esb.lang.ESBConsts;
 import com.venus.esb.utils.FileUtils;
+import com.venus.gen.SpringXMLConst;
 import com.venus.gen.dao.SQL;
 import com.venus.gen.dao.TableDAO;
 import org.apache.ibatis.annotations.Mapper;
@@ -334,7 +335,7 @@ public class MybatisGenerator extends Generator {
         }
 
         public String getCRUDServiceBeanName(String packageName) {
-            return packageName + "." + getSimpleCRUDServiceBeanName();
+            return packageName + ".api." + getSimpleCRUDServiceBeanName();
         }
 
         public String getSimpleCRUDServiceBeanName() {
@@ -346,7 +347,7 @@ public class MybatisGenerator extends Generator {
         }
 
         public String getCRUDServiceImplementationName(String packageName) {
-            return packageName + ".impl." + getSimpleCRUDServiceImplementationName();
+            return packageName + ".service." + getSimpleCRUDServiceImplementationName();
         }
 
         public String getSimpleRestControllerName() {
@@ -397,7 +398,7 @@ public class MybatisGenerator extends Generator {
     public final String tablePrefix;
     protected final List<Table> tables;
 
-    protected boolean genSqlmapConfig = true;//生成sqlmap配置
+    protected boolean genXmlConfig = true;//生成sqlmap配置
 
     /**
      * 生成DAO层代码
@@ -463,11 +464,11 @@ public class MybatisGenerator extends Generator {
     }
 
     // 是否自动生成sqlmap-config.xml
-    public void setAutoGenSqlmapConfig(boolean auto) {
-        this.genSqlmapConfig = auto;
+    public void setAutoGenXmlConfig(boolean auto) {
+        this.genXmlConfig = auto;
     }
-    public boolean autoGenSqlmapConfig() {
-        return this.genSqlmapConfig;
+    public boolean autoGenXmlConfig() {
+        return this.genXmlConfig;
     }
 
     @Override
@@ -498,7 +499,7 @@ public class MybatisGenerator extends Generator {
         }
 
         //开启xml自动配置
-        if (this.genSqlmapConfig && mappers.size() > 0) {
+        if (this.genXmlConfig && mappers.size() > 0) {
             String mapperName = mapperPath;
             String mapperConf = null;
             //mybatis配置路径
@@ -1477,43 +1478,17 @@ public class MybatisGenerator extends Generator {
 
         //默认写入
         if (!fileHeader) {
-            content.append("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n" +
-                    "<!DOCTYPE configuration PUBLIC \"-//mybatis.org//DTD Config 3.0//EN\" \"http://mybatis.org/dtd/mybatis-3-config.dtd\" >\n" +
-                    "<configuration>\n" +
-                    "    <settings>\n" +
-                    "        <!-- 全局映射器启用缓存 -->\n" +
-                    "        <setting name=\"cacheEnabled\" value=\"false\"/>\n" +
-                    "        <!-- 查询时，关闭关联对象即时加载以提高性能 -->\n" +
-                    "        <setting name=\"lazyLoadingEnabled\" value=\"false\"/>\n" +
-                    "        <!-- 设置关联对象加载的形态，此处为按需加载字段(加载字段由SQL指 定)，不会加载关联表的所有字段，以提高性能 -->\n" +
-                    "        <setting name=\"aggressiveLazyLoading\" value=\"false\"/>\n" +
-                    "        <!-- 对于未知的SQL查询，允许返回不同的结果集以达到通用的效果 -->\n" +
-                    "        <setting name=\"multipleResultSetsEnabled\" value=\"true\"/>\n" +
-                    "        <!-- 允许使用列标签代替列名 -->\n" +
-                    "        <setting name=\"useColumnLabel\" value=\"true\"/>\n" +
-                    "        <!-- 允许使用自定义的主键值(比如由程序生成的UUID 32位编码作为键值)，数据表的PK生成策略将被覆盖 -->\n" +
-                    "        <setting name=\"useGeneratedKeys\" value=\"true\"/>\n" +
-                    "        <!-- 给予被嵌套的resultMap以字段-属性的映射支持 -->\n" +
-                    "        <setting name=\"autoMappingBehavior\" value=\"FULL\"/>\n" +
-                    "        <!-- 对于批量更新操作缓存SQL以提高性能 -->\n" +
-                    "        <setting name=\"defaultExecutorType\" value=\"SIMPLE\"/>\n" +
-                    "        <!-- 数据库超过25000秒仍未响应则超时 -->\n" +
-                    "        <setting name=\"defaultStatementTimeout\" value=\"25000\"/>\n" +
-                    "    </settings>\n" +
-                    "    <!-- 全局别名设置，在映射文件中只需写别名，而不必写出整个类路径 别名声明写这里 -->\n" +
-                    "    <typeAliases>\n" +
-                    "        <!-- 非注解的sql映射文件配置，如果使用mybatis注解，该mapper无需配置，但是如果mybatis注解中包含@resultMap注解，则mapper必须配置，给resultMap注解使用 -->\n" +
-                    "    </typeAliases>\n" +
-                    "    ");
+            content.append(SpringXMLConst.MAPPER_XML_CONFIG_HEAD);
+            content.append("    ");
         }
 
         //开始写入sql-mapper
         content.append("<mappers>\n");
         for (MapperInfo mapperInfo : mappers) {
-            content.append("        <mapper resource=\"sqlmap/" + mapperInfo.mapperFileName + "\"  />\n");
+            content.append(SpringXMLConst.theMapper(mapperInfo.mapperFileName));
         }
-        content.append("    </mappers>\n");
-        content.append("</configuration>");
+        content.append("\n    </mappers>\n");
+        content.append(SpringXMLConst.MAPPER_XML_CONFIG_END);
 
         try {
             writeFile(mapperPath,content.toString());
@@ -1594,84 +1569,15 @@ public class MybatisGenerator extends Generator {
 
         //写入默认配置
         if (!fileHeader) {
-            content.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-                    "<beans xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n" +
-                    "       xmlns:context=\"http://www.springframework.org/schema/context\"\n" +
-                    "       xmlns:tx=\"http://www.springframework.org/schema/tx\"\n" +
-                    "       xmlns=\"http://www.springframework.org/schema/beans\"\n" +
-                    "       xsi:schemaLocation=\"http://www.springframework.org/schema/beans\n" +
-                    "        http://www.springframework.org/schema/beans/spring-beans-4.0.xsd\n" +
-                    "           http://www.springframework.org/schema/context\n" +
-                    "           http://www.springframework.org/schema/context/spring-context-4.0.xsd\n" +
-                    "           http://www.springframework.org/schema/tx\n" +
-                    "           http://www.springframework.org/schema/tx/spring-tx-4.0.xsd\"\n" +
-                    "       default-lazy-init=\"true\">\n" +
-                    "\n" +
-                    "\n" +
-                    "    <context:annotation-config/>\n" +
-                    "    <!-- 自动寻找注入bean -->\n" +
-                    "    <!--<context:component-scan base-package=\"com.venus.custom.persistence.manager\"/>-->\n" +
-                    "    \n" +
-                    "    <tx:annotation-driven transaction-manager=\"transactionManager\"/>\n" +
-                    "    \n" +
-                    "    <!-- Datasource配置：jdbc链接池配置 -->\n" +
-                    "    <bean id=\"" + datasource + "\" class=\"org.apache.tomcat.jdbc.pool.DataSource\" destroy-method=\"close\">\n" +
-                    "        <property name=\"poolProperties\">\n" +
-                    "            <bean class=\"org.apache.tomcat.jdbc.pool.PoolProperties\">\n" +
-                    "                <property name=\"driverClassName\" value=\"com.mysql.jdbc.Driver\"/>\n" +
-                    "                <property name=\"url\" value=\"${com.venus.mysql.datasource.url}\"/>\n" +
-                    "                <property name=\"username\" value=\"${com.venus.mysql.datasource.username}\"/>\n" +
-                    "                <property name=\"password\" value=\"${com.venus.mysql.datasource.password}\"/>\n" +
-                    "                <property name=\"jmxEnabled\" value=\"false\"/>\n" +
-                    "                <property name=\"testWhileIdle\" value=\"false\"/>\n" +
-                    "                <property name=\"initialSize\" value=\"10\"/>\n" +
-                    "                <property name=\"maxActive\" value=\"100\"/>\n" +
-                    "                <property name=\"maxIdle\" value=\"30\"/>\n" +
-                    "                <property name=\"minIdle\" value=\"15\"/>\n" +
-                    "                <property name=\"defaultAutoCommit\" value=\"true\"/>\n" +
-                    "                <property name=\"maxWait\" value=\"50000\"/>\n" +
-                    "                <property name=\"removeAbandoned\" value=\"true\"/>\n" +
-                    "                <property name=\"removeAbandonedTimeout\" value=\"60\"/>\n" +
-                    "                <property name=\"testOnBorrow\" value=\"true\"/>\n" +
-                    "                <property name=\"testOnReturn\" value=\"false\"/>\n" +
-                    "                <property name=\"validationQuery\" value=\"SELECT 1\"/>\n" +
-                    "                <property name=\"validationInterval\" value=\"60000\"/>\n" +
-                    "                <property name=\"validationQueryTimeout\" value=\"3\"/>\n" +
-                    "                <property name=\"timeBetweenEvictionRunsMillis\" value=\"300000\"/>\n" +
-                    "                <property name=\"minEvictableIdleTimeMillis\" value=\"1800000\"/>\n" +
-                    "                <property name=\"jdbcInterceptors\"\n" +
-                    "                          value=\"org.apache.tomcat.jdbc.pool.interceptor.ConnectionState;org.apache.tomcat.jdbc.pool.interceptor.StatementFinalizer\"/>\n" +
-                    "            </bean>\n" +
-                    "        </property>\n" +
-                    "    </bean>\n" +
-                    "\n" +
-                    "    <!-- 注意：若只读Datasource，则需要注释以下事务（tomcat jdbc pool,读写库需要使用事务）-->\n" +
-                    "    <bean id=\"transactionManager\" class=\"org.springframework.jdbc.datasource.DataSourceTransactionManager\">\n" +
-                    "        <property name=\"dataSource\" ref=\"" + datasource + "\"/>\n" +
-                    "    </bean>\n" +
-                    "    <bean id=\"transactionTemplate\" class=\"org.springframework.transaction.support.TransactionTemplate\">\n" +
-                    "        <property name=\"transactionManager\" ref=\"transactionManager\"/>\n" +
-                    "    </bean>\n" +
-                    "    <!-- 注意：若只读Datasource，则需要注释以上事务（tomcat jdbc pool,读写库需要使用事务）-->\n" +
-                    "\n" +
-                    "    <!-- SQL Session -->\n" +
-                    "    <bean id=\"" + sqlSession + "\" class=\"org.mybatis.spring.SqlSessionFactoryBean\">\n" +
-                    "        <property name=\"dataSource\" ref=\"" + datasource + "\"/>\n" +
-                    "        <property name=\"configLocation\" value=\"classpath:" + mapperFileName + "\"/>\n" +
-                    "    </bean>\n" +
-                    "\n" +
-                    "    <!-- mapper beans -->\n" +
-                    "    ");
+            content.append(SpringXMLConst.SPRING_XML_CONFIG_HEAD);
+            content.append(SpringXMLConst.theJdbcDatasource(datasource,sqlSession,mapperFileName));
+            content.append("    <!-- mapper beans -->\n    ");
 
         }
 
         for (MapperInfo mapperInfo : mappers) {
             String beanName = toLowerHeadString(mapperInfo.daoSimpleClassName);
-            content.append("<bean id=\"" + beanName + "\" class=\"org.mybatis.spring.mapper.MapperFactoryBean\">\n" +
-                    "        <property name=\"sqlSessionFactory\" ref=\"" + sqlSession + "\"/>\n" +
-                    "        <property name=\"mapperInterface\" value=\"" + mapperInfo.daoClassName + "\"/>\n" +
-                    "    </bean>\n" +
-                    "    ");
+            content.append(SpringXMLConst.theMapperBean(beanName,mapperInfo.daoClassName,sqlSession));
         }
 
         content.append("\n</beans>");

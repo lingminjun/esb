@@ -1,7 +1,10 @@
 package com.venus.gen.service.gen;
 
 import com.venus.esb.ESBSecurityLevel;
+import com.venus.esb.lang.ESBConsts;
+import com.venus.esb.utils.FileUtils;
 import com.venus.gen.Generator;
+import com.venus.gen.SpringXMLConst;
 import com.venus.gen.dao.gen.MybatisGenerator;
 
 import java.io.File;
@@ -17,9 +20,37 @@ import java.util.*;
  */
 public class ServiceGenerator extends Generator {
 
+    public static final String SPRING_BEAN_XML_NAME = "application-bean.xml";
+    public static final String DUBBO_PROVIDER_XML_NAME = "application-provider.xml";
+
     public final MybatisGenerator mybatisGenerator;
     public final APIGenerator apiGenerator;
     private List<MybatisGenerator.Table> tables;
+
+    // 注意：SpringBoot工程若生成xml配置，则需要启动类添加@ImportResource(locations={"classpath:application-bean.xml"})注解
+    // 注意：Servlert工程若生成xml配置，则需要在web.xml中添加DispatcherServlet参数配置：
+    /*
+    <servlet>
+        <servlet-name>m</servlet-name>
+        <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+        <init-param>
+            <param-name>contextConfigLocation</param-name>
+            <param-value>classpath:application-bean.xml</param-value>
+        </init-param>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>m</servlet-name>
+        <url-pattern>/</url-pattern>
+    </servlet-mapping>
+    */
+    protected boolean genXmlConfig = false;//生成Spring Bean配置
+    {
+        // dubbo默认走配置
+        if (this.project.projectType == ProjectType.dubbo) {
+            this.genXmlConfig = true;
+        }
+    }
 
     /**
      *
@@ -90,7 +121,7 @@ public class ServiceGenerator extends Generator {
         } else {//则直接放到当前目录下
             tempMybatisGenerator = new MybatisGenerator(this.rootProject, this.rootProject.copyModule(packageName + "." + "persistence"), sqlsSourcePath,tablePrefix,null);
         }
-        tempMybatisGenerator.setAutoGenSqlmapConfig(true);
+        tempMybatisGenerator.setAutoGenXmlConfig(true);
 
         APIGenerator tempAPIGenerator = null;
         if (apiModule != null) {
@@ -102,6 +133,31 @@ public class ServiceGenerator extends Generator {
         this.apiGenerator = tempAPIGenerator;
         this.mybatisGenerator = tempMybatisGenerator;
         this.tables = mybatisGenerator.getTables();
+    }
+
+    // 是否自动生成sqlmap-config.xml
+    // 注意：SpringBoot工程若生成xml配置，则需要启动类添加@ImportResource(locations={"classpath:application-bean.xml"})注解
+    // 注意：Servlert工程若生成xml配置，则需要在web.xml中添加DispatcherServlet参数配置：
+    /*
+    <servlet>
+        <servlet-name>m</servlet-name>
+        <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+        <init-param>
+            <param-name>contextConfigLocation</param-name>
+            <param-value>classpath:application-bean.xml</param-value>
+        </init-param>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>m</servlet-name>
+        <url-pattern>/</url-pattern>
+    </servlet-mapping>
+    */
+    public void setAutoGenXmlConfig(boolean auto) {
+        this.genXmlConfig = auto;
+    }
+    public boolean autoGenXmlConfig() {
+        return this.genXmlConfig;
     }
 
     @Override
@@ -120,7 +176,6 @@ public class ServiceGenerator extends Generator {
         String crudImplPath = this.packagePath() + File.separator + "service";
         new File(crudImplPath).mkdirs();
 
-
         //生成基类
         for (MybatisGenerator.Table table : tables) {
             //生成服务实现类
@@ -134,13 +189,27 @@ public class ServiceGenerator extends Generator {
                     apiGenerator.exceptionsClass,
                     apiGenerator.security,
                     table,
-                    this.project.projectType == ProjectType.dubbo);
+                    this.project.projectType == ProjectType.dubbo,
+                    this.genXmlConfig);
         }
 
+        //自动生成配置
+        if (!this.genXmlConfig) {
+            return true;
+        }
+        String xmlPath;
+        if (this.project.projectType == ProjectType.dubbo) {//spring启动容器目录
+            xmlPath = this.resourcesPath() + File.separator + "META-INF" + File.separator + "spring" + File.separator + DUBBO_PROVIDER_XML_NAME;
+            new File(this.resourcesPath() + File.separator + "META-INF" + File.separator + "spring").mkdirs();
+        } else {
+            xmlPath = this.resourcesPath() + File.separator + SPRING_BEAN_XML_NAME;
+        }
+        File xmlFile = new File(xmlPath);
+        writeXmlConfig(xmlFile,this.getProjectSimpleName(),this.packageName(),mybatisGenerator.packageName(),apiGenerator.packageName(),tables,this.project.projectType == ProjectType.dubbo);
         return true;
     }
 
-    private static void writeServiceImpl(File file, String currentPackageName,String doaPackagaeName,String apiPackagaeName,  String sqlsSourcePath, String groupName, Class exceptionClass, ESBSecurityLevel security, MybatisGenerator.Table table, boolean isDubboProject) {
+    private static void writeServiceImpl(File file, String currentPackageName,String doaPackagaeName,String apiPackagaeName,  String sqlsSourcePath, String groupName, Class exceptionClass, ESBSecurityLevel security, MybatisGenerator.Table table, boolean isDubboProject, boolean genXmlConfig) {
         String theSecurity = "ESBSecurityLevel." + security.toString();
 
         StringBuilder serviceContent = new StringBuilder();
@@ -168,7 +237,7 @@ public class ServiceGenerator extends Generator {
         serviceContent.append("import " + table.getDObjectClassName(doaPackagaeName) + ";\n");
         serviceContent.append("import " + table.getPOJOClassName(apiPackagaeName) + ";\n");
         serviceContent.append("import " + table.getPOJOResultsClassName(apiPackagaeName) + ";\n");
-        serviceContent.append("import " + table.getCRUDServiceBeanName(apiPackagaeName + ".api") + ";\n");
+        serviceContent.append("import " + table.getCRUDServiceBeanName(apiPackagaeName) + ";\n");
         serviceContent.append("import javax.annotation.Resource;\n");
         serviceContent.append("\n\r\n\r");
 
@@ -182,7 +251,9 @@ public class ServiceGenerator extends Generator {
         serviceContent.append(" */\n");
 
 //        serviceContent.append("@Component\n");
-        serviceContent.append("@Service\n");
+        if (genXmlConfig) {//自动生成xml配置
+            serviceContent.append("@Service\n");
+        }
         serviceContent.append("public class " + table.getSimpleCRUDServiceImplementationName() + " implements " + table.getSimpleCRUDServiceBeanName() + " {\n");
         serviceContent.append("    private static final org.slf4j.Logger logger    = LoggerFactory.getLogger(" + table.getSimpleCRUDServiceImplementationName() + ".class);\n\n");
 
@@ -237,6 +308,79 @@ public class ServiceGenerator extends Generator {
 
         try {
             writeFile(file,serviceContent.toString());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void writeXmlConfig(File file, String applicationName, String currentPackageName, String doaPackagaeName, String apiPackagaeName, List<MybatisGenerator.Table> tables, boolean isDubboProject) {
+        //判断是否为更新
+        StringBuilder content = new StringBuilder();
+        boolean fileHeader = false;
+        try {
+            String old = FileUtils.readFile(file.getAbsolutePath(), ESBConsts.UTF8);
+            if (old != null) {
+                int idx = old.lastIndexOf("</beans>");
+                if (idx >= 0 && idx < old.length()) {
+                    content.append(old.substring(0,idx).trim());
+                    content.append("\n\n    ");
+                    fileHeader = true;
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        //写入默认配置
+        if (!fileHeader) {
+            if (isDubboProject) {
+                content.append(SpringXMLConst.DUBBO_PROVIDER_XML_CONFIG_HEAD);
+            } else {
+                content.append(SpringXMLConst.SPRING_XML_CONFIG_HEAD);
+            }
+        }
+
+        if (isDubboProject) {
+            int idx = content.toString().indexOf("\"com.alibaba.dubbo.config.ApplicationConfig\"");
+            if (idx < 0 || idx >= content.length()) {
+                content.append(SpringXMLConst.theDubboApplicationConfig(applicationName));
+            }
+
+            idx = content.toString().indexOf("\"com.alibaba.dubbo.config.RegistryConfig\"");
+            if (idx < 0 || idx >= content.length()) {
+                content.append(SpringXMLConst.DUBBO_REGISTRY_CONFIG);
+            }
+
+            idx = content.toString().indexOf("\"com.alibaba.dubbo.config.ProtocolConfig\"");
+            if (idx < 0 || idx >= content.length()) {
+                content.append(SpringXMLConst.DUBBO_PROTOCOL_CONFIG);
+            }
+
+            idx = content.toString().indexOf("<dubbo:provider");
+            if (idx < 0 || idx >= content.length()) {
+                content.append(SpringXMLConst.DUBBO_PROVIDER_CONFIG);
+            }
+        }
+
+        // 添加为bean的
+        for (MybatisGenerator.Table table : tables) {
+            String beanName = toLowerHeadString(table.getSimpleCRUDServiceBeanName());
+            String beanClass = table.getCRUDServiceBeanName(apiPackagaeName);
+            int idx = content.toString().indexOf(beanClass);
+            if (idx < 0 || idx >= content.length()) {
+                if (isDubboProject) {
+                    String implClass = table.getCRUDServiceImplementationName(currentPackageName);
+                    content.append(SpringXMLConst.theDubboProvider(beanName, beanClass, implClass));
+                } else {
+                    content.append(SpringXMLConst.theSpringBean(beanName, beanClass));
+                }
+            }
+        }
+
+        content.append("\n</beans>");
+
+        try {
+            writeFile(file,content.toString());
         } catch (IOException e) {
             e.printStackTrace();
         }

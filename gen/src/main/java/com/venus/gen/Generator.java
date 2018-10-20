@@ -213,9 +213,9 @@ public abstract class Generator {
             } else if (ESBT.classForName("org.springframework.boot.SpringApplication") != null) {//不准
                 type = ProjectType.springboot;
             } else if (ESBT.classForName("com.alibaba.dubbo.rpc.RpcContext") != null) {
-                type = ProjectType.dubbo;
-            } else {
-                type = ProjectType.module;
+                if (checkIsDubboModule(pom,projectDir)) {
+                    type = ProjectType.dubbo;
+                }
             }
 
             if (hasParent) {
@@ -259,6 +259,10 @@ public abstract class Generator {
                 ProjectType type = ProjectType.module;
                 if (isServlet) {
                     type = ProjectType.servlet;
+                } else if (ESBT.classForName("com.alibaba.dubbo.rpc.RpcContext") != null) {
+                    if (checkIsDubboModule(pom,f.getAbsolutePath())) {
+                        type = ProjectType.dubbo;
+                    }
                 }
 
                 ProjectModule module = new ProjectModule(type,f.getAbsolutePath(),moduleName,packageName,null);
@@ -274,6 +278,17 @@ public abstract class Generator {
             return true;
         }
         return false;
+    }
+
+    public static boolean checkIsDubboModule(String pom, String projectDir) {
+        //src/main/
+        File file = new File(projectDir + File.separator +
+                "src" + File.separator +
+                "main" + File.separator +
+                "resources" + File.separator +
+                "META-INF" + File.separator +
+                "spring");
+        return file.exists();
     }
 
     public static String findModuleName(String pom) {

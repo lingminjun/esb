@@ -107,6 +107,9 @@ public class ServiceGenerator extends Generator {
                 } else if (daoModule == null && !module.moduleName.contains("test") &&
                         (module.moduleName.contains("persistence") || module.moduleName.contains("dao"))) {
                     daoModule = module;
+                    if (!module.packageName.endsWith("persistence")) {
+                        daoModule = module.copyModule(packageName + "." + "persistence");
+                    }
                 }
                 if (apiModule != null && daoModule != null) {
                     break;

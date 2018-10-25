@@ -23,8 +23,7 @@
         <!-- esb 版本统一设置,防止每次都需要改很多地方 -->
         <esb.rpc.version.root>1.0.0-SNAPSHOT</esb.rpc.version.root>
 
-
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- spring版本 -->
         <spring.version>4.3.6.RELEASE</spring.version>
 
 
@@ -41,8 +40,9 @@
         <!--<avassist.version>3.15.0-GA</avassist.version>-->
 
 
-        <fastjson.version>1.2.29</fastjson.version>
         <!-- 升级fastjson 安全漏洞 -->
+        <fastjson.version>1.2.29</fastjson.version>
+
 
         <!-- logback -->
         <slf4j.version>1.7.22</slf4j.version>

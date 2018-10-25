@@ -83,7 +83,7 @@ public final class SpringXMLConst {
             "\n" +
             "    <!-- 统一配置provider -->\n" +
             "    <dubbo:provider application=\"dubboApplicationConfig\"\n" +
-            "                    version=\"${dubbo.reference.version}\"\n" +
+            "                    version=\"${dubbo.export.version}\"\n" +
             "                    protocol=\"dubboProtocolConfig\"\n" +
             "                    registry=\"dubboRegistryConfig\"\n" +
             "                    timeout=\"${dubbo.export.timeout}\"\n" +
@@ -91,7 +91,7 @@ public final class SpringXMLConst {
 
     public static final String DUBBO_PROVIDER_CONFIG = "<!-- 统一配置provider -->\n" +
             "    <dubbo:provider application=\"dubboApplicationConfig\"\n" +
-            "                    version=\"${dubbo.reference.version}\"\n" +
+            "                    version=\"${dubbo.export.version}\"\n" +
             "                    protocol=\"dubboProtocolConfig\"\n" +
             "                    registry=\"dubboRegistryConfig\"\n" +
             "                    timeout=\"${dubbo.export.timeout}\"\n" +

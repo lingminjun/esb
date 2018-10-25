@@ -21,7 +21,7 @@ import java.util.*;
 public class ServiceGenerator extends Generator {
 
     public static final String SPRING_BEAN_XML_NAME = "application-bean.xml";
-    public static final String DUBBO_PROVIDER_XML_NAME = "application-provider.xml";
+    public static final String DUBBO_PROVIDER_XML_NAME = "application-dubbo-provider.xml";
 
     public final MybatisGenerator mybatisGenerator;
     public final APIGenerator apiGenerator;

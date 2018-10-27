@@ -706,8 +706,7 @@ class APIGenerator extends Generator {
             serviceContent.append("(pageIndex,pageSize,");
             serviceContent.append(methodParamsString);
             if (hasDeleted) {
-                serviceContent.append(",");
-                serviceContent.append(delParamIn);
+                serviceContent.append(",isDeleted");
             }
             serviceContent.append(",false);\n");
         } else {
@@ -738,7 +737,7 @@ class APIGenerator extends Generator {
             serviceContent.append("            Injects.fill(dobj,pojo);\n");
             serviceContent.append("            rs.add(pojo);\n");
             serviceContent.append("        }\n");
-            serviceContent.append("        rlt.setResults(rs);");
+            serviceContent.append("        rlt.setResults(rs);\n");
             serviceContent.append("        return rlt;\n");
         }
 

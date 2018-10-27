@@ -1570,7 +1570,7 @@ public class MybatisGenerator extends Generator {
         //写入默认配置
         if (!fileHeader) {
             content.append(SpringXMLConst.SPRING_XML_CONFIG_HEAD);
-            content.append(SpringXMLConst.theJdbcDatasource(datasource,sqlSession,mapperFileName));
+            content.append(SpringXMLConst.theJdbcDatasource(projectName,datasource,sqlSession,mapperFileName));
             content.append("    <!-- mapper beans -->\n    ");
 
         }

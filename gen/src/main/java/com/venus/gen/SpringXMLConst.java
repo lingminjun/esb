@@ -100,6 +100,7 @@ public final class SpringXMLConst {
     public static final String JDBC_DATASOURCE_MASK = "@Datasource@";
     public static final String SQL_SESSION_FACTORY_MASK = "@SqlSessionFactory@";
     public static final String MAPPER_XML_PATH_MASK = "@MapperXmlPath@";
+    public static final String PROJECT_NAME_MASK = "@ProjectName@";
     public static final String SPRING_JDBC_DATASOURCE = "    <tx:annotation-driven transaction-manager=\"transactionManager\"/>\n" +
             "    \n" +
             "    <!-- Datasource配置：jdbc链接池配置 -->\n" +
@@ -107,9 +108,9 @@ public final class SpringXMLConst {
             "        <property name=\"poolProperties\">\n" +
             "            <bean class=\"org.apache.tomcat.jdbc.pool.PoolProperties\">\n" +
             "                <property name=\"driverClassName\" value=\"com.mysql.jdbc.Driver\"/>\n" +
-            "                <property name=\"url\" value=\"${com.venus.mysql.datasource.url}\"/>\n" +
-            "                <property name=\"username\" value=\"${com.venus.mysql.datasource.username}\"/>\n" +
-            "                <property name=\"password\" value=\"${com.venus.mysql.datasource.password}\"/>\n" +
+            "                <property name=\"url\" value=\"${com.venus.@ProjectName@.mysql.datasource.url}\"/>\n" +
+            "                <property name=\"username\" value=\"${com.venus.@ProjectName@.mysql.datasource.username}\"/>\n" +
+            "                <property name=\"password\" value=\"${com.venus.@ProjectName@.mysql.datasource.password}\"/>\n" +
             "                <property name=\"jmxEnabled\" value=\"false\"/>\n" +
             "                <property name=\"testWhileIdle\" value=\"false\"/>\n" +
             "                <property name=\"initialSize\" value=\"10\"/>\n" +
@@ -147,10 +148,11 @@ public final class SpringXMLConst {
             "        <property name=\"dataSource\" ref=\"@Datasource@\"/>\n" +
             "        <property name=\"configLocation\" value=\"classpath:@MapperXmlPath@\"/>\n" +
             "    </bean>\n\n    ";
-    public static final String theJdbcDatasource(String datasource, String sessionFactory, String mapperPath) {
+    public static final String theJdbcDatasource(String project, String datasource, String sessionFactory, String mapperPath) {
         String str = SPRING_JDBC_DATASOURCE.replaceAll(JDBC_DATASOURCE_MASK,datasource);
         str = str.replaceAll(SQL_SESSION_FACTORY_MASK,sessionFactory);
         str = str.replaceAll(MAPPER_XML_PATH_MASK,mapperPath);
+        str = str.replaceAll(PROJECT_NAME_MASK,(project == null || project.length() == 0) ? "default" : project);
         return str;
     }
 

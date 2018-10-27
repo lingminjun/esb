@@ -39,7 +39,9 @@ public abstract class Generator {
             this.projectDir = dir;
             this.moduleName = name;
             this.resourcesPath = dir + File.separator + "src" + File.separator + "main" + File.separator + "resources";
-            new File(this.resourcesPath).mkdirs();
+            if (type != ProjectType.parent) {
+                new File(this.resourcesPath).mkdirs();
+            }
             if (type == ProjectType.servlet) {
                 this.webappPath = dir + File.separator + "src" + File.separator + "main" + File.separator + "webapp";
                 new File(this.webappPath).mkdirs();
@@ -55,7 +57,9 @@ public abstract class Generator {
                 }
             }
             this.packagePath = srcCodePath.toString();
-            new File(this.packagePath).mkdirs();
+            if (type != ProjectType.parent) {
+                new File(this.packagePath).mkdirs();
+            }
             this.packageName = packageName;
             this.modules = modules;
         }

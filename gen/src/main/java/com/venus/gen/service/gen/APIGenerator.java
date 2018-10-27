@@ -406,7 +406,7 @@ class APIGenerator extends Generator {
         serviceContent.append("            return true;\n");
         serviceContent.append("        } else {\n");
 
-        serviceContent.append("            List<DemoDO> lst = new ArrayList<DemoDO>();\n");
+        serviceContent.append("            List<" + dataObj + "> lst = new ArrayList<" + dataObj + ">();\n");
         serviceContent.append("            for (" + pojoName + " pojo : models) {\n");
         serviceContent.append("                " + dataObj + " dobj = new " + dataObj + "();\n");
         serviceContent.append("                Injects.fill(pojo,dobj);\n");

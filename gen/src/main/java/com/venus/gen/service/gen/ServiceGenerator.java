@@ -22,6 +22,9 @@ public class ServiceGenerator extends Generator {
 
     public static final String SPRING_BEAN_XML_NAME = "application-bean.xml";
     public static final String DUBBO_PROVIDER_XML_NAME = "application-dubbo-provider.xml";
+    public static final String AUTO_CONFIG_XML_NAME = "auto-config.xml";
+    public static final String AUTO_CONFIG_VM_NAME = "config.properties.vm";
+    public static final String CONFIG_PROPERTIES_NAME = "config.properties";
 
     public final MybatisGenerator mybatisGenerator;
     public final APIGenerator apiGenerator;
@@ -51,6 +54,7 @@ public class ServiceGenerator extends Generator {
             this.genXmlConfig = true;
         }
     }
+    protected boolean genAutoConfig = true;//生成配置
 
     /**
      *
@@ -163,6 +167,13 @@ public class ServiceGenerator extends Generator {
         return this.genXmlConfig;
     }
 
+    public void setAutoGenConfig(boolean auto) {
+        this.genAutoConfig = auto;
+    }
+    public boolean autoGenConfig() {
+        return this.genAutoConfig;
+    }
+
     @Override
     public boolean gen() {
 
@@ -208,7 +219,33 @@ public class ServiceGenerator extends Generator {
             xmlPath = this.resourcesPath() + File.separator + SPRING_BEAN_XML_NAME;
         }
         File xmlFile = new File(xmlPath);
-        writeXmlConfig(xmlFile,this.getProjectSimpleName(),this.packageName(),mybatisGenerator.packageName(),apiGenerator.packageName(),tables,this.project.projectType == ProjectType.dubbo);
+        String application = this.getProjectSimpleName();
+        writeXmlConfig(xmlFile,application,this.packageName(),mybatisGenerator.packageName(),apiGenerator.packageName(),tables,this.project.projectType == ProjectType.dubbo);
+
+        if (!this.genAutoConfig) {
+            return true;
+        }
+
+        String autoXmlPath;
+        String autoVMPath;
+        String configPath;
+        String autoConfDir = "autoconf";
+        if (this.project.projectType == ProjectType.servlet) {//servlet 启动容器目录
+            autoXmlPath = this.webappPath() + File.separator + "META-INF" + File.separator + autoConfDir + File.separator + AUTO_CONFIG_XML_NAME;
+            autoVMPath = this.webappPath() + File.separator + "META-INF" + File.separator + autoConfDir + File.separator + AUTO_CONFIG_VM_NAME;
+            new File(this.webappPath() + File.separator + "META-INF" + File.separator + autoConfDir).mkdirs();
+            configPath = this.resourcesPath() + File.separator + CONFIG_PROPERTIES_NAME;
+        } else {
+            autoXmlPath = this.resourcesPath() + File.separator + "META-INF" + File.separator + autoConfDir + File.separator + AUTO_CONFIG_XML_NAME;
+            autoVMPath = this.resourcesPath() + File.separator + "META-INF" + File.separator + autoConfDir + File.separator + AUTO_CONFIG_VM_NAME;
+            new File(this.resourcesPath() + File.separator + "META-INF" + File.separator + autoConfDir).mkdirs();
+            configPath = this.resourcesPath() + File.separator + CONFIG_PROPERTIES_NAME;
+        }
+
+        writeAutoXmlConfig(new File(autoXmlPath),application,this.project.projectType == ProjectType.servlet,this.project.projectType == ProjectType.dubbo);
+        writeConfigVM(new File(autoVMPath),application,this.project.projectType == ProjectType.dubbo);
+        writeConfig(new File(configPath),application,this.project.projectType == ProjectType.dubbo);
+
         return true;
     }
 
@@ -337,7 +374,7 @@ public class ServiceGenerator extends Generator {
         //写入默认配置
         if (!fileHeader) {
             if (isDubboProject) {
-                content.append(SpringXMLConst.DUBBO_PROVIDER_XML_CONFIG_HEAD);
+                content.append(SpringXMLConst.theDubboProviderXmlConfigHead(applicationName));
             } else {
                 content.append(SpringXMLConst.SPRING_XML_CONFIG_HEAD);
             }
@@ -381,6 +418,160 @@ public class ServiceGenerator extends Generator {
         }
 
         content.append("\n</beans>");
+
+        try {
+            writeFile(file,content.toString());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void writeAutoXmlConfig(File file, String applicationName, boolean isServlet, boolean isDubbo) {
+        //判断是否为更新
+        String relativePath = isServlet ? "WEB-INF/classes/" : "";
+        String old = SpringXMLConst.theAutoConfigXml(applicationName, relativePath);
+        try {
+            String told = FileUtils.readFile(file.getAbsolutePath(), ESBConsts.UTF8);
+            if (told != null && told.length() > 0) {
+                old = told;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        StringBuilder content = new StringBuilder(old);
+        //如果是dubbo
+        if (isDubbo) {
+            int idx = content.indexOf("dubbo.registry.url");
+            if (idx < 0 || idx >= content.length()) {
+                //插入
+                idx = content.indexOf("<config");
+                if (idx >= 0 && idx < content.length()) {
+                    idx = content.indexOf(">", (idx + "<config".length()));
+                    content.insert(idx + 1, "\n" + SpringXMLConst.ADD_DUBBO_AUTO_CONFIG_GROUP);
+                }
+            }
+        }
+
+        // dao配置
+        {
+            int idx = content.indexOf("com.venus." + applicationName + ".mysql.datasource.url");
+            if (idx < 0 || idx >= content.length()) {
+                //插入
+                idx = content.indexOf("<config");
+                if (idx >= 0 && idx < content.length()) {
+                    idx = content.indexOf(">", (idx + "<config".length()));
+                    content.insert(idx + 1, "\n" + SpringXMLConst.theDatasourceAutoConfigGroup(applicationName));
+                }
+            }
+        }
+
+        // 配置script作用
+        {
+            int idx = content.indexOf("config.properties.vm");
+            if (idx < 0 || idx >= content.length()) {
+                //插入
+                idx = content.lastIndexOf("</script>");
+                int edx = content.lastIndexOf("</config>");
+                if (idx >= 0 && idx < content.length()) {
+                    content.insert(idx, "    <generate template=\"config.properties.vm\" destfile=\"" + relativePath + "config.properties\" charset=\"UTF-8\"/>\n    ");
+                } else if (edx >= 0 && edx < content.length()) {
+                    content.insert(edx, "    <script>\n" +
+                            "        <generate template=\"config.properties.vm\" destfile=\"" + relativePath + "config.properties\" charset=\"UTF-8\"/>\n" +
+                            "    </script>\n");
+                }
+            }
+        }
+
+        try {
+            writeFile(file,content.toString());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void writeConfigVM(File file, String applicationName, boolean isDubbo) {
+        //判断是否为更新
+        String old = SpringXMLConst.theAutoConfigVMGroup(applicationName);
+        try {
+            String told = FileUtils.readFile(file.getAbsolutePath(), ESBConsts.UTF8);
+            if (told != null && told.length() > 0) {
+                old = told;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        StringBuilder content = new StringBuilder(old);
+        //如果是dubbo
+        if (isDubbo) {
+            int idx = content.indexOf("dubbo.registry.url");
+            if (idx < 0 || idx >= content.length()) {
+                content.insert(0, SpringXMLConst.ADD_DUBBO_PROPERTIES_CONFIG);
+            }
+        }
+
+        // dao配置
+        {
+            int idx = content.indexOf("com.venus." + applicationName + ".mysql.datasource.url");
+            if (idx < 0 || idx >= content.length()) {
+                content.append("\n" + SpringXMLConst.theDatasourcePropertiesConfig(applicationName,true));
+            }
+        }
+
+
+        // 配置script作用
+        {
+            int idx = content.indexOf("com.venus." + applicationName + ".log.home");
+            if (idx < 0 || idx >= content.length()) {
+                content.append("\ncom.venus." + applicationName + ".log.home=${com.venus." + applicationName + ".log.home}\n");
+            }
+        }
+
+        try {
+            writeFile(file,content.toString());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void writeConfig(File file, String applicationName, boolean isDubbo) {
+        //判断是否为更新
+        String old = SpringXMLConst.theConfigProperties(applicationName);
+        try {
+            String told = FileUtils.readFile(file.getAbsolutePath(), ESBConsts.UTF8);
+            if (told != null && told.length() > 0) {
+                old = told;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        StringBuilder content = new StringBuilder(old);
+        //如果是dubbo
+        if (isDubbo) {
+            int idx = content.indexOf("dubbo.registry.url");
+            if (idx < 0 || idx >= content.length()) {
+                content.insert(0, SpringXMLConst.ADD_DUBBO_PROPERTIES_CONFIG_DEMO);
+            }
+        }
+
+        // dao配置
+        {
+            int idx = content.indexOf("com.venus." + applicationName + ".mysql.datasource.url");
+            if (idx < 0 || idx >= content.length()) {
+                content.append("\n" + SpringXMLConst.theDatasourcePropertiesConfig(applicationName,false));
+            }
+        }
+
+
+        // 配置script作用
+        {
+            int idx = content.indexOf("com.venus." + applicationName + ".log.home");
+            if (idx < 0 || idx >= content.length()) {
+                content.append("\n# 日志目录配置\ncom.venus." + applicationName + ".log.home=/Home/admin/logs/" + applicationName + "-service/\n");
+            }
+        }
 
         try {
             writeFile(file,content.toString());

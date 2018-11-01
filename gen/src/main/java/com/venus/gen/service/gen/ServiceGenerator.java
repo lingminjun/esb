@@ -317,31 +317,49 @@ public class ServiceGenerator extends Generator {
         String pojoName = table.getSimplePOJOClassName();
         //所有基本的增删修查
 
-        //增加单个
-        APIGenerator.writeCreateMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true);
+        if (!table.justViewTable()) {
+            //增加单个
+            APIGenerator.writeCreateMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true);
 
-        //批量增加
-        APIGenerator.writeBatchCreateMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true);
+            //批量增加
+            APIGenerator.writeBatchCreateMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true);
 
-        //删，单个删除
-        APIGenerator.writeDeleteMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true);
+            //删，单个删除
+            APIGenerator.writeDeleteMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true);
 
-        //更新某个数据，拆开每个字段
-        APIGenerator.writeUpdateMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true);
+            //更新某个数据，拆开每个字段
+            APIGenerator.writeUpdateMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true);
 
-        //主键查询
-        APIGenerator.writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true,false);
-        APIGenerator.writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true,true);
+            //主键查询
+            APIGenerator.writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, false);
+            APIGenerator.writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, true);
+        }
 
         //查询，索引查询，翻页
-        Map<String, List<MybatisGenerator.Column>> queryMethods = table.allIndexQueryMethod();
-        List<String> methodNames = new ArrayList<String>(queryMethods.keySet());
-        Collections.sort(methodNames);
-        for (String methodName : methodNames) {
-            List<MybatisGenerator.Column> cols = queryMethods.get(methodName);
+        {
+            Map<String, List<MybatisGenerator.Column>> queryMethods = table.allIndexQueryMethod();
+            List<String> methodNames = new ArrayList<String>(queryMethods.keySet());
+            Collections.sort(methodNames);
+            for (String methodName : methodNames) {
+                List<MybatisGenerator.Column> cols = queryMethods.get(methodName);
 
-            APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true,false);
-            APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true,true);
+                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, false, false);
+                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, true, false);
+            }
+        }
+
+        //查询，视图查询，翻页
+        {
+            Map<String, MybatisGenerator.SQLSelect> viewMethods = table.allViewQueryMethod();
+            List<String> methodNames = new ArrayList<String>(viewMethods.keySet());
+            Collections.sort(methodNames);
+            for (String methodName : methodNames) {
+                MybatisGenerator.SQLSelect sqlSelect = viewMethods.get(methodName);
+                List<MybatisGenerator.Column> cols = sqlSelect.getBinds();
+
+                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, false, true);
+                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, true, true);
+            }
         }
 
         serviceContent.append("}\n\r\n\r");

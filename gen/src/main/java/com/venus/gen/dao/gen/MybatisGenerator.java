@@ -5,10 +5,12 @@ import com.venus.esb.utils.FileUtils;
 import com.venus.gen.SpringXMLConst;
 import com.venus.gen.dao.SQL;
 import com.venus.gen.dao.TableDAO;
+import com.venus.gen.dao.ViewDAO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import com.venus.gen.Generator;
 
+import javax.xml.ws.spi.http.HttpHandler;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -223,6 +225,19 @@ public class MybatisGenerator extends Generator {
             return null;
         }
 
+        public Column findColumnByName(String columnName) {
+            for (Column col : columns) {
+                if (col.name.equals(columnName)) {
+                    return col;
+                }
+            }
+            return null;
+        }
+
+        public boolean justViewTable() {
+            return false;
+        }
+
         //除了主键以外的索引
         public boolean hasIndexQuery() {
             for (ColumnIndex column : indexs) {
@@ -237,7 +252,7 @@ public class MybatisGenerator extends Generator {
             for (ColumnIndex column : indexs) {
                 if (column.isPrimary) { continue; }
 
-                buildMethods(column.columns,"queryBy",methods);
+                buildMethods(column.columns,"queryBy",methods,true);
             }
 
             return methods;
@@ -249,13 +264,13 @@ public class MybatisGenerator extends Generator {
             for (ColumnIndex column : indexs) {
                 if (column.isPrimary) { continue; }
 
-                buildMethods(column.columns,"countBy",methods);
+                buildMethods(column.columns,"countBy",methods,true);
             }
 
             return methods;
         }
 
-        private static void buildMethods(List<Column> columns, String methodHead, HashMap<String,List<Column>> methods) {
+        protected static void buildMethods(List<Column> columns, String methodHead, HashMap<String,List<Column>> methods, boolean mult) {
             for (int i = 0; i < columns.size(); i++) {
 
                 StringBuilder queryMethodName = new StringBuilder(methodHead);
@@ -270,10 +285,23 @@ public class MybatisGenerator extends Generator {
                 }
 
                 String methodName = queryMethodName.toString();
-                if (!methods.containsKey(methodName)) {
+                if ((mult || i + 1 == columns.size()) && !methods.containsKey(methodName)) {
                     methods.put(methodName,cols);
                 }
             }
+        }
+
+        //是否存在视图查询
+        public boolean hasViewQuery() {
+            return false;
+        }
+
+        public Map<String,SQLSelect> allViewQueryMethod() {
+            return new HashMap<String, SQLSelect>();
+        }
+
+        public Map<String,SQLSelect> allViewCountMethod() {
+            return new HashMap<String, SQLSelect>();
         }
 
         public Column getDeleteStateColumn() {
@@ -308,6 +336,14 @@ public class MybatisGenerator extends Generator {
 
         public String getSimpleIncDAOClassName() {
             return toHumpString(alias,true) + "IndexQueryDAO";
+        }
+
+        public String getIncViewDAOClassName(String packageName) {
+            return packageName + ".dao.inc." + getSimpleIncViewDAOClassName();
+        }
+
+        public String getSimpleIncViewDAOClassName() {
+            return toHumpString(alias,true) + "ViewQueryDAO";
         }
 
         public String getDObjectClassName(String packageName) {
@@ -358,8 +394,6 @@ public class MybatisGenerator extends Generator {
             return packageName + "." + getSimpleRestControllerName();
         }
 
-
-
         private static String getSqlWhereFragment(List<Column> tcols, Table table) {
             StringBuilder queryWhere = new StringBuilder();
             boolean first = true;
@@ -392,6 +426,100 @@ public class MybatisGenerator extends Generator {
 
     }
 
+    // View.name=Table.name，表示输出结果一致
+    public static class ViewTable extends Table {
+        //包含的where子句
+        List<SQLSelect> sqls = new ArrayList<SQLSelect>();
+        boolean justViewTable = false;
+
+
+
+        // 重载并实现view查询
+        @Override
+        public boolean justViewTable() {
+            return justViewTable;
+        }
+
+        @Override
+        public boolean hasViewQuery() {
+            return sqls.size() > 0;
+        }
+
+        @Override
+        public Map<String,SQLSelect> allViewQueryMethod() {
+            HashMap<String,SQLSelect> result = new HashMap<String, SQLSelect>();
+
+            for (SQLSelect select : sqls) {
+                if (select.binds.size() == 0) { continue; }
+                HashMap<String,List<Column>> methods = new HashMap<String, List<Column>>();
+                buildMethods(select.binds,"queryBy",methods,false);
+                for (Map.Entry<String,List<Column>> entry : methods.entrySet()) {
+                    String methodName = entry.getKey();
+                    int idx = 1;
+                    while (result.containsKey(methodName)) {
+                        methodName = methodName + "V" + idx;
+                        idx++;
+                    }
+                    result.put(methodName,select);
+                }
+            }
+
+            return result;
+        }
+
+        @Override
+        public Map<String,SQLSelect> allViewCountMethod() {
+            HashMap<String,SQLSelect> result = new HashMap<String, SQLSelect>();
+            for (SQLSelect select : sqls) {
+                if (select.binds.size() == 0) { continue; }
+                HashMap<String,List<Column>> methods = new HashMap<String, List<Column>>();
+                buildMethods(select.binds,"countBy",methods,false);
+                for (Map.Entry<String,List<Column>> entry : methods.entrySet()) {
+                    String methodName = entry.getKey();
+                    int idx = 1;
+                    while (result.containsKey(methodName)) {
+                        methodName = methodName + "V" + idx;
+                        idx++;
+                    }
+                    result.put(methodName,select);
+                }
+            }
+            return result;
+        }
+
+        public List<SQLSelect> getSqls() {
+            return sqls;
+        }
+
+        private void resetTable(Table table) {
+            this.name = table.name;
+            this.alias = table.alias;
+            this.columns = table.columns;
+            this.indexs = table.indexs;
+        }
+    }
+
+    // 描述VIEW的查询语句
+    public static class SQLSelect {
+        String sql;//prepare format
+        String viewColumn; //显示的部分
+        List<Column> binds = new ArrayList<Column>();
+        List<String> bindNames = new ArrayList<String>();
+
+        public String getQuerySql() {
+            return sql.replace(SELECT_RESULT_COLUMN_FORMAT,viewColumn);
+        }
+
+        public String getCountSql() {
+            return sql.replace(SELECT_RESULT_COLUMN_FORMAT,"count(1)");
+        }
+
+        public List<Column> getBinds() {
+            return binds;
+        }
+    }
+
+    private static final String SELECT_RESULT_COLUMN_FORMAT = "$_column_format_$";
 
     public final String sqlsSourcePath;
     public final String mapperPath;
@@ -535,6 +663,7 @@ public class MybatisGenerator extends Generator {
         String sqlsContent = getSqlsContent(sqlsSourcePath);
 
         List<Table> tables = new ArrayList<Table>();
+        List<ViewTable> viewTables = new ArrayList<ViewTable>();
 
         //采用";"分割
         String[] sqls = specialSplit(sqlsContent,';');
@@ -542,50 +671,216 @@ public class MybatisGenerator extends Generator {
 
             //不能分割
             Pattern p = Pattern.compile("create\\s+table", Pattern.CASE_INSENSITIVE);
+            Pattern p1 = Pattern.compile("create\\s+view", Pattern.CASE_INSENSITIVE);
             Matcher m = p.matcher(sql);
-            if (!m.find()) {
-                continue;
-            }
-
-            //匹配到一组
-            int end = m.end();
-            int idx = sql.indexOf("(", end);//从匹配命令后开始
-            //解析表头
-            StringBuilder builder = new StringBuilder();
-            for (int i = idx - 1; i >= 0; i--) {
-                char c = sql.charAt(i);
-                if (isLetterChar(c) || isNumberChar(c)) {
-                    builder.insert(0, c);
-                } else if (c == '_') {//是否采用驼峰
-                    builder.insert(0, c);
-                } else {
-                    if (builder.length() > 0) {
-                        break;
-                    }
+            Matcher m1 = p1.matcher(sql);
+            if (m.find()) {//创建表
+                Table table = checkTableFromSql(sql,m,tablePrefix);
+                //有效的table
+                if (table.columns.size() > 0) {
+                    tables.add(table);
                 }
-            }
+                continue;
+            } else if (m1.find()) {//创建视图
 
-            System.out.println("TableName:" + builder.toString());
+                ViewTable table = checkViewFromSql(sql,m1,tablePrefix);
 
-            Table table = new Table();
-            table.name = builder.toString();
-            if (tablePrefix != null && tablePrefix.length() > 0 && table.name.startsWith(tablePrefix)) {
-                table.alias = table.name.substring(tablePrefix.length(),table.name.length());
-            } else {
-                table.alias = table.name;
-            }
-
-            sql = sql.substring(idx + 1);
-
-            parseSqlTable(sql,table);
-
-            //有效的table
-            if (table.columns.size() > 0) {
-                tables.add(table);
+                //有效的table
+                if (table.sqls.size() > 0) {
+                    viewTables.add(table);
+                }
+                continue;
             }
         }
 
+        //组合table和view
+        tables = mergeViewAndTable(tables,viewTables,tablePrefix);
+
         return tables;
+    }
+
+    // 合并数据
+    private static List<Table> mergeViewAndTable(List<Table> tables, List<ViewTable> views, String tablePrefix) {
+
+        Map<String,Table> tbs = new HashMap<String, Table>();
+        Map<String,Table> rts = new HashMap<String, Table>();
+        for (Table table : tables) {
+            tbs.put(table.getName(),table);
+            rts.put(table.getName(),table);
+        }
+
+        for (ViewTable view : views) {
+            String name = view.getName();
+
+            Table table = tbs.get(name);
+            if (table != null) {
+                view.justViewTable = false;
+                //替换表结构
+                view.resetTable(table);
+                tbs.put(name,view);
+                rts.put(name,view);
+            } else {
+                view.justViewTable = true;
+                rts.put(name,view);
+            }
+
+            // 分析字段
+            for (SQLSelect sqlSelect : view.sqls) {
+                parseColumns(view,sqlSelect,tbs);
+            }
+        }
+
+        return new ArrayList<Table>(rts.values());
+    }
+
+    private static void parseColumns(ViewTable view, SQLSelect select, Map<String,Table> tbs) {
+        if (select.viewColumn == null || select.viewColumn.length() == 0) {
+            return;
+        }
+
+        //需要补全columns
+        if (view.columns == null || view.columns.size() == 0) {
+            String[] strs = select.viewColumn.trim().split(",");
+            for (String str : strs) {
+                if (str.trim().length() == 0) {
+                    continue;
+                }
+                String[] cols = str.trim().split("\\.");
+                if (cols.length == 2) {
+                    String table = cols[0].trim();
+                    String column = cols[1].trim();
+                    if (table.startsWith("`") && table.endsWith("`")) {
+                        table = table.substring(1, table.length() - 1);
+                    }
+                    if (column.startsWith("`") && column.endsWith("`")) {
+                        column = column.substring(1, column.length() - 1);
+                    }
+
+                    Table tb = tbs.get(table);
+                    if (tb == null) {
+                        System.out.println("视图`" + view.name + "`定义查询字段" + str + "找不到来源。");
+                        continue;
+                    }
+
+                    if (column.equals("*")) {
+                        view.columns = tb.columns;
+                    } else {
+                        Column cl = tb.findColumnByName(column);
+                        if (cl == null) {
+                            System.out.println("视图`" + view.name + "`定义查询字段" + str + "不存在。");
+                            continue;
+                        }
+                        view.columns.add(cl);
+                    }
+                } else {
+                    System.out.println("视图`" + view.name + "`定义查询字段" + str + "格式错误。");
+                }
+            }
+        }
+
+        // 查询参数
+        for (String bindStr : select.bindNames) {
+            String[] ss = bindStr.split("\\s+");
+            if (ss.length != 3) {
+                continue;
+            }
+            String[] cols = ss[0].trim().split("\\.");
+            if (cols.length == 2) {
+                String table = cols[0].trim();
+                String column = cols[1].trim();
+                if (table.startsWith("`") && table.endsWith("`")) {
+                    table = table.substring(1, table.length() - 1);
+                }
+                if (column.startsWith("`") && column.endsWith("`")) {
+                    column = column.substring(1, column.length() - 1);
+                }
+
+                Table tb = tbs.get(table);
+                if (tb == null) {
+                    System.out.println("视图`" + view.name + "`定义查询字段" + ss[0] + "找不到来源。");
+                    continue;
+                }
+
+                Column cl = tb.findColumnByName(column);
+                if (cl == null) {
+                    System.out.println("视图`" + view.name + "`定义查询字段" + ss[0] + "不存在。");
+                    continue;
+                }
+                select.binds.add(cl);
+            } else {
+                System.out.println("视图`" + view.name + "`定义查询字段" + ss[0] + "格式错误。");
+            }
+        }
+    }
+
+    private static Table checkTableFromSql(String sql, Matcher m, String tablePrefix) {
+        int end = m.end();
+        int idx = sql.indexOf("(", end);//从匹配命令后开始
+        //解析表头
+        StringBuilder builder = new StringBuilder();
+        for (int i = idx - 1; i >= 0; i--) {
+            char c = sql.charAt(i);
+            if (isLetterChar(c) || isNumberChar(c)) {
+                builder.insert(0, c);
+            } else if (c == '_') {//是否采用驼峰
+                builder.insert(0, c);
+            } else {
+                if (builder.length() > 0) {
+                    break;
+                }
+            }
+        }
+
+        System.out.println("TableName:" + builder.toString());
+
+        Table table = new Table();
+        table.name = builder.toString();
+        if (tablePrefix != null && tablePrefix.length() > 0 && table.name.startsWith(tablePrefix)) {
+            table.alias = table.name.substring(tablePrefix.length(),table.name.length());
+        } else {
+            table.alias = table.name;
+        }
+
+        sql = sql.substring(idx + 1);
+
+        parseSqlTable(sql,table);
+
+        return table;
+    }
+
+    private static ViewTable checkViewFromSql(String sql, Matcher m, String tablePrefix) {
+        int end = m.end();
+        int idx = sql.indexOf("AS", end);//从匹配命令后开始
+        //解析表头
+        StringBuilder builder = new StringBuilder();
+        for (int i = idx - 1; i >= 0; i--) {
+            char c = sql.charAt(i);
+            if (isLetterChar(c) || isNumberChar(c)) {
+                builder.insert(0, c);
+            } else if (c == '_') {//是否采用驼峰
+                builder.insert(0, c);
+            } else {
+                if (builder.length() > 0) {
+                    break;
+                }
+            }
+        }
+
+        System.out.println("ViewName:" + builder.toString());
+
+        ViewTable table = new ViewTable();
+        table.name = builder.toString();
+        if (tablePrefix != null && tablePrefix.length() > 0 && table.name.startsWith(tablePrefix)) {
+            table.alias = table.name.substring(tablePrefix.length(),table.name.length());
+        } else {
+            table.alias = table.name;
+        }
+
+        sql = sql.substring(idx + "AS".length());
+
+        parseSqlViewTable(sql,table);
+
+        return table;
     }
 
     private static void parseSqlTable(String sql,Table table) {
@@ -616,6 +911,124 @@ public class MybatisGenerator extends Generator {
             }
 
         }
+    }
+
+//    SELECT `s_permission`.* FROM `s_permission`,`s_account_permission`
+//    WHERE `s_permission`.`id` = `s_account_permission`.`permission_id`
+//    AND `s_account_permission`.`account_id` = #{accountId}
+//    AND `s_permission`.`domain` = #{domain}
+    private static void parseSqlViewTable(String sql, ViewTable table) {
+
+        List<String> sqls = splitSql(sql.trim());
+
+        for (String line : sqls) {
+            line = line.trim();
+
+            String lowline = line.toLowerCase();
+            int end = lowline.indexOf("from");
+
+            SQLSelect sqlSelect = new SQLSelect();
+
+            if (lowline.startsWith("select") && end > 0 && end < lowline.length()) {
+                StringBuilder builder = new StringBuilder(line);
+                String columns = line.substring("select".length(),end).trim();
+                builder.replace("select".length() + 1, end - 1, SELECT_RESULT_COLUMN_FORMAT);
+
+                sqlSelect.viewColumn = columns;
+                sqlSelect.sql = builder.toString().replaceAll("\n"," ");
+            } else {
+                sqlSelect.sql = line.replaceAll("\n"," ");
+            }
+
+            //分析bind
+            Pattern p = Pattern.compile("[\\w\\.`]{3,}\\s+[<>=!]+\\s+\\#\\{\\w+\\}");
+            Matcher m = p.matcher(line);
+            while (m.find()) {
+                int idx = m.start();
+                int edx = m.end();
+                sqlSelect.bindNames.add(line.substring(idx,edx));
+            }
+
+            table.sqls.add(sqlSelect);
+        }
+    }
+
+//    public static void main(String[] strs) {
+//        String string = "CREATE VIEW `s_permission` AS\n" +
+//                "(\n" +
+//                "  SELECT `s_permission`.* FROM `s_permission`,`s_account_permission`\n" +
+//                "    WHERE `s_permission`.`id` = `s_account_permission`.`permission_id`\n" +
+//                "        AND `s_account_permission`.`account_id` = #{accountId}\n" +
+//                "        AND `s_permission`.`domain` = #{domain}\n" +
+//                ")\n" +
+//                "OR\n" +
+//                "(\n" +
+//                "  SELECT `s_permission`.* FROM `s_permission`,`s_account_role`,`s_role_permissions`\n" +
+//                "    WHERE `s_permission`.`id` = `s_role_permissions`.`permission_id`\n" +
+//                "        AND `s_role_permissions`.`role_id` = `s_account_role`.`role_id`\n" +
+//                "        AND `s_account_role`.`account_id` = #{accountId}\n" +
+//                "        AND `s_permission`.`domain` = #{domain}\n" +
+//                ")";
+//
+//        Pattern p1 = Pattern.compile("create\\s+view", Pattern.CASE_INSENSITIVE);
+//        Matcher m1 = p1.matcher(string);
+//        m1.find();
+//        ViewTable table = checkViewFromSql(string,m1,"s_");
+//
+//        // 查询参数
+//        for (String bindStr : table.sqls.get(0).bindNames) {
+//            String[] ss = bindStr.split("\\s+");
+//            if (ss.length != 3) {
+//                continue;
+//            }
+//            String[] cols = ss[0].trim().split("\\.");
+//            if (cols.length == 2) {
+//                String tableStr = cols[0].trim();
+//                String column = cols[1].trim();
+//                if (tableStr.startsWith("`") && tableStr.endsWith("`")) {
+//                    tableStr = tableStr.substring(1, tableStr.length() - 1);
+//                }
+//                if (column.startsWith("`") && column.endsWith("`")) {
+//                    column = column.substring(1, column.length() - 1);
+//                }
+//                System.out.println(tableStr + column);
+//            } else {
+////                System.out.println("视图`" + view.name + "`定义查询字段" + ss[0] + "格式错误。");
+//            }
+//        }
+//    }
+
+    private static List<String> splitSql(String sql) {
+        List<String> list = new ArrayList<String>();
+        StringBuilder builder = new StringBuilder();
+        int deep = 0;
+        for (int i = 0; i < sql.length(); i++) {
+            char c = sql.charAt(i);
+            if (c == '(') {
+                if (deep == 0) {
+                    builder = new StringBuilder();
+                } else {
+                    builder.append(c);
+                }
+                deep = deep + 1;
+            } else if (c == ')') {
+                deep = deep - 1;
+                if (deep <= 0) {
+                    if (builder.length() > 0) {
+                        list.add(builder.toString());
+                        builder = new StringBuilder();
+                    }
+                } else {
+                    builder.append(c);
+                }
+            } else {
+                builder.append(c);
+            }
+        }
+        if (builder != null && builder.length() > 0) {
+            list.add(builder.toString());
+        }
+        return list;
     }
 
     private static final String REPLACE_STRING_1 = "@~……#1";
@@ -954,14 +1367,22 @@ public class MybatisGenerator extends Generator {
 
         //注意 索引查询需要重新生成类
         boolean hasIndexQuery = table.hasIndexQuery();
+        boolean hasViewQuery = table.hasViewQuery();
         String daoDir = file.getParent();//父目录
         File idxDaoFile = new File(daoDir + File.separator + "inc" + File.separator + className + "IndexQueryDAO.java");
         if (idxDaoFile.exists()) {//先删除
             idxDaoFile.delete();
         }
-
         if (hasIndexQuery) {
             writeIndexQueryDAObject(idxDaoFile,className,packageName,table);
+        }
+
+        File viewDaoFile = new File(daoDir + File.separator + "inc" + File.separator + className + "ViewQueryDAO.java");
+        if (viewDaoFile.exists()) {//先删除
+            viewDaoFile.delete();
+        }
+        if (hasViewQuery) {
+            writeViewQueryDAObject(viewDaoFile,className,packageName,table);
         }
 
         List<MapperMethod> methods = null;
@@ -969,6 +1390,7 @@ public class MybatisGenerator extends Generator {
         //此类全称
         String daobj = table.getDAOClassName(packageName);      //
         String idxDaobj = table.getIncDAOClassName(packageName);//
+        String viewDaobj = table.getIncViewDAOClassName(packageName);//
 
         //如果文件本身存在，则保留文件体
         Map<String,String> imports = new HashMap<String, String>();
@@ -993,12 +1415,19 @@ public class MybatisGenerator extends Generator {
             }
         }
 
-        imports.put(TableDAO.class.getName(),"import " + TableDAO.class.getName() + ";");
+
+        if (!hasIndexQuery && !hasViewQuery) {
+            imports.put(TableDAO.class.getName(), "import " + TableDAO.class.getName() + ";");
+        }
+
         String dobj = table.getDObjectClassName(packageName);   //
         imports.put(dobj,"import " + dobj + ";");
         imports.put(Mapper.class.getName(),"import " + Mapper.class.getName() + ";");
         if (hasIndexQuery) {
             imports.put(idxDaobj,"import " + idxDaobj + ";");
+        }
+        if (hasViewQuery) {
+            imports.put(viewDaobj,"import " + viewDaobj + ";");
         }
 
         StringBuilder content = new StringBuilder();
@@ -1024,8 +1453,12 @@ public class MybatisGenerator extends Generator {
 
 //        content.append("@Mapper\n"); // 扫描方式支持，此处不需要，因为xml中会定义
         content.append("public interface " + className + "DAO ");
-        if (hasIndexQuery) {
+        if (hasIndexQuery && hasViewQuery) {
+            content.append("extends " + className + "IndexQueryDAO, " + className + "ViewQueryDAO ");
+        } else if (hasIndexQuery) {
             content.append("extends " + className + "IndexQueryDAO ");
+        } else if (hasViewQuery) {
+            content.append("extends " + className + "ViewQueryDAO ");
         } else {
             content.append("extends TableDAO<" + className + "DO> ");
         }
@@ -1101,7 +1534,7 @@ public class MybatisGenerator extends Generator {
             content.append("     * 根据以下索引字段查询实体对象集\n");
 
             StringBuilder params = new StringBuilder();
-            buildMethodParams(cols,table,content,params);
+            buildMethodParams(cols,table,content,params,true);
 
             // 排序与limit
             content.append("     * @param sortField 排序字段，传入null时表示不写入sql\n");
@@ -1132,7 +1565,7 @@ public class MybatisGenerator extends Generator {
             content.append("     * 根据以下索引字段计算count\n");
 
             StringBuilder params = new StringBuilder();
-            buildMethodParams(cols,table,content,params);
+            buildMethodParams(cols,table,content,params,true);
 
             content.append("     * @return\n");
             content.append("     */\n");
@@ -1152,7 +1585,115 @@ public class MybatisGenerator extends Generator {
         }
     }
 
-    private static void buildMethodParams(List<Column> cols,Table table, StringBuilder content, StringBuilder params) {
+    private static void writeViewQueryDAObject(File file, String className, String packageName, Table table) {
+
+        File dic = file.getParentFile();
+        if (!dic.exists()) {
+            dic.mkdirs();
+        }
+
+        //如果文件本身存在，则保留文件体
+        Map<String,String> imports = new HashMap<String, String>();
+
+        imports.put(ViewDAO.class.getName(),"import " + ViewDAO.class.getName() + ";");
+//        imports.put(SQL.class.getName(),"import " + SQL.class.getName() + ";");
+        String dobj = table.getDObjectClassName(packageName);
+        imports.put(dobj,"import " + dobj + ";");
+        imports.put(Mapper.class.getName(),"import " + Mapper.class.getName() + ";");
+        imports.put(Param.class.getName(),"import " + Param.class.getName() + ";");
+        imports.put(List.class.getName(),"import " + List.class.getName() + ";");
+
+        //开始写入
+        StringBuilder content = new StringBuilder();
+        content.append("package " + packageName + ".dao.inc;\n\r\n\r");
+
+        //imports
+        Iterator<Map.Entry<String, String>> entries = imports.entrySet().iterator();
+        while (entries.hasNext()) {
+            Map.Entry<String, String> entry = entries.next();
+            content.append(entry.getValue() + "\n");
+        }
+        content.append("\n\n");
+        content.append("/**\n");
+        content.append(" * Owner: Minjun Ling\n");
+        content.append(" * Creator: ESB MybatisGenerator\n");
+        content.append(" * Version: 1.0.0\n");
+        content.append(" * GitHub: https://github.com/lingminjun/esb\n");
+        content.append(" * Since: " + new Date() + "\n");
+        content.append(" * Table: " + table.name + "\n");
+        content.append(" */\n");
+
+        //类定义
+        content.append("public interface " + className + "ViewQueryDAO extends ViewDAO<" + className + "DO> { \n");
+
+        //查询方法
+
+        Map<String, SQLSelect> queryMethods = table.allViewQueryMethod();
+        List<String> methodNames = new ArrayList<String>(queryMethods.keySet());
+        Collections.sort(methodNames);
+        for (String methodName : methodNames) {
+
+            SQLSelect select = queryMethods.get(methodName);
+            List<Column> cols = select.binds;
+
+            content.append("    /**\n");
+            content.append("     * 根据以下索引字段查询实体对象集\n");
+
+            StringBuilder params = new StringBuilder();
+            buildMethodParams(cols, table, content, params, false);
+
+            // 排序与limit
+//            content.append("     * @param sortField 排序字段，传入null时表示不写入sql\n");
+//            content.append("     * @param isDesc 排序为降序\n");
+            content.append("     * @param offset 其实位置\n");
+            content.append("     * @param limit  返回条数\n");
+//            params.append(",@Param(\"sortField\") String sortField");
+//            params.append(",@Param(\"isDesc\") boolean isDesc");
+            params.append(",@Param(\"offset\") int offset");
+            params.append(",@Param(\"limit\") int limit");
+
+            content.append("     * @return\n");
+            content.append("     */\n");
+            content.append("    public List<" + className + "DO> " + methodName + "(");
+            content.append(params.toString());
+            content.append(");\n\r\n\r");
+        }
+
+
+        //求总数方法
+        Map<String,SQLSelect> countMethods = table.allViewCountMethod();
+        List<String> countMethodNames = new ArrayList<String>(countMethods.keySet());
+        Collections.sort(countMethodNames);
+        for (String methodName : countMethodNames) {
+
+            SQLSelect select = countMethods.get(methodName);
+            List<Column> cols = select.binds;
+
+            content.append("    /**\n");
+            content.append("     * 根据以下索引字段计算count\n");
+
+            StringBuilder params = new StringBuilder();
+            buildMethodParams(cols,table,content,params,false);
+
+            content.append("     * @return\n");
+            content.append("     */\n");
+            content.append("    public long " + methodName + "(");
+            content.append(params.toString());
+            content.append(");\n\r\n\r");
+        }
+
+        //结束
+        content.append("}\n\r\n\r");
+
+
+        try {
+            writeFile(file,content.toString());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void buildMethodParams(List<Column> cols,Table table, StringBuilder content, StringBuilder params, boolean checkDeleteColumn) {
         boolean first = true;
         for (Column col : cols) {
             String type = col.getDataType();
@@ -1169,15 +1710,18 @@ public class MybatisGenerator extends Generator {
         }
 
         //判断delete字段
-        Column theDeleteColumn = table.getDeleteStateColumn();
-        if (!Table.hasDeleteStateColumn(cols) && theDeleteColumn != null) {
-            String colName = toHumpString(theDeleteColumn.name,false);
-            content.append("     * @param " + colName + "  " + (theDeleteColumn.cmmt == null ? "" : theDeleteColumn.cmmt) + "\n");
-            if (first) { first = false; }
-            else {
-                params.append(", ");
+        if (checkDeleteColumn) {
+            Column theDeleteColumn = table.getDeleteStateColumn();
+            if (!Table.hasDeleteStateColumn(cols) && theDeleteColumn != null) {
+                String colName = toHumpString(theDeleteColumn.name, false);
+                content.append("     * @param " + colName + "  " + (theDeleteColumn.cmmt == null ? "" : theDeleteColumn.cmmt) + "\n");
+                if (first) {
+                    first = false;
+                } else {
+                    params.append(", ");
+                }
+                params.append("@Param(\"" + colName + "\") " + theDeleteColumn.getDataType() + " " + colName);
             }
-            params.append("@Param(\"" + colName + "\") " + theDeleteColumn.getDataType() + " " + colName);
         }
     }
 
@@ -1297,106 +1841,135 @@ public class MybatisGenerator extends Generator {
             upBuilder.insert(0,"            id = id \n");//为了语法不错，故意设置id作为第一项
         }
 
-        //默认的sql文件编写
+        if (!table.justViewTable()) {//纯视图表，不存在增删改
+            //默认的sql文件编写
 //        public void insert(DO entity) throws DataAccessException;
-        content.append("    <insert id=\"insert\" useGeneratedKeys=\"true\" keyProperty=\"id\" parameterType=\"" + doName + "\">\n");
-        content.append("        insert into `"+table.name+"` (" + incols.toString() +") values (" + inflds.toString() + ")\n");
-        content.append("    </insert>\n\n");
+            content.append("    <insert id=\"insert\" useGeneratedKeys=\"true\" keyProperty=\"id\" parameterType=\"" + doName + "\">\n");
+            content.append("        insert into `" + table.name + "` (" + incols.toString() + ") values (" + inflds.toString() + ")\n");
+            content.append("    </insert>\n\n");
 
 //        public void insertOrUpdate(DO entity) throws DataAccessException;
-        content.append("    <insert id=\"insertOrUpdate\" useGeneratedKeys=\"true\" keyProperty=\"id\" parameterType=\"" + doName + "\">\n");
-        content.append("        insert into `"+table.name+"` (" + incols.toString() +") values (" + inflds.toString() + ") on duplicate key update \n");
-        content.append(upBuilder.toString());
-        content.append("    </insert>\n\n");
+            content.append("    <insert id=\"insertOrUpdate\" useGeneratedKeys=\"true\" keyProperty=\"id\" parameterType=\"" + doName + "\">\n");
+            content.append("        insert into `" + table.name + "` (" + incols.toString() + ") values (" + inflds.toString() + ") on duplicate key update \n");
+            content.append(upBuilder.toString());
+            content.append("    </insert>\n\n");
 
-        //public long batchInsert(List<DO> entities) throws DataAccessException;
-        content.append("    <insert id=\"batchInsert\" useGeneratedKeys=\"true\" parameterType=\"java.util.List\">\n");
-        content.append("        <selectKey resultType=\"long\" keyProperty=\"id\" order=\"AFTER\">\n");
-        content.append("            SELECT LAST_INSERT_ID()\n");
-        content.append("        </selectKey>\n");
-        content.append("        insert into `"+table.name+"` (" + incols.toString() +") values \n");
-        content.append("        <foreach collection=\"list\" item=\"item\" index=\"index\" separator=\",\" >\n");
-        content.append("            (" + item_inflds.toString() + ")\n");
-        content.append("        </foreach>\n");
-        content.append("    </insert>\n\n");
+            //public long batchInsert(List<DO> entities) throws DataAccessException;
+            content.append("    <insert id=\"batchInsert\" useGeneratedKeys=\"true\" parameterType=\"java.util.List\">\n");
+            content.append("        <selectKey resultType=\"long\" keyProperty=\"id\" order=\"AFTER\">\n");
+            content.append("            SELECT LAST_INSERT_ID()\n");
+            content.append("        </selectKey>\n");
+            content.append("        insert into `" + table.name + "` (" + incols.toString() + ") values \n");
+            content.append("        <foreach collection=\"list\" item=\"item\" index=\"index\" separator=\",\" >\n");
+            content.append("            (" + item_inflds.toString() + ")\n");
+            content.append("        </foreach>\n");
+            content.append("    </insert>\n\n");
 
 //        public int update(DO entity) throws DataAccessException;
-        content.append("    <update id=\"update\" parameterType=\"" + doName + "\">\n");
-        content.append("        update `" + table.name + "` set \n");
-        content.append(upBuilder.toString());
-        content.append("        where id = #{id} \n");
-        content.append("    </update>\n\n");
+            content.append("    <update id=\"update\" parameterType=\"" + doName + "\">\n");
+            content.append("        update `" + table.name + "` set \n");
+            content.append(upBuilder.toString());
+            content.append("        where id = #{id} \n");
+            content.append("    </update>\n\n");
 
 //        public int deleteById(Long pk) throws DataAccessException;
-        content.append("    <delete id=\"deleteById\">\n");
-        content.append("        delete from `" + table.name + "` where id = #{id} \n");
-        content.append("    </delete>\n\n");
+            content.append("    <delete id=\"deleteById\">\n");
+            content.append("        delete from `" + table.name + "` where id = #{id} \n");
+            content.append("    </delete>\n\n");
 
 //        public DO getById(Long pk) throws DataAccessException;
-        content.append("    <select id=\"getById\" resultMap=\"" + resultEntity + "\">\n");
-        content.append("        select " + cols.toString() + " \n");
-        content.append("        from `" + table.name + "` \n");
-        content.append("        where id = #{id} \n");
-        content.append("    </select>\n\n");
-
-//        public DO getByIdForUpdate(Long pk) throws DataAccessException;
-        content.append("    <select id=\"getByIdForUpdate\" resultMap=\"" + resultEntity + "\">\n");
-        content.append("        select " + cols.toString() + " \n");
-        content.append("        from `" + table.name + "` \n");
-        content.append("        where id = #{id} \n");
-        content.append("        for update \n");
-        content.append("    </select>\n\n");
-
-        //public List<DO> queryByIds(List<Long> pks);
-        content.append("    <select id=\"queryByIds\" resultMap=\"" + resultEntity + "\">\n");
-        content.append("        select " + cols.toString() + " \n");
-        content.append("        from `" + table.name + "` \n");
-        content.append("        where id en \n");
-        content.append("        <foreach collection=\"list\" item=\"theId\" index=\"index\" \n");
-        content.append("             open=\"(\" close=\")\" separator=\",\"> \n");
-        content.append("             #{theId}  \n");
-        content.append("        </foreach>  \n");
-        content.append("    </select>\n\n");
-
-        // 针对索引建查询语句
-        Map<String,List<Column>> queryMethods = table.allIndexQueryMethod();
-        List<String> methodNames = new ArrayList<String>(queryMethods.keySet());
-        Collections.sort(methodNames);
-        for (String methodName : methodNames) {
-
-            List<Column> tcols = queryMethods.get(methodName);
-            String queryWhere = Table.getSqlWhereFragment(tcols,table);
-
-            content.append("    <select id=\"" + methodName + "\" resultMap=\"" + resultEntity + "\">\n");
+            content.append("    <select id=\"getById\" resultMap=\"" + resultEntity + "\">\n");
             content.append("        select " + cols.toString() + " \n");
             content.append("        from `" + table.name + "` \n");
-            content.append("        where ");
-            content.append(queryWhere);
-            content.append("        <if test=\"sortField != null and sortField != ''\">\n");
-            content.append("            order by `${sortField}` ");//注意参数为字符替换，而不是"?"掩码
-            //MySQL中默认排序是acs(可省略)：从小到大 ; desc ：从大到小，也叫倒序排列。
-            content.append("<if test=\"isDesc\"> desc </if> \n");
-            content.append("        </if>\n");
-            content.append("        limit #{offset},#{limit}\n");//发现limit可以掩码"?"
+            content.append("        where id = #{id} \n");
             content.append("    </select>\n\n");
+
+//        public DO getByIdForUpdate(Long pk) throws DataAccessException;
+            content.append("    <select id=\"getByIdForUpdate\" resultMap=\"" + resultEntity + "\">\n");
+            content.append("        select " + cols.toString() + " \n");
+            content.append("        from `" + table.name + "` \n");
+            content.append("        where id = #{id} \n");
+            content.append("        for update \n");
+            content.append("    </select>\n\n");
+
+            //public List<DO> queryByIds(List<Long> pks);
+            content.append("    <select id=\"queryByIds\" resultMap=\"" + resultEntity + "\">\n");
+            content.append("        select " + cols.toString() + " \n");
+            content.append("        from `" + table.name + "` \n");
+            content.append("        where id en \n");
+            content.append("        <foreach collection=\"list\" item=\"theId\" index=\"index\" \n");
+            content.append("             open=\"(\" close=\")\" separator=\",\"> \n");
+            content.append("             #{theId}  \n");
+            content.append("        </foreach>  \n");
+            content.append("    </select>\n\n");
+
         }
 
-        // 针对索引求count
-        Map<String,List<Column>> countMethods = table.allIndexCountMethod();
-        List<String> countMethodNames = new ArrayList<String>(countMethods.keySet());
-        Collections.sort(countMethodNames);
-        for (String methodName : countMethodNames) {
+        if (table.hasIndexQuery()) {
+            // 针对索引建查询语句
+            Map<String, List<Column>> queryMethods = table.allIndexQueryMethod();
+            List<String> methodNames = new ArrayList<String>(queryMethods.keySet());
+            Collections.sort(methodNames);
+            for (String methodName : methodNames) {
 
-            List<Column> tcols = countMethods.get(methodName);
-            String queryWhere = Table.getSqlWhereFragment(tcols,table);
+                List<Column> tcols = queryMethods.get(methodName);
+                String queryWhere = Table.getSqlWhereFragment(tcols, table);
 
-            content.append("    <select id=\"" + methodName + "\" resultType=\"java.lang.Long\">\n");
-            content.append("        select count(1) from `" + table.name + "` \n");
-            content.append("        where ");
-            content.append(queryWhere);
-            content.append("    </select>\n\n");
+                content.append("    <select id=\"" + methodName + "\" resultMap=\"" + resultEntity + "\">\n");
+                content.append("        select " + cols.toString() + " \n");
+                content.append("        from `" + table.name + "` \n");
+                content.append("        where ");
+                content.append(queryWhere);
+                content.append("        <if test=\"sortField != null and sortField != ''\">\n");
+                content.append("            order by `${sortField}` ");//注意参数为字符替换，而不是"?"掩码
+                //MySQL中默认排序是acs(可省略)：从小到大 ; desc ：从大到小，也叫倒序排列。
+                content.append("<if test=\"isDesc\"> desc </if> \n");
+                content.append("        </if>\n");
+                content.append("        limit #{offset},#{limit}\n");//发现limit可以掩码"?"
+                content.append("    </select>\n\n");
+            }
+
+            // 针对索引求count
+            Map<String, List<Column>> countMethods = table.allIndexCountMethod();
+            List<String> countMethodNames = new ArrayList<String>(countMethods.keySet());
+            Collections.sort(countMethodNames);
+            for (String methodName : countMethodNames) {
+
+                List<Column> tcols = countMethods.get(methodName);
+                String queryWhere = Table.getSqlWhereFragment(tcols, table);
+
+                content.append("    <select id=\"" + methodName + "\" resultType=\"java.lang.Long\">\n");
+                content.append("        select count(1) from `" + table.name + "` \n");
+                content.append("        where ");
+                content.append(queryWhere);
+                content.append("    </select>\n\n");
+            }
         }
 
+        if (table.hasViewQuery()) {
+            // 针对视图建查询语句
+            Map<String, SQLSelect> queryMethods = table.allViewQueryMethod();
+            List<String> methodNames = new ArrayList<String>(queryMethods.keySet());
+            Collections.sort(methodNames);
+            for (String methodName : methodNames) {
+                SQLSelect sqlSelect = queryMethods.get(methodName);
+                content.append("    <select id=\"" + methodName + "\" resultMap=\"" + resultEntity + "\">\n");
+                content.append("        " + sqlSelect.getQuerySql() + " \n");
+                content.append("        limit #{offset},#{limit}\n");//发现limit可以掩码"?"
+                content.append("    </select>\n\n");
+            }
+
+            // 针对视图求count
+            Map<String, SQLSelect> countMethods = table.allViewCountMethod();
+            List<String> countMethodNames = new ArrayList<String>(countMethods.keySet());
+            Collections.sort(countMethodNames);
+            for (String methodName : countMethodNames) {
+                SQLSelect sqlSelect = countMethods.get(methodName);
+                content.append("    <select id=\"" + methodName + "\" resultType=\"java.lang.Long\">\n");
+                content.append("        " + sqlSelect.getCountSql() + "` \n");
+                content.append("    </select>\n\n");
+            }
+        }
 
         //自定的mapper添加
         if (methods != null && methods.size() > 0) {

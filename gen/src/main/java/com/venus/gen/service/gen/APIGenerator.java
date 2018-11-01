@@ -287,31 +287,49 @@ class APIGenerator extends Generator {
         String pojoName = table.getSimplePOJOClassName();
         //所有基本的增删修查
 
-        //增加单个
-        writeCreateMethod(tableModelName,groupName,pojoName,theSecurity,serviceContent,table,false);
+        if (!table.justViewTable()) {
+            //增加单个
+            writeCreateMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, false);
 
-        //批量增加
-        writeBatchCreateMethod(tableModelName,groupName,pojoName,theSecurity,serviceContent,table,false);
+            //批量增加
+            writeBatchCreateMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, false);
 
-        //删，单个删除
-        writeDeleteMethod(tableModelName,groupName,pojoName,theSecurity,serviceContent,table,false);
+            //删，单个删除
+            writeDeleteMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, false);
 
-        //更新某个数据，拆开每个字段
-        writeUpdateMethod(tableModelName,groupName,pojoName,theSecurity,serviceContent,table,false);
+            //更新某个数据，拆开每个字段
+            writeUpdateMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, false);
 
-        //主键查询
-        writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, false, false);
-        writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, false, true);
+            //主键查询
+            writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, false, false);
+            writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, false, true);
+        }
 
         //查询，索引查询，翻页
-        Map<String,List<MybatisGenerator.Column>> queryMethods = table.allIndexQueryMethod();
-        List<String> methodNames = new ArrayList<String>(queryMethods.keySet());
-        Collections.sort(methodNames);
-        for (String methodName : methodNames) {
-            List<MybatisGenerator.Column> cols = queryMethods.get(methodName);
+        {
+            Map<String, List<MybatisGenerator.Column>> queryMethods = table.allIndexQueryMethod();
+            List<String> methodNames = new ArrayList<String>(queryMethods.keySet());
+            Collections.sort(methodNames);
+            for (String methodName : methodNames) {
+                List<MybatisGenerator.Column> cols = queryMethods.get(methodName);
 
-            writeQueryMethod(tableModelName,groupName,pojoName,methodName,cols,theSecurity,serviceContent,table,false,false);
-            writeQueryMethod(tableModelName,groupName,pojoName,methodName,cols,theSecurity,serviceContent,table,false,true);
+                writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, false, false, false);
+                writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, false, true, false);
+            }
+        }
+
+        //查询，视图查询，翻页
+        {
+            Map<String, MybatisGenerator.SQLSelect> viewMethods = table.allViewQueryMethod();
+            List<String> methodNames = new ArrayList<String>(viewMethods.keySet());
+            Collections.sort(methodNames);
+            for (String methodName : methodNames) {
+                MybatisGenerator.SQLSelect sqlSelect = viewMethods.get(methodName);
+                List<MybatisGenerator.Column> cols = sqlSelect.getBinds();
+
+                writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, false, false, true);
+                writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, false, true, true);
+            }
         }
 
         serviceContent.append("}\n\r\n\r");
@@ -436,7 +454,7 @@ class APIGenerator extends Generator {
             serviceContent.append("    @ESBAPI(module = \"" + groupName + "\",name = \"" + removeMethod + "\", desc = \"删除" + pojoName + "\", security = " + theSecurity + ")\n");
         } else {
             serviceContent.append("    @Override\n");
-            //serviceContent.append("    @AutoCache(key = \"" + table.getAlias().toUpperCase() + "_#{id}\", evict = true)\n");
+            serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + "_#{id}\", evict = true)\n");
         }
         serviceContent.append("    public boolean " + removeMethod + "(@ESBParam(name = \"id\", desc = \"对象id\", required = true) final long id");
 
@@ -468,7 +486,7 @@ class APIGenerator extends Generator {
             serviceContent.append("    @ESBAPI(module = \"" + groupName + "\",name = \"" + updateMethod + "\", desc = \"更新" + pojoName + "，仅更新不为空的字段\", security = " + theSecurity + ")\n");
         } else {
             serviceContent.append("    @Override\n");
-            //serviceContent.append("    @AutoCache(key = \"" + table.getAlias().toUpperCase() + "_#{id}\", evict = true)\n");
+            serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + "_#{id}\", evict = true)\n");
         }
 
         String defineMethod = "    public boolean " + updateMethod + "(@ESBParam(name = \"id\", desc = \"更新对象的id\", required = true) final long id";
@@ -542,7 +560,9 @@ class APIGenerator extends Generator {
             serviceContent.append("    @ESBAPI(module = \"" + groupName + "\",name = \"" + findMethod + "\", desc = \"寻找" + pojoName + "\", security = " + (hasCache ? "ESBSecurityLevel.integrated" : theSecurity) + ")\n");
         } else {
             serviceContent.append("    @Override\n");
-            //serviceContent.append("    @AutoCache(key = \"" + table.getAlias().toUpperCase() + "_#{id}\", async = true, condition=\"!#{noCache}\")\n");
+            if (hasCache) {
+                serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + "_#{id}\", async = true, condition=\"!#{noCache}\")\n");
+            }
         }
 
         String defineMethod = "    public " + pojoName + " " + findMethod + "(@ESBParam(name = \"id\", desc = \"对象id\", required = true) final long id";
@@ -586,7 +606,7 @@ class APIGenerator extends Generator {
 
     }
 
-    public static void writeQueryMethod(String tableModelName, String groupName, String pojoName, String queryMethodName, List<MybatisGenerator.Column> columns, String theSecurity, StringBuilder serviceContent, MybatisGenerator.Table table, boolean implement, boolean hasCache) {
+    public static void writeQueryMethod(String tableModelName, String groupName, String pojoName, String queryMethodName, List<MybatisGenerator.Column> columns, String theSecurity, StringBuilder serviceContent, MybatisGenerator.Table table, boolean implement, boolean hasCache, boolean isViewQuery) {
 
         String methodName = (hasCache ? "rawQuery" : "query") + tableModelName + queryMethodName.substring(5,queryMethodName.length());//.replace("query", "query" + tableModelName);
 
@@ -625,7 +645,7 @@ class APIGenerator extends Generator {
         boolean hasDeleted = false;
         String delParamIn = "";
         MybatisGenerator.Column theDelete = null;
-        if (table != null) {
+        if (!isViewQuery && table != null) {
             theDelete = table.getDeleteStateColumn();
             if (!MybatisGenerator.Table.hasDeleteStateColumn(columns) && theDelete != null) {
                 hasDeleted = true;
@@ -656,11 +676,13 @@ class APIGenerator extends Generator {
             serviceContent.append("    @ESBAPI(module = \"" + groupName + "\",name = \"" + methodName + "\", desc = \"批量插入" + pojoName + "\", security = " + (hasCache ? "ESBSecurityLevel.integrated" : theSecurity) + ")\n");
         } else {
             serviceContent.append("    @Override\n");
-            //if (hasDeleted) {
-                //serviceContent.append("    @AutoCache(key = \"" + table.getAlias().toUpperCase() + "_QUERY_BY_" + cacheKeyDef.toString() + "\", async = true, condition=\"!#{noCache} && !#{isDeleted}\")\n");
-            //} else {
-                //serviceContent.append("    @AutoCache(key = \"" + table.getAlias().toUpperCase() + "_QUERY_BY_" + cacheKeyDef.toString() + "\", async = true, condition=\"!#{noCache}\")\n");
-            //}
+            if (hasCache) {
+                if (hasDeleted) {
+                    serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + (isViewQuery ? "" : "_QUERY_BY_") + cacheKeyDef.toString() + "\", async = true, condition=\"!#{noCache} && !#{isDeleted}\")\n");
+                } else {
+                    serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + (isViewQuery ? "" : "_QUERY_BY_") + cacheKeyDef.toString() + "\", async = true, condition=\"!#{noCache}\")\n");
+                }
+            }
         }
 
 
@@ -698,7 +720,7 @@ class APIGenerator extends Generator {
 
         if (!hasCache) {
             serviceContent.append("        // Please add the cached code here.\n");
-            serviceContent.append("        // String cackekey = \"" + table.getAlias().toUpperCase() + "_QUERY_BY_" + cacheKeyDef.toString() + "\";\n\n");
+            serviceContent.append("        // String cackeKey = \"" + table.getAlias().toUpperCase() + (isViewQuery ? "" : "_QUERY_BY_") + cacheKeyDef.toString() + "\";\n\n");
             serviceContent.append("        return this.");
             serviceContent.append("raw");
             serviceContent.append(toUpperHeadString(methodName));
@@ -730,7 +752,11 @@ class APIGenerator extends Generator {
                 serviceContent.append(",");
                 serviceContent.append(delParamIn);
             }
-            serviceContent.append(",null,false,(pageSize * (pageIndex - 1)), pageSize);\n");
+            if (isViewQuery) {
+                serviceContent.append(",(pageSize * (pageIndex - 1)), pageSize);\n");
+            } else {
+                serviceContent.append(",null,false,(pageSize * (pageIndex - 1)), pageSize);\n");
+            }
             serviceContent.append("        List<" + pojoName + "> rs = new ArrayList<" + pojoName + ">();\n");
             serviceContent.append("        for (" + dataObj + " dobj : list) {\n");
             serviceContent.append("            " + pojoName + " pojo = new " + pojoName + "();\n");

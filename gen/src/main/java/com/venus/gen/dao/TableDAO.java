@@ -6,8 +6,9 @@ import java.util.List;
 /**
  * User: 凌敏均
  * Date: 17/12/06
+ * Description: 用于处理有物理存储表的Dao
  */
-public interface TableDAO<DO extends Serializable> {
+public interface TableDAO<DO extends Serializable> extends ViewDAO<DO> {
 
     /**
      * 添加实体

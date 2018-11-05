@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
+import sun.reflect.generics.reflectiveObjects.TypeVariableImpl;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
@@ -688,7 +689,7 @@ public class ESBAPIHelper {
             //增加对Collection自定义Object的支持+List<String>的支持
             Class<?> genericClazz;
             try {
-                genericClazz = getListActuallyGenericType(returnType,method.getGenericReturnType());
+                genericClazz = getListActuallyGenericType(returnType,method.getGenericReturnType(),null);
             } catch (Exception e) {
                 throw new RuntimeException("generic type load failed:" + method.getGenericReturnType() + " in " + dubboServiceClazz.getName() + " method name:" + method.getName(), e);
             }
@@ -794,7 +795,7 @@ public class ESBAPIHelper {
             //入参的递归检查 对于泛型map,array不支持切记,仅仅支持list
             if (Collection.class.isAssignableFrom(type)) {//增加对List自定义Object的支持+List<String>的支持,此处可以支持set
                 try {
-                    genericClazz = getListActuallyGenericType(type,method.getGenericParameterTypes()[i]);
+                    genericClazz = getListActuallyGenericType(type,method.getGenericParameterTypes()[i],null);
                 } catch (Exception e) {
                     throw new RuntimeException("generic type unsupported:" + method.getGenericParameterTypes()[i] + " in interface:" + service.getName() + " method:" + method.getName(), e);
                 }
@@ -1043,7 +1044,7 @@ public class ESBAPIHelper {
         return params.toArray(new ESBAPIParam[0]);
     }
 
-    private static Class<?> getListActuallyGenericType(Class<?> clazz, Type genericType) {
+    private static Class<?> getListActuallyGenericType(Class<?> clazz, Type genericType, Class<?> targetClazz) {
         Class<?> genericClazz = null;
         if (Collection.class.isAssignableFrom(clazz)) {//增加对List自定义Object的支持+List<String>的支持,此处可以支持set
             if (List.class.isAssignableFrom(clazz)) {
@@ -1053,6 +1054,18 @@ public class ESBAPIHelper {
                     genericArgument = ((ParameterizedTypeImpl) genericType).getActualTypeArguments()[0];
                 } catch (Throwable t) {
                     throw new RuntimeException("generic type unsupported:" + genericType, t);
+                }
+
+                // 取到泛型参数
+                if (targetClazz != null && (genericArgument instanceof TypeVariableImpl)) {
+                    //当类型泛型模板来自父类定义
+                    if (((TypeVariableImpl) genericArgument).getGenericDeclaration() == targetClazz.getSuperclass()) {
+                        ParameterizedType type = (ParameterizedType)targetClazz.getGenericSuperclass();
+                        Type[] pts = type.getActualTypeArguments();
+                        if (pts.length == 1) {//只有一个的时候才可以确定泛型参数来自类泛型，多个无法确认参数是第几个
+                            genericArgument = pts[0];
+                        }
+                    }
                 }
 
                 try {
@@ -1141,7 +1154,7 @@ public class ESBAPIHelper {
 
             Class<?> genericClazz = null;
             try {
-                genericClazz = getListActuallyGenericType(clazz,getGenericType);
+                genericClazz = getListActuallyGenericType(clazz,getGenericType,entityClazz);
             } catch (Exception e) {
                 System.out.println("对象" + entityClazz.getName() + "存在不合法泛型属性" + clazz.getName() + " " + fieldName);
                 return false;

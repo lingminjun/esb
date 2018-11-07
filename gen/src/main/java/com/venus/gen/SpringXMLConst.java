@@ -189,7 +189,7 @@ public final class SpringXMLConst {
     public static final String MAPPER_XML_CONFIG_END = "</configuration>";
 
     public static final String MAPPER_SQLMAP_PATH = "@sqlmap@";
-    private static final String MAPPER_RESOURCE_CONFIG = "        <mapper resource=\"@sqlmap@\"  />";
+    private static final String MAPPER_RESOURCE_CONFIG = "        <mapper resource=\"@sqlmap@\"  />\n";
     public static final String theMapper(String sqlmap) {
         return MAPPER_RESOURCE_CONFIG.replaceAll(MAPPER_SQLMAP_PATH,"sqlmap" + File.separator + sqlmap);
     }

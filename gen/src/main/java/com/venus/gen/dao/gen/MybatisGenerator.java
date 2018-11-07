@@ -2060,7 +2060,7 @@ public class MybatisGenerator extends Generator {
         for (MapperInfo mapperInfo : mappers) {
             content.append(SpringXMLConst.theMapper(mapperInfo.mapperFileName));
         }
-        content.append("\n    </mappers>\n");
+        content.append("    </mappers>\n");
         content.append(SpringXMLConst.MAPPER_XML_CONFIG_END);
 
         try {

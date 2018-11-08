@@ -570,7 +570,9 @@ public class MybatisGenerator extends Generator {
         super(packageName,projectDir);
 
         if (mapperPath == null || mapperPath.length() == 0) {
-            mapperPath = SQLMAP_CONFIG_NAME;
+            String application = this.getProjectSimpleName();
+            String file_prefix = (application != null && application.length() > 0 ? application + "-" : "");
+            mapperPath = file_prefix + SQLMAP_CONFIG_NAME;
         }
 
         this.sqlsSourcePath = sqlsSourcePath;
@@ -582,7 +584,9 @@ public class MybatisGenerator extends Generator {
     public MybatisGenerator(ProjectModule rootProject, ProjectModule project,  String sqlsSourcePath, String tablePrefix,String mapperPath) {
         super(rootProject,project);
         if (mapperPath == null || mapperPath.length() == 0) {
-            mapperPath = SQLMAP_CONFIG_NAME;
+            String application = this.getProjectSimpleName();
+            String file_prefix = (application != null && application.length() > 0 ? application + "-" : "");
+            mapperPath = file_prefix + SQLMAP_CONFIG_NAME;
         }
 
         this.sqlsSourcePath = sqlsSourcePath;

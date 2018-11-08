@@ -78,7 +78,7 @@ public final class SpringXMLConst {
             "        <property name=\"port\" value=\"-1\"/>\n" +
             "    </bean>\n" +
             "\n" +
-            "    <!--<import resource=\"classpath*:application-persistence.xml\"/>-->\n" +
+            "    <!--<import resource=\"classpath*:@ApplicationName@-application-persistence.xml\"/>-->\n" +
             "\n" +
             "    <!-- 统一配置provider -->\n" +
             "    <dubbo:provider application=\"dubboApplicationConfig\"\n" +

@@ -628,19 +628,22 @@ public class MybatisGenerator extends Generator {
 
         //开启xml自动配置
         if (this.genXmlConfig && mappers.size() > 0) {
+            String application = this.getProjectSimpleName();
+            String file_prefix = (application != null && application.length() > 0 ? application + "-" : "");
+
             String mapperName = mapperPath;
             String mapperConf = null;
             //mybatis配置路径
             if (mapperPath != null && mapperPath.length() > 0) {
                 mapperConf = this.resourcesPath() + File.separator + mapperPath;
             } else {
-                mapperName = SQLMAP_CONFIG_NAME;
-                mapperConf = this.resourcesPath() + File.separator + SQLMAP_CONFIG_NAME;
+                mapperName = file_prefix + SQLMAP_CONFIG_NAME;
+                mapperConf = this.resourcesPath() + File.separator + file_prefix + SQLMAP_CONFIG_NAME;
             }
             writeMapperSetting(mapperConf,mappers);
 
             //spring bean配置
-            String springConf = this.resourcesPath() + File.separator + SPRING_BEAN_XML_NAME;
+            String springConf = this.resourcesPath() + File.separator + file_prefix + SPRING_BEAN_XML_NAME;
             writeSpringXml(springConf,mapperName,mappers,this.getProjectSimpleName());
 
         }

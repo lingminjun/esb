@@ -663,6 +663,23 @@ public class MybatisGenerator extends Generator {
         return new ArrayList<Table>(tables);
     }
 
+    // 过滤sql注释行
+    private static String trimCommentLine(String sql) {
+        if (sql == null) {
+            return sql;
+        }
+        String s = sql.trim();
+        StringBuilder builder = new StringBuilder();
+        String[] ss = s.split("\n");
+        for (String str : ss) {
+            if (str.trim().startsWith("#") || str.trim().startsWith("--")) {
+                continue;
+            } else {
+                builder.append(str);
+            }
+        }
+        return builder.toString();
+    }
 
     private static List<Table> parseSqlTables(String sqlsSourcePath, String tablePrefix) {
 
@@ -674,7 +691,9 @@ public class MybatisGenerator extends Generator {
 
         //采用";"分割
         String[] sqls = specialSplit(sqlsContent,';');
-        for (String sql : sqls) {
+        for (String tempSql : sqls) {
+
+            String sql = trimCommentLine(tempSql);
 
             //不能分割
             Pattern p = Pattern.compile("create\\s+table", Pattern.CASE_INSENSITIVE);

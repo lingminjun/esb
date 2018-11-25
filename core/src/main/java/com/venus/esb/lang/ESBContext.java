@@ -680,7 +680,7 @@ public class ESBContext implements Serializable {
 
         //仅仅cookie处理下
         if (ESBSTDKeys.COOKIE_KEY.equals(key) && cookies != null) {
-            return JSON.toJSONString(cookies, ESBConsts.FASTJSON_SERIALIZER_FEATURES);
+            return JSON.toJSONString(cookies.values(), ESBConsts.FASTJSON_SERIALIZER_FEATURES);
         }
 
         return null;

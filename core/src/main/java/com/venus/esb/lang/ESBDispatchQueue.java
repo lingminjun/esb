@@ -111,6 +111,7 @@ public final class ESBDispatchQueue implements Closeable {
             _aid = ESBThreadLocal.get(ESBSTDKeys.AID_KEY);
             _did = ESBThreadLocal.get(ESBSTDKeys.DID_KEY);
             _uid = ESBThreadLocal.get(ESBSTDKeys.UID_KEY);
+            _acct = ESBThreadLocal.get(ESBSTDKeys.ACCT_KEY);
             _pid = ESBThreadLocal.get(ESBSTDKeys.PID_KEY);
 //            _mk = ESBThreadLocal.get(ESBSTDKeys.MOCK_FLAG_KEY);
 
@@ -127,6 +128,7 @@ public final class ESBDispatchQueue implements Closeable {
         private String _aid;
         private String _did;
         private String _uid;
+        private String _acct;
         private String _pid;
         private String _l10n;
 //        private String _mk;
@@ -143,6 +145,7 @@ public final class ESBDispatchQueue implements Closeable {
                 ESBThreadLocal.put(ESBSTDKeys.AID_KEY,_aid);
                 ESBThreadLocal.put(ESBSTDKeys.DID_KEY,_did);
                 ESBThreadLocal.put(ESBSTDKeys.UID_KEY,_uid);
+                ESBThreadLocal.put(ESBSTDKeys.ACCT_KEY,_acct);
                 ESBThreadLocal.put(ESBSTDKeys.PID_KEY,_pid);
 //                ESBThreadLocal.put(ESBSTDKeys.MOCK_FLAG_KEY,_mk);
                 if (_span != null && _brave != null) {
@@ -158,6 +161,7 @@ public final class ESBDispatchQueue implements Closeable {
                 ESBThreadLocal.remove(ESBSTDKeys.AID_KEY);
                 ESBThreadLocal.remove(ESBSTDKeys.DID_KEY);
                 ESBThreadLocal.remove(ESBSTDKeys.UID_KEY);
+                ESBThreadLocal.remove(ESBSTDKeys.ACCT_KEY);
                 ESBThreadLocal.remove(ESBSTDKeys.PID_KEY);
 //                ESBThreadLocal.remove(ESBSTDKeys.MOCK_FLAG_KEY);
             }
@@ -174,6 +178,7 @@ public final class ESBDispatchQueue implements Closeable {
             _aid = ESBThreadLocal.get(ESBSTDKeys.AID_KEY);
             _did = ESBThreadLocal.get(ESBSTDKeys.DID_KEY);
             _uid = ESBThreadLocal.get(ESBSTDKeys.UID_KEY);
+            _acct = ESBThreadLocal.get(ESBSTDKeys.ACCT_KEY);
             _pid = ESBThreadLocal.get(ESBSTDKeys.PID_KEY);
 //            _mk = ESBThreadLocal.get(ESBSTDKeys.MOCK_FLAG_KEY);
             Brave brave = ESBBraveFactory.getBrave(false);
@@ -189,6 +194,7 @@ public final class ESBDispatchQueue implements Closeable {
         private String _aid;
         private String _did;
         private String _uid;
+        private String _acct;
         private String _pid;
         private String _l10n;
 //        private String _mk;
@@ -205,6 +211,7 @@ public final class ESBDispatchQueue implements Closeable {
                 ESBThreadLocal.put(ESBSTDKeys.AID_KEY,_aid);
                 ESBThreadLocal.put(ESBSTDKeys.DID_KEY,_did);
                 ESBThreadLocal.put(ESBSTDKeys.UID_KEY,_uid);
+                ESBThreadLocal.put(ESBSTDKeys.ACCT_KEY,_acct);
                 ESBThreadLocal.put(ESBSTDKeys.PID_KEY,_pid);
 //                ESBThreadLocal.put(ESBSTDKeys.MOCK_FLAG_KEY,_mk);
                 if (_span != null && _brave != null) {
@@ -220,6 +227,7 @@ public final class ESBDispatchQueue implements Closeable {
                 ESBThreadLocal.remove(ESBSTDKeys.AID_KEY);
                 ESBThreadLocal.remove(ESBSTDKeys.DID_KEY);
                 ESBThreadLocal.remove(ESBSTDKeys.UID_KEY);
+                ESBThreadLocal.remove(ESBSTDKeys.ACCT_KEY);
                 ESBThreadLocal.remove(ESBSTDKeys.PID_KEY);
 //                ESBThreadLocal.remove(ESBSTDKeys.MOCK_FLAG_KEY);
             }

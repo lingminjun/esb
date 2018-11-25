@@ -111,10 +111,12 @@ public class ESBRPCFilter implements Filter {
             ESBThreadLocal.put(ESBSTDKeys.AID_KEY,context.getAttachment(ESBSTDKeys.AID_KEY));
             ESBThreadLocal.put(ESBSTDKeys.DID_KEY,context.getAttachment(ESBSTDKeys.DID_KEY));
             ESBThreadLocal.put(ESBSTDKeys.UID_KEY,context.getAttachment(ESBSTDKeys.UID_KEY));
+            ESBThreadLocal.put(ESBSTDKeys.ACCT_KEY,context.getAttachment(ESBSTDKeys.ACCT_KEY));
             ESBThreadLocal.put(ESBSTDKeys.PID_KEY,context.getAttachment(ESBSTDKeys.PID_KEY));
             ESBMDC.put(ESBSTDKeys.AID_KEY,context.getAttachment(ESBSTDKeys.AID_KEY));
             ESBMDC.put(ESBSTDKeys.DID_KEY,context.getAttachment(ESBSTDKeys.DID_KEY));
             ESBMDC.put(ESBSTDKeys.UID_KEY,context.getAttachment(ESBSTDKeys.UID_KEY));
+            ESBMDC.put(ESBSTDKeys.ACCT_KEY,context.getAttachment(ESBSTDKeys.ACCT_KEY));
             ESBMDC.put(ESBSTDKeys.PID_KEY,context.getAttachment(ESBSTDKeys.PID_KEY));
 
 //            ESBThreadLocal.put(ESBSTDKeys.MOCK_FLAG_KEY, context.getAttachment(ESBSTDKeys.MOCK_FLAG_KEY));
@@ -185,12 +187,14 @@ public class ESBRPCFilter implements Filter {
                 ESBMDC.remove(ESBSTDKeys.AID_KEY);
                 ESBMDC.remove(ESBSTDKeys.DID_KEY);
                 ESBMDC.remove(ESBSTDKeys.UID_KEY);
+                ESBMDC.remove(ESBSTDKeys.ACCT_KEY);
                 ESBMDC.remove(ESBSTDKeys.PID_KEY);
 
                 ESBThreadLocal.remove(ESBSTDKeys.TID_KEY);//记录tid,继续透传
                 ESBThreadLocal.remove(ESBSTDKeys.AID_KEY);
                 ESBThreadLocal.remove(ESBSTDKeys.DID_KEY);
                 ESBThreadLocal.remove(ESBSTDKeys.UID_KEY);
+                ESBThreadLocal.remove(ESBSTDKeys.ACCT_KEY);
                 ESBThreadLocal.remove(ESBSTDKeys.PID_KEY);
 
 //                ESBThreadLocal.remove(ESBSTDKeys.MOCK_FLAG_KEY);

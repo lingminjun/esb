@@ -142,7 +142,7 @@ public class ESBContext implements Serializable {
             this.uid = _uid;
         }
         String _xid = ESBThreadLocal.get(ESBSTDKeys.ACCT_KEY);
-        if (_uid != null) {
+        if (_xid != null) {
             this.acct = _xid;
         }
         String _pid = ESBThreadLocal.get(ESBSTDKeys.PID_KEY);

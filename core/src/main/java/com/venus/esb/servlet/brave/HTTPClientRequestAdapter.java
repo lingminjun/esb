@@ -90,6 +90,7 @@ public class HTTPClientRequestAdapter implements ClientRequestAdapter {
         excepts.add(ESBSTDKeys.AID_KEY);//会在record中单独记录
         excepts.add(ESBSTDKeys.DID_KEY);//会在record中单独记录
         excepts.add(ESBSTDKeys.UID_KEY);//会在record中单独记录
+        excepts.add(ESBSTDKeys.ACCT_KEY);//会在record中单独记录
         excepts.add(ESBSTDKeys.PID_KEY);//会在record中单独记录
         excepts.add(ESBSTDKeys.L10N_KEY);//会在record中单独记录
         excepts.add(ESBSTDKeys.TOKEN_KEY);//敏感信息不应该记录
@@ -197,6 +198,10 @@ public class HTTPClientRequestAdapter implements ClientRequestAdapter {
         v = ESBThreadLocal.get(ESBSTDKeys.UID_KEY);
         if (v != null) {
             annotations.add(KeyValueAnnotation.create(ESBSTDKeys.UID_KEY, v));
+        }
+        v = ESBThreadLocal.get(ESBSTDKeys.ACCT_KEY);
+        if (v != null) {
+            annotations.add(KeyValueAnnotation.create(ESBSTDKeys.ACCT_KEY, v));
         }
         v = ESBThreadLocal.get(ESBSTDKeys.PID_KEY);
         if (v != null) {

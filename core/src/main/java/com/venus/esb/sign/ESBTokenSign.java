@@ -70,6 +70,7 @@ public final class ESBTokenSign {
             client.aid = dis.readInt();
             client.did = dis.readLong();
             client.uid = dis.readLong();
+            client.acct = dis.readLong();
             short len = dis.readShort();
             if (len > 0) {
                 byte[] bys = new byte[len];
@@ -130,6 +131,7 @@ public final class ESBTokenSign {
             dos.writeInt(client.aid);
             dos.writeLong(client.did);
             dos.writeLong(client.uid);
+            dos.writeLong(client.acct);
             short len = 0;
             byte[] bys = null;
             if (client.key != null && client.key.length() > 0) {
@@ -177,6 +179,7 @@ public final class ESBTokenSign {
      */
     public byte[] generateDeviceToken(ESBSecur client) {
         client.uid = 0;
+        client.acct = 0;
         client.securityLevel = ESBSecurityLevel.deviceAuth.authorize(0);
         return generateToken(client);
     }
@@ -227,6 +230,7 @@ public final class ESBTokenSign {
 
         ESBSecur client = context.generateClient();
         client.uid = 0;
+        client.acct = 0;
         client.securityLevel =  ESBSecurityLevel.deviceAuth.authorize(0);
         client.expire = 0;//永不过期
         client.key = csrfToken;
@@ -250,13 +254,29 @@ public final class ESBTokenSign {
 
         if (token == null) {
             token = new ESBToken();
-            token.scope = "global";
+            if (context.uid != null && context.uid.length() > 0) {
+                token.scope = "user";
+            } else if (context.acct != null && context.acct.length() > 0) {
+                token.scope = "account";
+            } else {
+                token.scope = "user";
+            }
+        } else {//反向注入uid和acct--(重要)
+            if (token.uid != null && context.uid == null) {
+                context.uid = token.uid;
+            }
+            if (token.acct != null && context.acct == null) {
+                context.acct = token.acct;
+            }
         }
 
         token.success = true;
 
         //默认一个月
         long expire = token.expire > 0 ? token.expire : (context.at/1000l + 30 * 24 * 3600);
+        if (expire <= context.at/1000l) {//修正并兼容expire设置错误
+            expire = context.at/1000l + expire;
+        }
         byte[] key = AesHelper.randomKey(256);
         String csrfToken = HexStringUtil.toHexString(key);
 
@@ -269,6 +289,8 @@ public final class ESBTokenSign {
 
         // cookie保存或者客户端保存，用sso
         // 针对web,保护token，防止伪造，假装csrf_token，写入cookie，并设置httpOnly=true，secure=true
+        // 默认过期时间比token多一个月
+        client.expire = expire + 30 * 24 * 3600;
         client.securityLevel = ESBSecurityLevel.secretAuth.authorize(0);
         client.dna = MD5.md5(token.token);//包含token签名
         token.stoken = ESBTokenSign.defaultSign().generateStringToken(client);
@@ -299,6 +321,9 @@ public final class ESBTokenSign {
 
         //默认1分钟
         long expire = token.expire > 0 ? token.expire : (context.at/1000l + 60);
+        if (expire <= context.at/1000l) {//修正并兼容expire设置错误
+            expire = context.at/1000l + expire;
+        }
 //        byte[] key = AesHelper.randomKey(256);
 //        String csrfToken = HexStringUtil.toHexString(key);
         ESBSSOSecur client = new ESBSSOSecur();
@@ -327,6 +352,9 @@ public final class ESBTokenSign {
      * @return
      */
     public static ESBSecur parseDefaultToken(String token, ESBContext context) {
+        return parseDefaultToken(token,context,null);
+    }
+    public static ESBSecur parseDefaultToken(String token, ESBContext context, String utoken) {
         if (StringUtils.isEmpty(token)) {return null;}
         ESBSecur client = ESBTokenSign.defaultSign().parseToken(token);
         if (client == null) {
@@ -364,13 +392,46 @@ public final class ESBTokenSign {
             }
         }
 
-        //DNA界定,是否做强校验,还需考察 FIX ME:
-        if (!StringUtils.isEmpty(client.dna)) {
-            if (context != null && !StringUtils.isEmpty(context.dna) && context.dna.equals(client.dna)) {
+        //acct的校验
+        if (client.acct != 0) {
+            //校验合法性
+            if (context != null && !StringUtils.isEmpty(context.acct) && !context.acct.equals(""+client.acct)) {
                 return null;
             }
             if (context != null) {
-                context.dna = client.dna;
+                context.acct = "" + client.acct;//补全数据
+            }
+        }
+
+        //DNA界定,是否做强校验
+        // 有三类情况，
+        //      1、device token, 签署user agent，将于context.dna一致
+        //      2、user and account token, 签署did 故不需要做dna比较
+        //      3、security token和refresh token，签署 user token
+        //      4、其他token，不做校验
+
+        if (!StringUtils.isEmpty(client.dna)) {
+            //第1种情况
+            if (client.securityLevel == ESBSecurityLevel.userAuth.getCode()) {
+                if (context != null && !StringUtils.isEmpty(context.dna) && context.dna.equals(client.dna)) {
+                    return null;
+                }
+                if (context != null) {
+                    context.dna = client.dna;
+                }
+            } else if (client.securityLevel == ESBSecurityLevel.userAuth.getCode()
+                    || client.securityLevel == ESBSecurityLevel.accountAuth.getCode()) {
+                // 依靠did签署
+                /*
+                if (dtoken != null && dtoken.length() > 0) {
+
+                }*/
+            } else if (client.securityLevel == ESBSecurityLevel.secretAuth.getCode()
+                    || client.securityLevel == ESBSecurityLevel.extend.getCode()) {
+                // 业务ESB同样会验证
+                if (!StringUtils.isEmpty(utoken) && !MD5.md5(utoken).equals(client.dna)) {
+                    return null;
+                }
             }
         }
 

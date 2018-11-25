@@ -39,7 +39,7 @@ public final class ESBToken implements Serializable {
     @ESBDesc(value = "issu_key：颁发公钥，加签秘钥（私钥保存在token中），必选项，不写入cookie，客户端保留好。",entrust = true)
     public String key;
 
-    @ESBDesc(value = "expires_in：表示过期时间，单位为秒。如果省略该参数，必须其他方式设置过期时间。",entrust = true)
+    @ESBDesc(value = "expires_in：表示过期时间点，单位为秒。此字段随为entrust，但只有等于零时才被网关覆盖",entrust = true)
     public long expire;
 
     @ESBDesc("scope：表示权限范围，如果与客户端申请的范围一致，此项可省略。推荐【global,user,device,token,temporary】,可自定义")
@@ -50,6 +50,9 @@ public final class ESBToken implements Serializable {
 
     @ESBDesc("用户id")
     public String uid;
+
+    @ESBDesc("账号id")
+    public String acct;
 
     @ESBDesc("用户信息")
     public String user;
@@ -113,6 +116,10 @@ public final class ESBToken implements Serializable {
 
     public void setUid(String uid) {
         this.uid = uid;
+    }
+
+    public void setAcct(String acct) {
+        this.acct = acct;
     }
 
     public void setUser(String user) {

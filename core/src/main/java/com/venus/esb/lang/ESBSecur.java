@@ -20,12 +20,14 @@ public final class ESBSecur implements Serializable {
     public int    aid;//应用id
     @ESBDesc("认证方式")
     public int    securityLevel;
-    @ESBDesc("过期时间,单位秒")
+    @ESBDesc("过期时间点,单位秒")
     public long   expire;
     @ESBDesc("设备id")
     public long   did;//设备id
     @ESBDesc("user id")
     public long   uid;//用户id
+    @ESBDesc("account id")
+    public long   acct;//account id
     @ESBDesc("设备公钥(下发客服端),夹带在token中")
     public String key;                      // 设备身份公钥
     /*
@@ -54,6 +56,10 @@ public final class ESBSecur implements Serializable {
 
     public void setUid(long uid) {
         this.uid = uid;
+    }
+
+    public void setAcct(long acct) {
+        this.acct = acct;
     }
 
     public void setKey(String key) {

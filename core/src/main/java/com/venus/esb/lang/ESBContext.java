@@ -48,6 +48,8 @@ public class ESBContext implements Serializable {
     public String pid;//合作方id
     @ESBDesc("user id")
     public String uid;//user id
+    @ESBDesc("account id")
+    public String acct;//account id
     @ESBDesc("trace id MDC支持")
     public String tid;//trace id
     @ESBDesc("国际化支持,语言参数的 ISO 国家/地区代码,参照HTTP Header Accept-Language:zh-CN,zh;q=0.8")
@@ -139,6 +141,10 @@ public class ESBContext implements Serializable {
         if (_uid != null) {
             this.uid = _uid;
         }
+        String _xid = ESBThreadLocal.get(ESBSTDKeys.ACCT_KEY);
+        if (_uid != null) {
+            this.acct = _xid;
+        }
         String _pid = ESBThreadLocal.get(ESBSTDKeys.PID_KEY);
         if (_pid != null) {
             this.pid = _pid;
@@ -184,6 +190,10 @@ public class ESBContext implements Serializable {
 
     public String getUid() {
         return uid;
+    }
+
+    public String getAcct() {
+        return acct;
     }
 
     public String getTid() {
@@ -322,8 +332,11 @@ public class ESBContext implements Serializable {
         client.aid = ESBT.integer(getAid());
         client.did = ESBT.longInteger(getDid());
         client.uid = ESBT.longInteger(getUid());
+        client.acct = ESBT.longInteger(getAcct());
         if (client.uid > 0) {
             client.securityLevel = ESBSecurityLevel.deviceAuth.authorize(ESBSecurityLevel.userAuth.authorize(0));
+        } else if (client.acct > 0) {
+            client.securityLevel = ESBSecurityLevel.deviceAuth.authorize(ESBSecurityLevel.accountAuth.authorize(0));
         } else {
             client.securityLevel = ESBSecurityLevel.deviceAuth.authorize(0);
         }
@@ -369,6 +382,7 @@ public class ESBContext implements Serializable {
         addElementInBuilder("did",did,builder,flag);
         addElementInBuilder("pid",pid,builder,flag);
         addElementInBuilder("uid",uid,builder,flag);
+        addElementInBuilder("acct",acct,builder,flag);
         addElementInBuilder("tid",tid,builder,flag);
         addElementInBuilder("l10n",l10n,builder,flag);
         addElementInBuilder("ch",ch,builder,flag);
@@ -432,6 +446,7 @@ public class ESBContext implements Serializable {
         addElementInHashMap("did",did,map);
         addElementInHashMap("pid",pid,map);
         addElementInHashMap("uid",uid,map);
+        addElementInHashMap("acct",acct,map);
         addElementInHashMap("tid",tid,map);
         addElementInHashMap("l10n",l10n,map);
         addElementInHashMap("ch",ch,map);
@@ -491,6 +506,8 @@ public class ESBContext implements Serializable {
             return this.getPid();
         } else if (ESBSTDKeys.UID_KEY.equals(key)) {
             return this.getUid();
+        } else if (ESBSTDKeys.ACCT_KEY.equals(key)) {
+            return this.getAcct();
         } else if (ESBSTDKeys.TID_KEY.equals(key)) {
             return this.getTid();
         } else if (ESBSTDKeys.L10N_KEY.equals(key)) {
@@ -548,6 +565,7 @@ public class ESBContext implements Serializable {
         this.did = null;
         this.pid = null;
         this.uid = null;
+        this.acct = null;
         this.tid = null;
         this.l10n = null;
         this.ch = null;
@@ -566,49 +584,6 @@ public class ESBContext implements Serializable {
         this.cookies = null;
         this.transmit = false;
     }
-
-    /**
-     * 获取一个Context实例
-     */
-    public static ESBContext obtain(String aid,
-                                    String cid,
-                                    String did,
-                                    String pid,
-                                    String uid,
-                                    String tid,
-                                    String ch,
-                                    String src,
-                                    String spm,
-                                    String via,
-                                    String dna,
-                                    String ua,
-                                    String cip,
-                                    String cvn,
-                                    int cvc,
-                                    String host) {
-        long at = System.currentTimeMillis();//优先取时间
-
-        ESBContext c = new ESBContext();
-        c.aid = aid;
-        c.cid = cid;
-        c.did = did;
-        c.pid = pid;
-        c.uid = uid;
-        c.tid = tid;
-        c.ch = ch;
-        c.src = src;
-        c.spm = spm;
-        c.via = via;
-        c.dna = dna;
-        c.ua = ua;
-        c.cip = cip;
-        c.cvn = cvn;
-        c.cvc = cvc;
-        c.host = host;
-        c.at = at;
-        return c;
-    }
-
 
     /**
      * 优先从params中获取,因为params中参与签名,然后是header,最后是cookie
@@ -772,6 +747,10 @@ public class ESBContext implements Serializable {
 
     public void setUid(String uid) {
         this.uid = uid;
+    }
+
+    public void setAcct(String acct) {
+        this.acct = acct;
     }
 
     public void setTid(String tid) {

@@ -149,6 +149,7 @@ public final class ESBAPIContext extends ESBContext {
         ESBThreadLocal.put(ESBSTDKeys.AID_KEY,aid);
         ESBThreadLocal.put(ESBSTDKeys.DID_KEY,did);
         ESBThreadLocal.put(ESBSTDKeys.UID_KEY,uid);
+        ESBThreadLocal.put(ESBSTDKeys.ACCT_KEY,acct);
         ESBThreadLocal.put(ESBSTDKeys.PID_KEY,pid);
 
         //ESB机器可以记录一些客户端参数
@@ -172,6 +173,7 @@ public final class ESBAPIContext extends ESBContext {
         ESBMDC.put(ESBSTDKeys.DID_KEY,did);
         ESBMDC.put(ESBSTDKeys.PID_KEY,pid);
         ESBMDC.put(ESBSTDKeys.UID_KEY,uid);
+        ESBMDC.put(ESBSTDKeys.ACCT_KEY,acct);
         ESBMDC.put(ESBSTDKeys.TID_KEY,tid);
         ESBMDC.put(ESBSTDKeys.CH_KEY,ch);
         ESBMDC.put(ESBSTDKeys.SRC_KEY,src);

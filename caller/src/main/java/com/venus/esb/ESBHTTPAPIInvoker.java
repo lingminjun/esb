@@ -212,6 +212,9 @@ public final class ESBHTTPAPIInvoker {
         if (context.getUid() != null) {
             ctxstr.append(context.getUid());
         }
+        if (context.getAcct() != null) {
+            ctxstr.append(context.getAcct());
+        }
         ctxstr.append(ESBConsts.HTTP_ESB_SPLIT);
         if (context.getPid() != null) {
             ctxstr.append(context.getPid());

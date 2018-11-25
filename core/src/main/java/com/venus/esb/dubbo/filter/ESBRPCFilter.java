@@ -77,6 +77,9 @@ public class ESBRPCFilter implements Filter {
             if (esbcxt.getUid() != null) {
                 context.setAttachment(ESBSTDKeys.UID_KEY, esbcxt.getUid());
             }
+            if (esbcxt.getAcct() != null) {
+                context.setAttachment(ESBSTDKeys.ACCT_KEY, esbcxt.getAcct());
+            }
             if (esbcxt.getPid() != null) {
                 context.setAttachment(ESBSTDKeys.PID_KEY, esbcxt.getPid());
             }

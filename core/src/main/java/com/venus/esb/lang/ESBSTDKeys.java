@@ -71,6 +71,12 @@ public final class ESBSTDKeys {
         _keys.add(UID_KEY);
     }
 
+    @ESBDesc("account id 用户标示符")
+    public static final String ACCT_KEY = "_acct";
+    static {
+        _keys.add(ACCT_KEY);
+    }
+
     @ESBDesc("trace id 用于全局追踪")
     public static final String TID_KEY = "_tid";
     static {

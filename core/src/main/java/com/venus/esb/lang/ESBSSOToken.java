@@ -19,7 +19,7 @@ public final class ESBSSOToken implements Serializable {
     @ESBDesc(value = "sso_token：表示访问令牌，必选项。将被写入到cookie",entrust = true)
     public String ssoToken;
 
-    @ESBDesc(value = "expires_in：表示过期时间，单位为秒。如果省略该参数，必须其他方式设置过期时间。",entrust = true)
+    @ESBDesc(value = "expires_in：表示过期时间点，单位为秒。如果省略该参数，必须其他方式设置过期时间。",entrust = true)
     public long expire;
 
     @ESBDesc(value = "额外参数",entrust = true)

@@ -8,6 +8,7 @@ import java.io.Serializable;
  * Created by lingminjun on 17/5/11.
  * 跨域分为scheme和host的跨域
  * 跨域主要是通过from的token后生产一个一次性token给客服端
+ * SSO只支持用户级别，账号级别不支持
  */
 @ESBDesc("跨域安全信息")
 public final class ESBSSOSecur implements Serializable {

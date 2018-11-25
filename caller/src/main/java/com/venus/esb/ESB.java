@@ -11,6 +11,7 @@ import com.venus.esb.sign.ESBTokenSign;
 import com.venus.esb.lang.*;
 import com.venus.esb.sign.ESBUUID;
 import com.venus.esb.utils.Injects;
+import com.venus.esb.utils.MD5;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -749,19 +750,19 @@ public final class ESB {
         }
 
         // stoken验证utoken
-        if (context.ssecur != null && !context.ssecur.equals(context.utoken)) {
+        if (context.ssecur != null && !MD5.md5(context.utoken).equals(context.ssecur.dna)) {
             return true;
         }
 
         // rtoken验证utoken
-        if (context.rsecur != null && !context.rsecur.equals(context.utoken)) {
+        if (context.rsecur != null && !MD5.md5(context.utoken).equals(context.rsecur.dna)) {
             return true;
         }
 
         // ssoToken中的参数验证，已经在后面验证了
 //        if (context.ssoSecur != null &&
 //                (context.ssoSecur.taid != ESBT.integer(context.aid)
-//                || context.ssoSecur.tdid != ESBT.longInteger(context.did))) {
+//                || context.ssoSecur.tdid != EsSBT.longInteger(context.did))) {
 //            return true;
 //        }
 
@@ -1231,12 +1232,19 @@ public final class ESB {
             if (context.usecur != null) {
                 ESBToken token = new ESBToken();
                 token.success = true;
-                token.scope = "user";
+                if (context.uid != null && context.uid.length() > 0) {
+                    token.scope = "user";
+                } else if (context.acct != null && context.acct.length() > 0) {
+                    token.scope = "account";
+                } else {
+                    token.scope = "user";
+                }
                 token.token = context.utoken;
                 token.key = context.usecur.key;
                 token.user = context.getExt(ESBSTDKeys.USER_INFO_KEY);
                 token.did = context.did;
                 token.uid = context.uid;
+                token.acct = context.acct;
                 token.expire = context.usecur.expire;
 
                 //不返回原stoken和refresh
@@ -1254,6 +1262,7 @@ public final class ESB {
                     && ESBT.integer(context.aid) == context.ssoSecur.taid
                     && context.host != null
                     && context.host.toLowerCase().contains(context.ssoSecur.tdomain.toLowerCase())) {
+                //只有可能是user的token(sso只允许在user权限下进行，account下不行)
                 ESBToken token = ESBTokenSign.injectDefaultToken(null,context);
 
                 // 从token exts中获取

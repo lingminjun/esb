@@ -71,7 +71,7 @@ public final class ESBException extends Exception implements Serializable {
         //优先返回reason
         if (ESBConsts.IS_DEBUG) {
             if (reason != null && reason.length() > 0) {
-                return reason + super.getMessage();
+                return reason + " [" + super.getMessage() + "]";
             } else {
                 return super.getMessage();
             }

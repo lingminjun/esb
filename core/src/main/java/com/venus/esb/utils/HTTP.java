@@ -135,6 +135,62 @@ public final class HTTP {
 
     /**
      * 发送信息到服务端
+     * @param content
+     * @return success response
+     * @throws Exception
+     */
+    public static String postForm(String url, String content, Map<String,String> header) throws Exception {
+        try {
+            String charset = ESBConsts.UTF8_STR;
+            HttpURLConnection httpURLConnection = postConnection(new URL(url),0,0, ContentType.form, charset,null);
+            if (null == httpURLConnection) {
+                throw new Exception("Create httpURLConnection Failure");
+            }
+            if (header != null) {
+                writeRequestHeader(httpURLConnection,header);
+            }
+            if (content != null && content.length() > 0) {
+                writeContent(httpURLConnection, content, charset);
+            }
+            String result = response(httpURLConnection, charset);
+            logger.info("Response message:[" + result + "]");
+            if (httpURLConnection.getResponseCode() == 200) {
+                return result;
+            } else {
+                return null;
+            }
+        } catch (Exception e) {
+//            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    /**
+     * 发送信息到服务端
+     * @param content
+     * @return success response
+     * @throws Exception
+     */
+    public static String postForm(String url, String content, String authorization) throws Exception {
+        HashMap<String,String> map = new HashMap<String,String>();
+        if (authorization != null) {
+            map.put("Authorization",authorization);
+        }
+        return postForm(url,content,map);
+    }
+
+    /**
+     * 发送信息到服务端
+     * @param content
+     * @return success response
+     * @throws Exception
+     */
+    public static String postForm(String url, String content) throws Exception {
+        return postForm(url,content,(Map<String, String>) null);
+    }
+
+    /**
+     * 发送信息到服务端
      * @param params
      * @return success response
      * @throws Exception

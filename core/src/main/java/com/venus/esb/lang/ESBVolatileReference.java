@@ -6,10 +6,18 @@ package com.venus.esb.lang;
  */
 public final class ESBVolatileReference<T extends Object> {
     private final long at;
+    private final long exp;
     private final T obj;
 
     public ESBVolatileReference(T obj) {
         this.at = System.currentTimeMillis();
+        this.exp = 0;
+        this.obj = obj;
+    }
+
+    public ESBVolatileReference(T obj, long age/*ms*/) {
+        this.at = System.currentTimeMillis();
+        this.exp = this.at + age;
         this.obj = obj;
     }
 
@@ -17,7 +25,19 @@ public final class ESBVolatileReference<T extends Object> {
         return at;
     }
 
+    public boolean isExpired() {
+        if (exp <= 0) {
+            return false;
+        }
+        return System.currentTimeMillis() >= this.exp;
+    }
+
     public T get() {
+        if (isExpired()) {return null;}
+        return obj;
+    }
+
+    public T access() {
         return obj;
     }
 }

@@ -881,6 +881,11 @@ public final class ESB {
             //注册设备失败，不清楚原有token
 //            pushDeviceTokenCookie(context,"");
         } else {
+            //替换后端返回的设备号
+            if (token.did != null && !token.did.equals(context.did)) {
+                context.did = token.did;
+            }
+
             //自动注入token
             ESBTokenSign.injectDeviceToken(token,context);
 

@@ -127,6 +127,7 @@ public final class Injects {
             //支持时间转换
             if (type == Date.class && (set.getType() == long.class || set.getType() == Long.class)) {
                 try {
+                    set.setAccessible(true);
                     if (set.getType() == Long.class) {
                         set.set(target, ((Date) value).getTime());
                     } else {
@@ -135,6 +136,7 @@ public final class Injects {
                 } catch (Throwable e) {}
             } else if ((type == long.class || type == Long.class) && set.getType() == Date.class) {
                 try {
+                    set.setAccessible(true);
                     set.set(target, new Date(Long.parseLong(value.toString())));
                 } catch (Throwable e) {}
             } else if (isBaseType(set.getType()) && (value instanceof String || isBaseType(value.getClass()))) {//隐士转换基础类型
@@ -144,6 +146,7 @@ public final class Injects {
                 //byte,char,short,int,long,float,double，boolean
                 if (set.getType() == int.class || set.getType() == Integer.class) {
                     try {
+                        set.setAccessible(true);
                         if (set.getType() == Integer.class) {
                             set.set(target, Integer.parseInt(string));
                         } else {
@@ -152,6 +155,7 @@ public final class Injects {
                     } catch (Throwable e) {}
                 } else if (set.getType() == long.class || set.getType() == Long.class) {
                     try {
+                        set.setAccessible(true);
                         if (set.getType() == Long.class) {
                             set.set(target, Long.parseLong(string));
                         } else {
@@ -160,6 +164,7 @@ public final class Injects {
                     } catch (Throwable e) {}
                 } else if (set.getType() == short.class || set.getType() == Short.class) {
                     try {
+                        set.setAccessible(true);
                         if (set.getType() == Short.class) {
                             set.set(target, Short.parseShort(string));
                         } else {
@@ -168,6 +173,7 @@ public final class Injects {
                     } catch (Throwable e) {}
                 } else if (set.getType() == float.class || set.getType() == Float.class) {
                     try {
+                        set.setAccessible(true);
                         if (set.getType() == Float.class) {
                             set.set(target, Float.parseFloat(string));
                         } else {
@@ -176,6 +182,7 @@ public final class Injects {
                     } catch (Throwable e) {}
                 } else if (set.getType() == double.class || set.getType() == Double.class) {
                     try {
+                        set.setAccessible(true);
                         if (set.getType() == Double.class) {
                             set.set(target, Double.parseDouble(string));
                         } else {
@@ -185,6 +192,7 @@ public final class Injects {
                 } else if (set.getType() == char.class || set.getType() == Character.class) {
                     if (string.length() == 1) {
                         try {
+                            set.setAccessible(true);
                             if (set.getType() == Character.class) {
                                 set.set(target, string.charAt(0));
                             } else {
@@ -196,6 +204,7 @@ public final class Injects {
                     try {
                         short v = Short.parseShort(string);
                         if (v >= -127 && v <= 127) {
+                            set.setAccessible(true);
                             byte b = (byte)v;
                             if (set.getType() == Byte.class) {
                                 set.set(target, b);
@@ -208,6 +217,7 @@ public final class Injects {
                     try {
                         Boolean b = bool(string);
                         if (b != null) {
+                            set.setAccessible(true);
                             if (set.getType() == Boolean.class) {
                                 set.set(target, b);
                             } else {
@@ -222,6 +232,7 @@ public final class Injects {
         }
 
         try {
+            set.setAccessible(true);
             set.set(target, value);
         } catch (Throwable e) {}
     }

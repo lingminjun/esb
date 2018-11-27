@@ -141,7 +141,7 @@ public class ESBAPIHelper {
 
         String methodName = method.getName();
 
-        ESBGroup group = serverProvider.getAnnotation(ESBGroup.class);;
+        ESBGroup group = serverProvider.getAnnotation(ESBGroup.class);
         ESBAPI esbapi = method.getAnnotation(ESBAPI.class);
 
         //必要参数整理

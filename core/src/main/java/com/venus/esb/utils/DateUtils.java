@@ -1,5 +1,6 @@
 package com.venus.esb.utils;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -44,6 +45,28 @@ public final class DateUtils {
         return dateString;
     }
 
+    public static String toYYYYMMDDHHMMSSSSS(long utc) {
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmssSSS");
+        String dateString = formatter.format(new Date(utc));
+        return dateString;
+    }
+
+    public static String toYYYYMMDDHHMMSSSSS(Date date) {
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmssSSS");
+        String dateString = formatter.format(date);
+        return dateString;
+    }
+
+    public static long dateYYYYMMDDHHMMSSSSS(String timestamp) {
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmssSSS");
+        Date date = null;
+        try {
+            date = formatter.parse(timestamp);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        return date != null ? date.getTime() : 0;
+    }
 
     // MYSQL Date类型支持
     /*

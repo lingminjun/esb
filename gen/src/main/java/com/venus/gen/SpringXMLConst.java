@@ -299,7 +299,7 @@ public final class SpringXMLConst {
             "com.venus.@ApplicationName@.mysql.datasource.password=${com.venus.@ApplicationName@.mysql.datasource.password}\n";
 
     private final static String ADD_DATASOURCE_PROPERTIES_CONFIG_DEMO = "# @ApplicationName@数据库连接配置\n" +
-            "com.venus.@ApplicationName@.mysql.datasource.url=jdbc:mysql://127.0.0.1:3306/demo?autoReconnect=true&amp;useUnicode=true&amp;characterset=utf-8\n" +
+            "com.venus.@ApplicationName@.mysql.datasource.url=jdbc:mysql://127.0.0.1:3306/demo?autoReconnect=true&amp;useUnicode=true&amp;characterEncoding=utf-8\n" +
             "com.venus.@ApplicationName@.mysql.datasource.username=root\n" +
             "com.venus.@ApplicationName@.mysql.datasource.password=root\n";
 
@@ -317,7 +317,7 @@ public final class SpringXMLConst {
             "dubbo.export.version=DEV1\n" +
             "dubbo.export.timeout=30000\n\n" +
             "# @ApplicationName@数据库连接配置\n" +
-            "com.venus.@ApplicationName@.mysql.datasource.url=jdbc:mysql://127.0.0.1:3306/demo?autoReconnect=true&amp;useUnicode=true&amp;characterset=utf-8\n" +
+            "com.venus.@ApplicationName@.mysql.datasource.url=jdbc:mysql://127.0.0.1:3306/demo?autoReconnect=true&amp;useUnicode=true&amp;characterEncoding=utf-8\n" +
             "com.venus.@ApplicationName@.mysql.datasource.username=root\n" +
             "com.venus.@ApplicationName@.mysql.datasource.password=root\n\n" +
             "# 基本配置\n" +

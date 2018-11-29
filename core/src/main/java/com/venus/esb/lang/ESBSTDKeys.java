@@ -17,7 +17,7 @@ import java.util.Set;
 @ESBDesc("ESB标准的参数定义,除_tk、_stk、_rtk、_dtk、_ttk、_sso_tk、_sig和_cookie敏感数据不支持DMC,其他都支持")
 public final class ESBSTDKeys {
 
-    private static Set<String> _keys = new HashSet<>();
+    private static Set<String> _keys = new HashSet<>(); //不需要客户端显示传递的接口（用于生成代码时声明）
     private static Set<String> _akeys = new HashSet<>(); //跟着应用id存放
     private static Set<String> _nkeys = new HashSet<>(); //不允许放到cookie中
 
@@ -203,7 +203,7 @@ public final class ESBSTDKeys {
     @ESBDesc("user secret token 只存放于web/h5站点的secret cookie中，用于在不同domain间传递csrfToken")
     public static final String SECRET_TOKEN_KEY = "_stk";
     static {
-        _keys.add(SECRET_TOKEN_KEY);
+//        _keys.add(SECRET_TOKEN_KEY);
         _akeys.add(SECRET_TOKEN_KEY);
     }
 
@@ -217,7 +217,7 @@ public final class ESBSTDKeys {
     @ESBDesc("refresh token 刷新token需要，不能放入cookie")
     public static final String REFRESH_TOKEN_KEY = "_rtk";
     static {
-        _keys.add(REFRESH_TOKEN_KEY);
+//        _keys.add(REFRESH_TOKEN_KEY);
         _nkeys.add(REFRESH_TOKEN_KEY);
     }
 
@@ -297,21 +297,21 @@ public final class ESBSTDKeys {
     @ESBDesc("sso token【仅仅用于sso过程--目标站请求:必传参数】")
     public static final String SSO_TOKEN_KEY = "_sso_tk";
     static {
-        _keys.add(SSO_TOKEN_KEY);
+//        _keys.add(SSO_TOKEN_KEY);
         _nkeys.add(SSO_TOKEN_KEY);
     }
 
     @ESBDesc("sso to domain【仅仅用于sso过程--起始站请求:必传参数】")
     public static final String SSO_TO_DOMAIN_KEY = "_sso_domain";
     static {
-        _keys.add(SSO_TO_DOMAIN_KEY);
+//        _keys.add(SSO_TO_DOMAIN_KEY);
         _nkeys.add(SSO_TO_DOMAIN_KEY);
     }
 
     @ESBDesc("sso to did【仅仅用于sso过程--起始站请求:必传参数】")
     public static final String SSO_TO_DID_KEY = "_sso_did";
     static {
-        _keys.add(SSO_TO_DID_KEY);
+//        _keys.add(SSO_TO_DID_KEY);
         _nkeys.add(SSO_TO_DID_KEY);
     }
 
@@ -325,7 +325,7 @@ public final class ESBSTDKeys {
     @ESBDesc("sso to aid【仅仅用于sso过程--起始站请求:必传参数】")
     public static final String SSO_TO_AID_KEY = "_sso_aid";
     static {
-        _keys.add(SSO_TO_AID_KEY);
+//        _keys.add(SSO_TO_AID_KEY);
         _nkeys.add(SSO_TO_AID_KEY);
     }
 

@@ -53,7 +53,8 @@
 
         <monitor_version>1.0.0-SNAPSHOT</monitor_version>
 
-        <junit.version>4.8.1</junit.version>
+        <!-- junit版本 -->
+        <junit.version>4.12</junit.version>
 
         <zipkin.brave.version>3.9.1</zipkin.brave.version>
 

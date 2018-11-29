@@ -159,7 +159,7 @@ public final class SpringXMLConst {
         return str;
     }
 
-    public static final String MAPPER_XML_CONFIG_HEAD = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n" +
+    public static final String MAPPER_XML_CONFIG_TEMPLATE = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n" +
             "<!DOCTYPE configuration PUBLIC \"-//mybatis.org//DTD Config 3.0//EN\" \"http://mybatis.org/dtd/mybatis-3-config.dtd\" >\n" +
             "<configuration>\n" +
             "    <settings>\n" +
@@ -181,12 +181,16 @@ public final class SpringXMLConst {
             "        <setting name=\"defaultExecutorType\" value=\"SIMPLE\"/>\n" +
             "        <!-- 数据库超过25000秒仍未响应则超时 -->\n" +
             "        <setting name=\"defaultStatementTimeout\" value=\"25000\"/>\n" +
+            "        <!-- 日志输出，便于调试 -->\n" +
+            "        <!-- <setting name=\"logImpl\" value=\"STDOUT_LOGGING\"/> -->\n" +
             "    </settings>\n" +
             "    <!-- 全局别名设置，在映射文件中只需写别名，而不必写出整个类路径 别名声明写这里 -->\n" +
             "    <typeAliases>\n" +
             "        <!-- 非注解的sql映射文件配置，如果使用mybatis注解，该mapper无需配置，但是如果mybatis注解中包含@resultMap注解，则mapper必须配置，给resultMap注解使用 -->\n" +
-            "    </typeAliases>\n";
-    public static final String MAPPER_XML_CONFIG_END = "</configuration>";
+            "    </typeAliases>\n" +
+            "    <mappers>\n" +
+            "    </mappers>\n" +
+            "</configuration>";
 
     public static final String MAPPER_SQLMAP_PATH = "@sqlmap@";
     private static final String MAPPER_RESOURCE_CONFIG = "        <mapper resource=\"@sqlmap@\"  />\n";
@@ -196,10 +200,10 @@ public final class SpringXMLConst {
 
     public static final String BEAN_NAME = "@BeanName@";
     public static final String BEAN_CLASS_NAME = "@BeanClassName@";
-    private static final String MAPPER_BEAN = "<bean id=\"@BeanName@\" class=\"org.mybatis.spring.mapper.MapperFactoryBean\">\n" +
+    private static final String MAPPER_BEAN = "    <bean id=\"@BeanName@\" class=\"org.mybatis.spring.mapper.MapperFactoryBean\">\n" +
             "        <property name=\"sqlSessionFactory\" ref=\"@SqlSessionFactory@\"/>\n" +
             "        <property name=\"mapperInterface\" value=\"@BeanClassName@\"/>\n" +
-            "    </bean>\n\n    ";
+            "    </bean>\n\n";
     public static final String theMapperBean(String beanName, String beanClass, String sessionFactory) {
         String str = MAPPER_BEAN.replaceAll(BEAN_NAME,beanName);
         str = str.replaceAll(BEAN_CLASS_NAME,beanClass);

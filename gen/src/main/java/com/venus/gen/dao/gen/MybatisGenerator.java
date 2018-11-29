@@ -2057,37 +2057,51 @@ public class MybatisGenerator extends Generator {
         }
     }
 
+    // 修改写入逻辑，将替换同名的mapper
     private static void writeMapperSetting(String mapperPath, List<MapperInfo> mappers) {
 //        File file = new File(mapperPath);
         //判断是否为更新
         StringBuilder content = new StringBuilder();
-        boolean fileHeader = false;
+//        boolean fileHeader = false;
         try {
             String old = FileUtils.readFile(mapperPath, ESBConsts.UTF8);
-            if (old != null) {
-                int idx = old.indexOf("<mappers>");
-                if (idx > 0 && idx < old.length()) {
-                    content.append(old.substring(0,idx));
-                    fileHeader = true;
-                }
+            if (old != null && old.length() > 0) {
+                content.append(old);
+//                int idx = old.indexOf("<mappers>");
+//                if (idx > 0 && idx < old.length()) {
+//                    content.append(old.substring(0,idx));
+//                    fileHeader = true;
+//                }
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
 
         //默认写入
-        if (!fileHeader) {
-            content.append(SpringXMLConst.MAPPER_XML_CONFIG_HEAD);
-            content.append("    ");
+        if (content.length() == 0) {
+            content.append(SpringXMLConst.MAPPER_XML_CONFIG_TEMPLATE);
         }
 
         //开始写入sql-mapper
-        content.append("<mappers>\n");
+        int begin = content.indexOf("<mappers>") + "<mappers>".length();//确定开始位置
+        int end = content.indexOf("</mappers>");
+        do {
+            char c = content.charAt(end - 1);
+            if (c != ' ' && c != '\t') {//找到换行为止
+                break;
+            }
+            end = end - 1;
+        } while (end > begin);
         for (MapperInfo mapperInfo : mappers) {
-            content.append(SpringXMLConst.theMapper(mapperInfo.mapperFileName));
+            String sqlmap = SpringXMLConst.theMapper(mapperInfo.mapperFileName);
+            int idx = content.indexOf(mapperInfo.mapperFileName, begin);
+            //已经添加过直接忽略
+            if (idx > 0 && idx < end) {
+                continue;
+            }
+            content.insert(end,sqlmap);
+            end = end + sqlmap.length();
         }
-        content.append("    </mappers>\n");
-        content.append(SpringXMLConst.MAPPER_XML_CONFIG_END);
 
         try {
             writeFile(mapperPath,content.toString());
@@ -2095,6 +2109,7 @@ public class MybatisGenerator extends Generator {
             e.printStackTrace();
         }
     }
+
 
     private static String parseSqlSessionFromSpringXml(String xml) {
         int idx = xml.lastIndexOf("\"org.mybatis.spring.SqlSessionFactoryBean\"");
@@ -2130,6 +2145,7 @@ public class MybatisGenerator extends Generator {
         return "";
     }
 
+    // 修改写入逻辑，将替换同名的mapper
     private static void writeSpringXml(String springPath, String mapperFileName, List<MapperInfo> mappers, String projectName) {
 
         String datasource = "dataSource";
@@ -2141,50 +2157,58 @@ public class MybatisGenerator extends Generator {
 
         //判断是否为更新
         StringBuilder content = new StringBuilder();
-        boolean fileHeader = false;
         try {
             String old = FileUtils.readFile(springPath, ESBConsts.UTF8);
-            if (old != null) {
-                int idx = old.indexOf("\"org.mybatis.spring.mapper.MapperFactoryBean\"");
-                if (idx > 0 && idx < old.length()) {
-                    old = old.substring(0,idx);
-                    idx = old.lastIndexOf("<bean");
-                    if (idx > 0 && idx < old.length()) {
-                        old = old.substring(0,idx);
-                        content.append(old);
-                        fileHeader = true;
-
-                        //查找sqlSessionName
-                        String str = parseSqlSessionFromSpringXml(old);
-                        if (str != null && str.length() > 0) {
-                            sqlSession = str;
-                        }
-                    }
+            if (old != null && old.length() > 0) {
+                //查找sqlSessionName
+                String str = parseSqlSessionFromSpringXml(old);
+                if (str != null && str.length() > 0) {
+                    sqlSession = str;
                 }
+                content.append(old);
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
 
         //写入默认配置
-        if (!fileHeader) {
+        if (content.length() == 0) {
             content.append(SpringXMLConst.SPRING_XML_CONFIG_HEAD);
             content.append(SpringXMLConst.theJdbcDatasource(projectName,datasource,sqlSession,mapperFileName));
-            content.append("    <!-- mapper beans -->\n    ");
-
+            content.append("<!-- mapper beans -->\n");
+            content.append("</beans>");
         }
 
+        //插入为止寻找
+        int end = content.lastIndexOf("</beans>");
+
+
+        // 开始插入dao
         for (MapperInfo mapperInfo : mappers) {
             String beanName = toLowerHeadString(mapperInfo.daoSimpleClassName);
-            content.append(SpringXMLConst.theMapperBean(beanName,mapperInfo.daoClassName,sqlSession));
+            if (containedDaoBean(content.toString(),beanName,mapperInfo.daoClassName)) {
+                continue;
+            }
+            String daoBean = SpringXMLConst.theMapperBean(beanName,mapperInfo.daoClassName,sqlSession);
+            content.insert(end,daoBean);
+            end = end + daoBean.length();
         }
-
-        content.append("\n</beans>");
 
         try {
             writeFile(springPath,content.toString());
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static boolean containedDaoBean(String target, String beanName, String daoClassName) {
+        //分析bind
+        Pattern p = Pattern.compile("<bean\\s+id\\s*=\\s*\"" + beanName + "\"\\s+class\\s*=\\s*\"org.mybatis.spring.mapper.MapperFactoryBean\">\\s*");
+        Matcher m = p.matcher(target);
+        return m.find();
+//        while (m.find()) {
+//            int idx = m.start();
+//            int edx = m.end();
+//        }
     }
 }

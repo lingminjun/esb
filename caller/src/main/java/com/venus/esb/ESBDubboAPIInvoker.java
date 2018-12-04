@@ -66,6 +66,11 @@ public final class ESBDubboAPIInvoker {
                     value = field.defaultValue;
                 }
 
+                // 针对基础数据类型做默认值处理
+                if (value == null && (!field.isList && ESBT.isPrimitiveType(field.getDeclareType()))) {
+                    value = ESBT.defaultPrimitiveValue(field.getDeclareType());
+                }
+
                 //序列化值
                 Object obj = serializer.deserialized(value, field.getDeclareType(), field.isList);
                 methodParams.add(field.getFinalType(), obj);//以finalType方式

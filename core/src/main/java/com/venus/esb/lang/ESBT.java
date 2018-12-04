@@ -895,6 +895,108 @@ public final class ESBT {
     }
 
     /**
+     * 基础数据类型 isPrimitive
+     *
+     * @see     boolean
+     * @see     char
+     * @see     byte
+     * @see     short
+     * @see     int
+     * @see     long
+     * @see     float
+     * @see     double
+     *
+     * @param finalType
+     * @return
+     */
+    public static boolean isPrimitiveType(String finalType) {
+        if (finalType==null || finalType.length() == 0) {return false;}
+        if (finalType.equals("boolean")
+                || finalType.equals("bool")
+                || finalType.equals("char")
+                || finalType.equals("byte")
+                || finalType.equals("short")
+                || finalType.equals("int")
+                || finalType.equals("long")
+                || finalType.equals("float")
+                || finalType.equals("double")
+                ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * 基础数据类型 isPrimitive
+     *
+     * @see     boolean
+     * @see     char
+     * @see     byte
+     * @see     short
+     * @see     int
+     * @see     long
+     * @see     float
+     * @see     double
+     *
+     * @param clazz
+     * @return
+     */
+    public static boolean isPrimitiveType(Class<?> clazz) {
+        if (clazz==null) {return false;}
+        if (boolean.class == clazz
+                || char.class == clazz
+                || byte.class == clazz
+                || short.class == clazz
+                || int.class == clazz
+                || long.class == clazz
+                || float.class == clazz
+                || double.class == clazz
+                ) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 基础数据类型，初始化默认值
+     * @param finalType
+     * @return
+     */
+    public static String defaultPrimitiveValue(String finalType) {
+        if (finalType==null || finalType.length() == 0) {return null;}
+        if (finalType.equals("boolean")) {return "false"; }
+        else if (finalType.equals("bool")) {return "false"; }
+        else if (finalType.equals("char")) {return "0"; }
+        else if (finalType.equals("byte")) {return "0"; }
+        else if (finalType.equals("short")) {return "0"; }
+        else if (finalType.equals("int")) {return "0"; }
+        else if (finalType.equals("long")) {return "0"; }
+        else if (finalType.equals("float")) {return "0"; }
+        else if (finalType.equals("double")) {return "0"; }
+        else {return null;}
+    }
+
+    /**
+     * 基础数据类型，初始化默认值
+     * @param clazz
+     * @return
+     */
+    public static String defaultPrimitiveValue(Class<?> clazz) {
+        if (clazz==null) {return null;}
+        if (clazz == boolean.class) {return "false"; }
+        else if (clazz == char.class) {return "0"; }
+        else if (clazz == byte.class) {return "0"; }
+        else if (clazz == short.class) {return "0"; }
+        else if (clazz == int.class) {return "0"; }
+        else if (clazz == long.class) {return "0"; }
+        else if (clazz == float.class) {return "0"; }
+        else if (clazz == double.class) {return "0"; }
+        else {return null;}
+    }
+
+
+    /**
      * 包装成Array类型 , 若已经是array则不发生变化,若list将拆包
      * @param finalType
      * @return

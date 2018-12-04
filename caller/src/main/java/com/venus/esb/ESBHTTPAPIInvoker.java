@@ -102,6 +102,11 @@ public final class ESBHTTPAPIInvoker {
                 value = field.defaultValue;
             }
 
+            // 针对基础数据类型做默认值处理
+            if (value == null && (!field.isList && ESBT.isPrimitiveType(field.getDeclareType()))) {
+                value = ESBT.defaultPrimitiveValue(field.getDeclareType());
+            }
+
             //除非必要，否则不传入
             if (value != null) {
                 ParamDesc paramDesc = new ParamDesc();

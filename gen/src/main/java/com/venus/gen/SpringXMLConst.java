@@ -26,6 +26,9 @@ public final class SpringXMLConst {
             "       default-lazy-init=\"true\">\n" +
             "\n" +
             "    <context:annotation-config/>\n" +
+            "    <context:property-placeholder file-encoding=\"UTF-8\"\n" +
+            "                                  ignore-resource-not-found=\"true\"\n" +
+            "                                  location=\"classpath:config.properties\"/>\n\n" +
             "    <!-- 自动寻找注入bean -->\n" +
             "    <!--<context:component-scan base-package=\"com.venus.custom.beans\"/>-->\n\n    ";
 
@@ -46,6 +49,9 @@ public final class SpringXMLConst {
             "       default-lazy-init=\"true\">\n" +
             "\n" +
             "    <context:annotation-config/>\n" +
+            "    <context:property-placeholder file-encoding=\"UTF-8\"\n" +
+            "                                  ignore-resource-not-found=\"true\"\n" +
+            "                                  location=\"classpath:config.properties\"/>\n\n" +
             "    <!-- 自动寻找注入bean -->\n" +
             "    <!--<context:component-scan base-package=\"com.venus.custom.beans\"/>-->\n\n    ";
 

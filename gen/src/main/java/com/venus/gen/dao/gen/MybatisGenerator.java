@@ -1820,7 +1820,10 @@ public class MybatisGenerator extends Generator {
             cols.append("`" + cl.name + "`");
             flds.append(field);
 
-            if (cl.name.equals("id")) {
+            // insert需忽略的字段
+            if (cl.name.equals("id") 
+                || cl.name.equals("delete")
+                || cl.name.equals("is_delete")) {
                 continue;
             }
             if (incols.length() > 0) {

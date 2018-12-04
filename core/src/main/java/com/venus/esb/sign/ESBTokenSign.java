@@ -283,8 +283,9 @@ public final class ESBTokenSign {
         ESBSecur client = context.generateClient();
 
         client.expire = expire;
-        client.key = csrfToken;
+        token.expire = expire;
 
+        client.key = csrfToken;
         token.token = ESBTokenSign.defaultSign().generateStringToken(client);
 
         // cookie保存或者客户端保存，用sso
@@ -329,6 +330,8 @@ public final class ESBTokenSign {
         ESBSSOSecur client = new ESBSSOSecur();
 
         client.expire = expire;
+        token.expire = expire;
+
 //        client.fdid = ESBT.longInteger(context.did);
 //        client.fscope = "sso";
         client.uid = ESBT.longInteger(context.uid);

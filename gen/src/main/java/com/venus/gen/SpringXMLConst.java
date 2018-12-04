@@ -27,8 +27,9 @@ public final class SpringXMLConst {
             "\n" +
             "    <context:annotation-config/>\n" +
             "    <context:property-placeholder file-encoding=\"UTF-8\"\n" +
+            "                                  ignore-unresolvable=\"true\"\n" +
             "                                  ignore-resource-not-found=\"true\"\n" +
-            "                                  location=\"classpath:config.properties\"/>\n\n" +
+            "                                  location=\"classpath:xconfig.properties\"/>\n\n" +
             "    <!-- 自动寻找注入bean -->\n" +
             "    <!--<context:component-scan base-package=\"com.venus.custom.beans\"/>-->\n\n    ";
 
@@ -50,8 +51,9 @@ public final class SpringXMLConst {
             "\n" +
             "    <context:annotation-config/>\n" +
             "    <context:property-placeholder file-encoding=\"UTF-8\"\n" +
+            "                                  ignore-unresolvable=\"true\"\n" +
             "                                  ignore-resource-not-found=\"true\"\n" +
-            "                                  location=\"classpath:config.properties\"/>\n\n" +
+            "                                  location=\"classpath:xconfig.properties\"/>\n\n" +
             "    <!-- 自动寻找注入bean -->\n" +
             "    <!--<context:component-scan base-package=\"com.venus.custom.beans\"/>-->\n\n    ";
 
@@ -69,8 +71,9 @@ public final class SpringXMLConst {
             "       default-lazy-init=\"true\">\n" +
             "    <context:annotation-config/>\n" +
             "    <context:property-placeholder file-encoding=\"UTF-8\"\n" +
+            "                                  ignore-unresolvable=\"true\"\n" +
             "                                  ignore-resource-not-found=\"true\"\n" +
-            "                                  location=\"classpath:config.properties\"/>\n" +
+            "                                  location=\"classpath:xconfig.properties\"/>\n" +
             "\n" +
             "    <bean id=\"dubboApplicationConfig\" class=\"com.alibaba.dubbo.config.ApplicationConfig\">\n" +
             "        <property name=\"name\" value=\"@ApplicationName@\"/>\n" +

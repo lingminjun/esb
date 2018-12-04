@@ -24,7 +24,7 @@ public class ServiceGenerator extends Generator {
     public static final String DUBBO_PROVIDER_XML_NAME = "application-dubbo-provider.xml";
     public static final String AUTO_CONFIG_XML_NAME = "auto-config.xml";
     public static final String AUTO_CONFIG_VM_NAME = "config.properties.vm";
-    public static final String CONFIG_PROPERTIES_NAME = "config.properties";
+    public static final String CONFIG_PROPERTIES_NAME = "xconfig.properties";
 
     public final MybatisGenerator mybatisGenerator;
     public final APIGenerator apiGenerator;
@@ -492,10 +492,10 @@ public class ServiceGenerator extends Generator {
                 idx = content.lastIndexOf("</script>");
                 int edx = content.lastIndexOf("</config>");
                 if (idx >= 0 && idx < content.length()) {
-                    content.insert(idx, "    <generate template=\"config.properties.vm\" destfile=\"" + relativePath + "config.properties\" charset=\"UTF-8\"/>\n    ");
+                    content.insert(idx, "    <generate template=\"config.properties.vm\" destfile=\"" + relativePath + CONFIG_PROPERTIES_NAME + "\" charset=\"UTF-8\"/>\n    ");
                 } else if (edx >= 0 && edx < content.length()) {
                     content.insert(edx, "    <script>\n" +
-                            "        <generate template=\"config.properties.vm\" destfile=\"" + relativePath + "config.properties\" charset=\"UTF-8\"/>\n" +
+                            "        <generate template=\"config.properties.vm\" destfile=\"" + relativePath + CONFIG_PROPERTIES_NAME + "\" charset=\"UTF-8\"/>\n" +
                             "    </script>\n");
                 }
             }

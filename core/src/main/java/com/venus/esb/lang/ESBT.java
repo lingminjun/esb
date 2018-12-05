@@ -1269,14 +1269,21 @@ public final class ESBT {
      * @return 父类中的属性对象
      */
     public static Field[] getClassDeclaredFields(Class<?> clazz) {
+        return getClassDeclaredFields(clazz,Object.class);
+    }
+    public static Field[] getClassDeclaredFields(Class<?> clazz, Class<?> root) {
+        if (root == null) {
+            root = Object.class;
+        }
+
         //若父类和子类有同名属性,直接用子类的属性覆盖即可
-        if (clazz == null || clazz == Object.class) {
+        if (clazz == null || clazz == root) {
             return new Field[0];
         }
 
         ArrayList<Field> list = new ArrayList<Field>();
         HashSet<String> names = new HashSet<String>();
-        for(; clazz != null && clazz != Object.class; clazz = clazz.getSuperclass()) {
+        for(; clazz != null && clazz != root; clazz = clazz.getSuperclass()) {
             try {
                 Field[] flds = clazz.getDeclaredFields() ;
                 for (Field fld : flds) {

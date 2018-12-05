@@ -89,14 +89,29 @@ public class ESBAPIVerify implements ESB.APIVerify {
             Signable signature = ESBAPISignature.getSignable(sm, ESBConfigCenter.instance().getSignKey(),null);
             return signature.verify(sig,sb.toString().getBytes(ESBConsts.UTF8));
         } else if (context.usecur != null || context.dsecur != null || context.ttoken != null) {// 所有有安全验证需求的接口需要检测动态签名，
-            //私钥取值
-            ESBSecur secur = context.usecur;
-            if (secur == null) {
+            ESBSecur secur = null;
+            // 登录用户权限
+            if (ESBSecurityLevel.userAuth.check(info.api.security)) {
+                secur = context.usecur;
+            }
+            // 登录账号权限
+            else if (ESBSecurityLevel.accountAuth.check(info.api.security)) {
+                secur = context.usecur;
+            }
+            // 设备权限
+            else if (ESBSecurityLevel.deviceAuth.check(info.api.security)) {
                 secur = context.dsecur;
             }
-            if (secur == null) {
+            // 临时性的
+            else {
                 secur = context.tsecur;
             }
+
+            //用户权限不对
+            if (secur == null) {
+                throw ESBExceptionCodes.SIGNATURE_ERROR("没有找到对应的验权token");
+            }
+
             Signable signature = ESBAPISignature.getSignable(sm, secur.key,null);
             return signature.verify(sig,sb.toString().getBytes(ESBConsts.UTF8));
         } else {

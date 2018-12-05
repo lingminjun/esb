@@ -1783,7 +1783,10 @@ public class MybatisGenerator extends Generator {
 
             String field;
             String itemField;
-            if (cl.name.equals("create_at") || cl.name.equals("modified_at")) {
+            if (cl.name.equals("create_at")
+                    || cl.name.equals("created_at")
+                    || cl.name.equals("modify_at")
+                    || cl.name.equals("modified_at")) {
                 // 优化
                 if (MYSQL_DATE_TYPE.contains(cl.type)) {//日期类型
                     /*
@@ -1820,12 +1823,13 @@ public class MybatisGenerator extends Generator {
             cols.append("`" + cl.name + "`");
             flds.append(field);
 
-            // insert需忽略的字段
-            if (cl.name.equals("id") 
-                || cl.name.equals("delete")
-                || cl.name.equals("is_delete")) {
+            // 插入语句不需要的字段
+            if (cl.name.equals("id")
+                    || cl.name.equals("is_delete")
+                    || cl.name.equals("delete")) {
                 continue;
             }
+
             if (incols.length() > 0) {
                 incols.append(",");
                 inflds.append(",");
@@ -1840,7 +1844,7 @@ public class MybatisGenerator extends Generator {
         StringBuilder upBuilder = new StringBuilder();
         boolean hasModify = false;
         for (Column cl : table.columns) {
-            if (cl.name.equals("id") || cl.name.equals("create_at")) {
+            if (cl.name.equals("id") || cl.name.equals("create_at") || cl.name.equals("created_at")) {
                 continue;
             }
 
@@ -1848,16 +1852,31 @@ public class MybatisGenerator extends Generator {
                 hasModify = true;
                 if (MYSQL_DATE_TYPE.contains(cl.type)) {
                     if ("date".equalsIgnoreCase(cl.type)) {
-                        upBuilder.insert(0, "            modified_at = curdate() \n");
+                        upBuilder.insert(0, "            `modified_at` = curdate() \n");
                     } else if ("time".equalsIgnoreCase(cl.type)) {
-                        upBuilder.insert(0, "            modified_at = curtime() \n");
+                        upBuilder.insert(0, "            `modified_at` = curtime() \n");
                     } else if ("year".equalsIgnoreCase(cl.type)) {//FIXME:此处可能不成功
-                        upBuilder.insert(0, "            modified_at = now() \n");
+                        upBuilder.insert(0, "            `modified_at` = now() \n");
                     } else {
-                        upBuilder.insert(0, "            modified_at = now() \n");
+                        upBuilder.insert(0, "            `modified_at` = now() \n");
                     }
                 } else {
-                    upBuilder.insert(0,"            modified_at = (unix_timestamp() * 1000) \n");
+                    upBuilder.insert(0,"            `modified_at` = (unix_timestamp() * 1000) \n");
+                }
+            } else if (cl.name.equals("modify_at")) {
+                hasModify = true;
+                if (MYSQL_DATE_TYPE.contains(cl.type)) {
+                    if ("date".equalsIgnoreCase(cl.type)) {
+                        upBuilder.insert(0, "            `modify_at` = curdate() \n");
+                    } else if ("time".equalsIgnoreCase(cl.type)) {
+                        upBuilder.insert(0, "            `modify_at` = curtime() \n");
+                    } else if ("year".equalsIgnoreCase(cl.type)) {//FIXME:此处可能不成功
+                        upBuilder.insert(0, "            `modify_at` = now() \n");
+                    } else {
+                        upBuilder.insert(0, "            `modify_at` = now() \n");
+                    }
+                } else {
+                    upBuilder.insert(0,"            `modify_at` = (unix_timestamp() * 1000) \n");
                 }
             } else {
                 upBuilder.append("        <if test=\""+ toHumpString(cl.name,false) + " != null\">\n");

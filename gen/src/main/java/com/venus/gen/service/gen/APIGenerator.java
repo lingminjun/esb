@@ -500,6 +500,8 @@ class APIGenerator extends Generator {
                     || cl.getName().equals("delete")
                     || cl.getName().equals("id")
                     || cl.getName().equals("create_at")
+                    || cl.getName().equals("created_at")
+                    || cl.getName().equals("modify_at")
                     || cl.getName().equals("modified_at")
                     ) {
                 continue;

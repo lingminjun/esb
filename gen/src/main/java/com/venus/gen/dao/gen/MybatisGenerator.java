@@ -1925,7 +1925,7 @@ public class MybatisGenerator extends Generator {
             content.append("    <select id=\"queryByIds\" resultMap=\"" + resultEntity + "\">\n");
             content.append("        select " + cols.toString() + " \n");
             content.append("        from `" + table.name + "` \n");
-            content.append("        where id en \n");
+            content.append("        where id in \n");
             content.append("        <foreach collection=\"list\" item=\"theId\" index=\"index\" \n");
             content.append("             open=\"(\" close=\")\" separator=\",\"> \n");
             content.append("             #{theId}  \n");

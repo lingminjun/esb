@@ -681,7 +681,14 @@ public final class ESB {
         }
 
 //        try {
-            return serializer.serialized(obj);
+        String rst = serializer.serialized(obj);
+        if (rst != null) {//过滤掉dubbo解析数据的class
+            //"class":"com.venus.scm.entities.ScmSkuImagePOJO",
+            rst = rst.replaceAll("\\{\"class\":\"[a-zA-Z_\\$]+[\\w\\$\\.]*\"\\}","{}");
+            rst = rst.replaceAll("\\{\"class\":\"[a-zA-_\\$]+[\\w\\$\\.]*\",","{");
+            rst = rst.replaceAll(",\"class\":\"[a-zA-_\\$]+[\\w\\$\\.]*\"","");
+        }
+        return rst;
 //        } catch (IOException e) {
 //            throw ESBExceptionCodes.SERIALIZE_FAILED("请求最后序列化出错").setCoreCause(e);
 //        }

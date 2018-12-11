@@ -298,7 +298,7 @@ public class ServiceGenerator extends Generator {
         serviceContent.append("    private static final org.slf4j.Logger logger    = LoggerFactory.getLogger(" + table.getSimpleCRUDServiceImplementationName() + ".class);\n\n");
 
         serviceContent.append("    // 默认加载transactionManager事务，若persistence未配置，请防止出现null point\n");
-        serviceContent.append("    @Resource(name = \"transactionManager\")\n");
+        serviceContent.append("    @Resource(name = \"" + currentPackageName + "transactionManager\")\n");
         serviceContent.append("    protected DataSourceTransactionManager transactionManager;\n\n");
 
         // 定义DAO属性

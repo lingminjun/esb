@@ -8,14 +8,18 @@ import com.alibaba.dubbo.config.ReferenceConfig;
 import com.alibaba.dubbo.config.RegistryConfig;
 import com.alibaba.dubbo.config.utils.ReferenceConfigCache;
 import com.alibaba.dubbo.rpc.RpcException;
+import com.alibaba.dubbo.rpc.service.GenericException;
 import com.alibaba.dubbo.rpc.service.GenericService;
 import com.venus.esb.config.ESBConfigCenter;
 import com.venus.esb.dubbo.filter.ESBEchoFilter;
 import com.venus.esb.lang.ESBException;
 import com.venus.esb.lang.ESBExceptionCodes;
+import com.venus.esb.lang.ESBRuntimeException;
 import com.venus.esb.lang.ESBT;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created by lingminjun on 17/2/8.
@@ -125,6 +129,12 @@ public final class ESBGenericCaller {
                 return genericService.$invoke(methodName, params.getTyps(), params.getObjs());
             }
         } catch (RpcException e) {
+            if (e.getCause() instanceof ESBRuntimeException) {
+                throw ((ESBRuntimeException) e.getCause()).getException();
+            } else if (e.getCause() instanceof ESBException) {
+                throw ((ESBException)e.getCause());
+            }
+            //其他异常判断
             switch (e.getCode()) {
                 case RpcException.NETWORK_EXCEPTION:{
                     throw ESBExceptionCodes.DUBBO_NETWORK_EXCEPTION("Dubbo请求网络错误,可能方法找不到").setCoreCause(e);
@@ -146,8 +156,57 @@ public final class ESBGenericCaller {
                 }
             }
         } catch (Throwable e) {
+            //对异常的处理，必须把ESBException给解析出来
+            if (e instanceof GenericException) {
+                GenericException ge = (GenericException)e;
+                String eclz = ge.getExceptionClass();
+                if (eclz.equals(ESBRuntimeException.class.getName()) || eclz.equals(ESBException.class.getName())) {
+                    ESBException ee = parseServerException(ge);
+                    if (ee != null) {
+                        throw ee;
+                    }
+                }
+//                else if (eclz.equals(RpcException.class.getName())) {
+//
+//                }
+                throw ESBExceptionCodes.DUBBO_SERVICE_ERROR("Dubbo Generic请求出错").setCoreCause(e);
+            } else if (e instanceof ESBRuntimeException) {
+                throw ((ESBRuntimeException) e).getException();
+            } else if (e instanceof ESBException) {
+                throw ((ESBException)e);
+            } else if (e.getCause() instanceof ESBRuntimeException) {
+                throw ((ESBRuntimeException) e.getCause()).getException();
+            } else if (e.getCause() instanceof ESBException) {
+                throw ((ESBException)e.getCause());
+            }
             throw ESBExceptionCodes.DUBBO_SERVICE_ERROR("Dubbo请求出错").setCoreCause(e);
         }
+    }
+
+    private static ESBException parseServerException(GenericException ge) {
+            String expMsg = ge.getMessage();
+            Pattern regex = Pattern.compile("ESBException\\{code=\\-?[0-9]+\\, msg='[\\S\\s]*'\\, l10n='[\\S\\s]*'\\, domain='[\\S\\s]*'\\, reason='[\\S\\s]*'\\, exposed='(true|false)+'}", Pattern.CASE_INSENSITIVE);
+            Matcher m = regex.matcher(expMsg);
+            if (m.find()) {
+                String des = expMsg.substring(m.start() + "ESBException{".length(), m.end()-1) ;
+//                String stack = expMsg.substring(m.end()+1);//调用栈
+                String[] ss = des.split(", ");
+                if (ss.length == 6) {
+                    int code = ESBT.integer(ss[0].substring("code=".length()));
+                    String msg = ss[1].substring("msg='".length(),ss[1].length() - 1);
+                    String l10n = ss[2].substring("l10n='".length(),ss[2].length() - 1);
+                    String domain = ss[3].substring("domain='".length(),ss[3].length() - 1);
+                    String reason = ss[4].substring("reason='".length(),ss[4].length() - 1);
+                    boolean exposed = ESBT.bool(ss[5].substring("exposed='".length(),ss[5].length() - 1));
+
+                    //还原出异常
+                    ESBException exception = new ESBException(msg,domain,code,ge);
+                    exception.setLocalizedMessage(l10n);
+                    return exception;
+                }
+            }
+
+            return null;
     }
 
     /**

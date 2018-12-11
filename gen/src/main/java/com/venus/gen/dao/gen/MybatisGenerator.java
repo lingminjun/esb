@@ -648,7 +648,7 @@ public class MybatisGenerator extends Generator {
 
             //spring bean配置
             String springConf = this.resourcesPath() + File.separator + file_prefix + SPRING_BEAN_XML_NAME;
-            writeSpringXml(springConf,mapperName,mappers,this.getProjectSimpleName());
+            writeSpringXml(springConf,mapperName,mappers,application);
 
         }
 
@@ -2132,9 +2132,8 @@ public class MybatisGenerator extends Generator {
         }
     }
 
-
-    private static String parseSqlSessionFromSpringXml(String xml) {
-        int idx = xml.lastIndexOf("\"org.mybatis.spring.SqlSessionFactoryBean\"");
+    private static String findBeanIdFromSpringXml(String xml, String beanName) {
+        int idx = xml.lastIndexOf("\"" + beanName + "\"");
         if (idx > 0 && idx < xml.length()) {
             String target = xml.substring(0,idx);
             int begin = target.lastIndexOf("<bean");
@@ -2167,14 +2166,32 @@ public class MybatisGenerator extends Generator {
         return "";
     }
 
+
+    private static String parseTransactionManagerFromSpringXml(String xml) {
+        return findBeanIdFromSpringXml(xml,"org.springframework.jdbc.datasource.DataSourceTransactionManager");
+    }
+    private static String parseSqlSessionFromSpringXml(String xml) {
+        return findBeanIdFromSpringXml(xml,"org.mybatis.spring.SqlSessionFactoryBean");
+    }
+    private static String parseDataSourceFromSpringXml(String xml) {
+        return findBeanIdFromSpringXml(xml,"org.apache.tomcat.jdbc.pool.DataSource");
+    }
+    private static String parseTransactionTemplateFromSpringXml(String xml) {
+        return findBeanIdFromSpringXml(xml,"org.springframework.transaction.support.TransactionTemplate");
+    }
+
     // 修改写入逻辑，将替换同名的mapper
     private static void writeSpringXml(String springPath, String mapperFileName, List<MapperInfo> mappers, String projectName) {
 
         String datasource = "dataSource";
         String sqlSession = "sqlSessionFactory";
+        String transaction = "transactionManager";
+        String transactionTemplate = "transactionTemplate";
         if (projectName != null && projectName.length() > 0) {
             sqlSession = projectName + "SqlSessionFactory";
             datasource = projectName + "DataSource";
+            transaction = projectName + "TransactionManager";
+            transactionTemplate = projectName + "TransactionTemplate";
         }
 
         //判断是否为更新
@@ -2182,10 +2199,30 @@ public class MybatisGenerator extends Generator {
         try {
             String old = FileUtils.readFile(springPath, ESBConsts.UTF8);
             if (old != null && old.length() > 0) {
-                //查找sqlSessionName
-                String str = parseSqlSessionFromSpringXml(old);
-                if (str != null && str.length() > 0) {
-                    sqlSession = str;
+                //查找原有bean id
+                {
+                    String str = parseTransactionManagerFromSpringXml(old);
+                    if (str != null && str.length() > 0) {
+                        transaction = str;
+                    }
+                }
+                {
+                    String str = parseTransactionTemplateFromSpringXml(old);
+                    if (str != null && str.length() > 0) {
+                        transactionTemplate = str;
+                    }
+                }
+                {
+                    String str = parseSqlSessionFromSpringXml(old);
+                    if (str != null && str.length() > 0) {
+                        sqlSession = str;
+                    }
+                }
+                {
+                    String str = parseDataSourceFromSpringXml(old);
+                    if (str != null && str.length() > 0) {
+                        datasource = str;
+                    }
                 }
                 content.append(old);
             }
@@ -2196,7 +2233,7 @@ public class MybatisGenerator extends Generator {
         //写入默认配置
         if (content.length() == 0) {
             content.append(SpringXMLConst.SPRING_XML_CONFIG_HEAD);
-            content.append(SpringXMLConst.theJdbcDatasource(projectName,datasource,sqlSession,mapperFileName));
+            content.append(SpringXMLConst.theJdbcDatasource(projectName,transaction,transactionTemplate,datasource,sqlSession,mapperFileName));
             content.append("<!-- mapper beans -->\n");
             content.append("</beans>");
         }

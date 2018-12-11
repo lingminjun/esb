@@ -110,10 +110,12 @@ public final class SpringXMLConst {
             "                    retries=\"0\"/>\n\n    ";
 
     public static final String JDBC_DATASOURCE_MASK = "@Datasource@";
+    public static final String JDBC_TRANSACTION_MASK = "@TransactionManager@";
+    public static final String JDBC_TRANSACTION_TEMPLATE_MASK = "@TransactionTemplate@";
     public static final String SQL_SESSION_FACTORY_MASK = "@SqlSessionFactory@";
     public static final String MAPPER_XML_PATH_MASK = "@MapperXmlPath@";
 
-    private static final String SPRING_JDBC_DATASOURCE = "    <tx:annotation-driven transaction-manager=\"transactionManager\"/>\n" +
+    private static final String SPRING_JDBC_DATASOURCE = "    <tx:annotation-driven transaction-manager=\"@TransactionManager@\"/>\n" +
             "    \n" +
             "    <!-- Datasource配置：jdbc链接池配置 -->\n" +
             "    <bean id=\"@Datasource@\" class=\"org.apache.tomcat.jdbc.pool.DataSource\" destroy-method=\"close\">\n" +
@@ -147,11 +149,11 @@ public final class SpringXMLConst {
             "    </bean>\n" +
             "\n" +
             "    <!-- 注意：若只读Datasource，则需要注释以下事务（tomcat jdbc pool,读写库需要使用事务）-->\n" +
-            "    <bean id=\"transactionManager\" class=\"org.springframework.jdbc.datasource.DataSourceTransactionManager\">\n" +
+            "    <bean id=\"@TransactionManager@\" class=\"org.springframework.jdbc.datasource.DataSourceTransactionManager\">\n" +
             "        <property name=\"dataSource\" ref=\"@Datasource@\"/>\n" +
             "    </bean>\n" +
-            "    <bean id=\"transactionTemplate\" class=\"org.springframework.transaction.support.TransactionTemplate\">\n" +
-            "        <property name=\"transactionManager\" ref=\"transactionManager\"/>\n" +
+            "    <bean id=\"@TransactionTemplate@\" class=\"org.springframework.transaction.support.TransactionTemplate\">\n" +
+            "        <property name=\"transactionManager\" ref=\"@TransactionManager@\"/>\n" +
             "    </bean>\n" +
             "    <!-- 注意：若只读Datasource，则需要注释以上事务（tomcat jdbc pool,读写库需要使用事务）-->\n" +
             "\n" +
@@ -160,8 +162,10 @@ public final class SpringXMLConst {
             "        <property name=\"dataSource\" ref=\"@Datasource@\"/>\n" +
             "        <property name=\"configLocation\" value=\"classpath:@MapperXmlPath@\"/>\n" +
             "    </bean>\n\n    ";
-    public static final String theJdbcDatasource(String project, String datasource, String sessionFactory, String mapperPath) {
+    public static final String theJdbcDatasource(String project, String transaction, String transactionTemplate, String datasource, String sessionFactory, String mapperPath) {
         String str = SPRING_JDBC_DATASOURCE.replaceAll(JDBC_DATASOURCE_MASK,datasource);
+        str = str.replaceAll(JDBC_TRANSACTION_MASK,transaction);
+        str = str.replaceAll(JDBC_TRANSACTION_TEMPLATE_MASK,transactionTemplate);
         str = str.replaceAll(SQL_SESSION_FACTORY_MASK,sessionFactory);
         str = str.replaceAll(MAPPER_XML_PATH_MASK,mapperPath);
         str = str.replaceAll(APPLICATION_NAME,(project == null || project.length() == 0) ? "default" : project);

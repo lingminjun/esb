@@ -24,7 +24,7 @@ public final class ESBException extends Exception implements Serializable {
     private final String domain;//错误域
     private transient String reason;    //错误原因描述,真实原因
     private transient Throwable inner;  //内部错误
-    private boolean isExposed;//server的异常是否要暴露给esb使用端
+    private boolean isExposed = true;//server的异常是否要暴露给esb使用端
 
     @JSONField(serialize = false, deserialize = false)
     private transient HashMap<String,Object> info;//携带的自定义参数
@@ -64,7 +64,7 @@ public final class ESBException extends Exception implements Serializable {
         return code;
     }
 
-    // 优先展示异常真是原因
+    // 优先展示异常真实原因
     @Override
     public String getMessage() {
 

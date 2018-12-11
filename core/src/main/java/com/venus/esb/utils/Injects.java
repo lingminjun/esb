@@ -500,19 +500,33 @@ public final class Injects {
         Collection targetCollection = (Collection)target;
 
         for (int i = 0; i < size; i++) {
-            Object vobj = Array.get(array,i);
+            Object fobj = Array.get(array,i);
             //忽略null的存在
-            if (vobj == null) {
+            if (fobj == null) {
                 continue;
             }
 
             //隐士转换基础类型
-            if (isBaseType(targetElementClass)) {
+            //字符串数组
+            if (targetElementClass == String.class) {
                 //基础类型
-                if (!isNumericalValue(vobj)) {
+                if (!isNumericalValue(fobj)) {
                     return;
                 }
-                String string = vobj.toString();
+                String string = fobj.toString();
+                targetCollection.add(string);
+            }
+            //基础数据类型
+            else if (isBaseType(targetElementClass)) {
+                //基础类型
+                if (!isNumericalValue(fobj)) {
+                    return;
+                }
+                String string = fobj.toString();
+                //空字符不赋值
+                if (string.length() == 0) {
+                    continue;
+                }
                 if (targetElementClass == boolean.class || targetElementClass == Boolean.class) {
                     targetCollection.add(ESBT.bool(string));
                 } else if (targetElementClass == char.class || targetElementClass == Character.class) {
@@ -537,16 +551,11 @@ public final class Injects {
                 } else if (targetElementClass == double.class || targetElementClass == Double.class) {
                     targetCollection.add(ESBT.doubleDecimal(string));
                 }
-                //字符串数组
-                else if (targetElementClass == String.class) {
-                    targetCollection.add(string);
-                }
-
             } else if (targetElementClass.isEnum()) {//枚举支持
-                if (targetElementClass == vobj.getClass()) {//直接加入
-                    targetCollection.add(vobj);
-                } else if (vobj instanceof CharSequence) {
-                    String strName = vobj.toString();
+                if (targetElementClass == fobj.getClass()) {//直接加入
+                    targetCollection.add(fobj);
+                } else if (fobj instanceof CharSequence) {
+                    String strName = fobj.toString();
                     Object[] enumValues = targetElementClass.getEnumConstants();
                     for (Object enumV : enumValues){
                         if (strName.equals(enumV.toString())) {
@@ -568,7 +577,7 @@ public final class Injects {
                 if (tobj == null) {
                     return;//没有必要继续
                 }
-                fill(tobj, vobj, implicit, root);
+                fill(fobj, tobj, implicit, root);
                 targetCollection.add(tobj);
             }
         }
@@ -655,9 +664,23 @@ public final class Injects {
             return;
         }
 
+        //5.1.1 字符串接收
+        if (set.getType() == String.class) {
+            String string = value.toString();
+            //注意空字符串仍然赋值
+            if (isNumericalValue(value)) {
+                try {
+                    set.setAccessible(true);
+                    set.set(target, string);
+                } catch (Throwable e) {}
+            }
+            return;
+        }
+
         // 5.2 隐士转换基础类型
         if (isBaseType(set.getType()) && isNumericalValue(value)) {//隐士转换基础类型
             String string = value.toString();
+            //空字符串，不赋值其他类型
             if (string.length() == 0) {return;}
 
             //byte,char,short,int,long,float,double，boolean
@@ -742,6 +765,11 @@ public final class Injects {
                         }
                     }
                 } catch (Throwable e) {}
+            } else if (set.getType() == String.class) {
+                try {
+                    set.setAccessible(true);
+                    set.set(target, string);
+                } catch (Throwable e) {}
             }
 
             return;
@@ -782,16 +810,16 @@ public final class Injects {
 
         // 7、其他复杂类型(非泛型)
         if (set.getGenericType() == set.getType()) {
-            Object fvalue = null;
+            Object tvalue = null;
             try {
-                fvalue = set.getType().newInstance();
+                tvalue = set.getType().newInstance();
             } catch (Throwable e) {e.printStackTrace();}
 
-            if (fvalue != null) {
-                fill(value,fvalue,implicit,root);
+            if (tvalue != null) {
+                fill(value,tvalue,implicit,root);
                 try {
                     set.setAccessible(true);
-                    set.set(target, fvalue);
+                    set.set(target, tvalue);
                 } catch (Throwable e) {}
             }
             return;

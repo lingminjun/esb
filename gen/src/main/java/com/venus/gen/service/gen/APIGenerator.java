@@ -303,6 +303,10 @@ class APIGenerator extends Generator {
             //主键查询
             writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, false, false);
             writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, false, true);
+
+            //主键批量查询
+            writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, false, false);
+            writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, false, true);
         }
 
         //查询，索引查询，翻页
@@ -606,6 +610,93 @@ class APIGenerator extends Generator {
 
         serviceContent.append("    }\n\n");
 
+    }
+
+    public static void writeQueryByIdsMethod(String tableModelName, String groupName, String pojoName, String theSecurity, StringBuilder serviceContent, MybatisGenerator.Table table, boolean implement, boolean hasCache) {
+
+        serviceContent.append("    /**\n");
+        if (hasCache) {
+            serviceContent.append("     * backend query " + pojoName + " by ids\n");
+        } else {
+            serviceContent.append("     * query " + pojoName + " by ids\n");
+        }
+        serviceContent.append("     * @return \n");
+        serviceContent.append("     */\n");
+        String findMethod = null;
+        if (hasCache) {
+            findMethod = "rawQuery" + tableModelName + "ByIds";
+        } else {
+            findMethod = "query" + tableModelName + "ByIds";
+        }
+        if (!implement) {
+            serviceContent.append("    @ESBAPI(module = \"" + groupName + "\",name = \"" + findMethod + "\", desc = \"查找" + pojoName + "\", security = " + (hasCache ? "ESBSecurityLevel.integrated" : theSecurity) + ")\n");
+        } else {
+            serviceContent.append("    @Override\n");
+            if (hasCache) {
+                serviceContent.append("    //@AutoCache(key = \"BATCH_" + table.getAlias().toUpperCase() + "_#{ids}\", async = true, condition=\"!#{noCache}\")\n");
+            }
+        }
+
+        String defineMethod = "    public " + table.getSimplePOJOResultsClassName() + " " + findMethod + "(@ESBParam(name = \"ids\", desc = \"对象id集合\", required = true) final long[] ids";
+        serviceContent.append(defineMethod);
+        String spacing = formatSpaceParam(defineMethod);
+
+        //是否走缓存
+        if (hasCache) {
+            serviceContent.append(",\n");
+            serviceContent.append(spacing);
+            serviceContent.append("@ESBParam(name = \"noCache\", desc = \"是否走缓存\", required = false) final boolean noCache");
+        }
+
+        if (!implement) {
+            serviceContent.append(") throws ESBException;\n\n");
+            return;
+        } else {
+            serviceContent.append(") throws ESBException {\n");
+        }
+
+        //实现代码
+        String theDaoBean = "this." + toLowerHeadString(table.getSimpleDAOClassName());
+
+        String dataObj = table.getSimpleDObjectClassName();
+        String resultsName = table.getSimplePOJOResultsClassName();
+
+        if (!hasCache) {
+            serviceContent.append("        // Please add the cached code here.\n");
+            serviceContent.append("        // String cackeKey = \"BATCH_" + table.getAlias().toUpperCase() + "_\" + ids.toString();\n\n");
+            serviceContent.append("        return this.");
+            serviceContent.append("raw");
+            serviceContent.append(toUpperHeadString(findMethod));
+            serviceContent.append("(ids,false);\n");
+        } else {
+
+            serviceContent.append("        if (ids == null || ids.length <= 0) {\n");
+            serviceContent.append("            throw new ESBException(\"参数错误\",\"" + groupName + "\",-1,\"id集合不能为空\");\n");
+            serviceContent.append("        }\n");
+
+            serviceContent.append("        List<Long> idList = new ArrayList<Long>();\n");
+            serviceContent.append("        for (long id : ids) {\n");
+            serviceContent.append("            idList.add(id);\n");
+            serviceContent.append("        }\n");
+
+            serviceContent.append("        List<" + dataObj + "> list = " + theDaoBean + ".queryByIds(idList);\n");
+
+            serviceContent.append("        List<" + pojoName + "> rs = new ArrayList<" + pojoName + ">();\n");
+            serviceContent.append("        for (" + dataObj + " dobj : list) {\n");
+            serviceContent.append("            " + pojoName + " pojo = new " + pojoName + "();\n");
+            serviceContent.append("            Injects.fill(dobj,pojo);\n");
+            serviceContent.append("            rs.add(pojo);\n");
+            serviceContent.append("        }\n");
+
+            serviceContent.append("        " + resultsName + " rlt = new " + resultsName + "();\n");
+            serviceContent.append("        rlt.setIndex(1);\n");
+            serviceContent.append("        rlt.setTotal(rs.size());\n");
+            serviceContent.append("        rlt.setSize(rs.size());\n");
+            serviceContent.append("        rlt.setResults(rs);\n");
+            serviceContent.append("        return rlt;\n");
+        }
+
+        serviceContent.append("    }\n\n");
     }
 
     public static void writeQueryMethod(String tableModelName, String groupName, String pojoName, String queryMethodName, List<MybatisGenerator.Column> columns, String theSecurity, StringBuilder serviceContent, MybatisGenerator.Table table, boolean implement, boolean hasCache, boolean isViewQuery) {

@@ -191,10 +191,12 @@ public class ServiceGenerator extends Generator {
         new File(crudImplPath).mkdirs();
 
         //生成基类
+        String application = this.getProjectSimpleName();
         for (MybatisGenerator.Table table : tables) {
             //生成服务实现类
             File serviceImplFile = new File(crudImplPath + File.separator + table.getSimpleCRUDServiceImplementationName() + ".java");
             writeServiceImpl(serviceImplFile,
+                    application,
                     this.packageName(),
                     mybatisGenerator.packageName(),
                     apiGenerator.packageName(),
@@ -219,7 +221,6 @@ public class ServiceGenerator extends Generator {
             xmlPath = this.resourcesPath() + File.separator + SPRING_BEAN_XML_NAME;
         }
         File xmlFile = new File(xmlPath);
-        String application = this.getProjectSimpleName();
         writeXmlConfig(xmlFile,application,this.packageName(),mybatisGenerator.packageName(),apiGenerator.packageName(),tables,this.project.projectType == ProjectType.dubbo);
 
         if (!this.genAutoConfig) {
@@ -249,7 +250,7 @@ public class ServiceGenerator extends Generator {
         return true;
     }
 
-    private static void writeServiceImpl(File file, String currentPackageName,String doaPackagaeName,String apiPackagaeName,  String sqlsSourcePath, String groupName, Class exceptionClass, ESBSecurityLevel security, MybatisGenerator.Table table, boolean isDubboProject, boolean genXmlConfig) {
+    private static void writeServiceImpl(File file, String projectName, String currentPackageName,String doaPackagaeName,String apiPackagaeName,  String sqlsSourcePath, String groupName, Class exceptionClass, ESBSecurityLevel security, MybatisGenerator.Table table, boolean isDubboProject, boolean genXmlConfig) {
         String theSecurity = "ESBSecurityLevel." + security.toString();
 
         StringBuilder serviceContent = new StringBuilder();
@@ -298,7 +299,11 @@ public class ServiceGenerator extends Generator {
         serviceContent.append("    private static final org.slf4j.Logger logger    = LoggerFactory.getLogger(" + table.getSimpleCRUDServiceImplementationName() + ".class);\n\n");
 
         serviceContent.append("    // 默认加载transactionManager事务，若persistence未配置，请防止出现null point\n");
-        serviceContent.append("    @Resource(name = \"" + currentPackageName + "transactionManager\")\n");
+        if (projectName != null && projectName.length() > 0) {
+            serviceContent.append("    @Resource(name = \"" + projectName + "TransactionManager\")\n");
+        } else {
+            serviceContent.append("    @Resource(name = \"transactionManager\")\n");
+        }
         serviceContent.append("    protected DataSourceTransactionManager transactionManager;\n\n");
 
         // 定义DAO属性
@@ -333,6 +338,10 @@ public class ServiceGenerator extends Generator {
             //主键查询
             APIGenerator.writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, false);
             APIGenerator.writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, true);
+
+            //主键批量查询
+            APIGenerator.writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, false);
+            APIGenerator.writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, true);
         }
 
         //查询，索引查询，翻页

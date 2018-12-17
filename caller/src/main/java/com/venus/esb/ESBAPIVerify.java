@@ -93,10 +93,16 @@ public class ESBAPIVerify implements ESB.APIVerify {
             // 登录用户权限
             if (ESBSecurityLevel.userAuth.check(info.api.security)) {
                 secur = context.usecur;
+                if (secur.uid == 0) {//可能是account token
+                    throw ESBExceptionCodes.SIGNATURE_ERROR("签名失败，没有有效token");
+                }
             }
             // 登录账号权限
             else if (ESBSecurityLevel.accountAuth.check(info.api.security)) {
                 secur = context.usecur;
+                if (secur.acct == 0) {
+                    throw ESBExceptionCodes.SIGNATURE_ERROR("签名失败，没有有效token");
+                }
             }
             // 设备权限
             else if (ESBSecurityLevel.deviceAuth.check(info.api.security)) {

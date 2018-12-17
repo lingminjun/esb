@@ -22,6 +22,7 @@ public class ServiceGenerator extends Generator {
 
     public static final String SPRING_BEAN_XML_NAME = "application-bean.xml";
     public static final String DUBBO_CONTEXT_XML_NAME = "application-dubbo-context.xml";
+    public static final String CONTEXT_XML_NAME_SUFFIX = "-dubbo-context.xml";
     public static final String DUBBO_PROVIDER_XML_NAME = "application-dubbo-provider.xml";
     public static final String AUTO_CONFIG_XML_NAME = "auto-config.xml";
     public static final String AUTO_CONFIG_VM_NAME = "config.properties.vm";
@@ -382,7 +383,11 @@ public class ServiceGenerator extends Generator {
         File providerXmlFile = new File(xmlPath);
         File contextXmlFile = null;
         if (this.separateXmlContext) {
-            contextXmlFile = new File(providerXmlFile.getParentFile().getAbsolutePath() + File.separator + DUBBO_CONTEXT_XML_NAME);
+            if (application != null && application.length() > 0) {
+                contextXmlFile = new File(providerXmlFile.getParentFile().getAbsolutePath() + File.separator + application + CONTEXT_XML_NAME_SUFFIX);
+            } else {
+                contextXmlFile = new File(providerXmlFile.getParentFile().getAbsolutePath() + File.separator + DUBBO_CONTEXT_XML_NAME);
+            }
         }
         writeXmlConfig(providerXmlFile,contextXmlFile,xmlRelativeDir,application,this.packageName(),mybatisGenerator.packageName(),apiGenerator.packageName(),tables,this.project.projectType == ProjectType.dubbo);
 

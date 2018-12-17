@@ -21,6 +21,7 @@ import java.util.*;
 public class ServiceGenerator extends Generator {
 
     public static final String SPRING_BEAN_XML_NAME = "application-bean.xml";
+    public static final String DUBBO_CONTEXT_XML_NAME = "application-dubbo-context.xml";
     public static final String DUBBO_PROVIDER_XML_NAME = "application-dubbo-provider.xml";
     public static final String AUTO_CONFIG_XML_NAME = "auto-config.xml";
     public static final String AUTO_CONFIG_VM_NAME = "config.properties.vm";
@@ -55,6 +56,132 @@ public class ServiceGenerator extends Generator {
         }
     }
     protected boolean genAutoConfig = true;//生成配置
+
+    protected String relativeBeanXmlDir;//自定义路径，相对地址
+    protected boolean separateXmlContext;//分离bean的上下文
+    protected String relativeMapperPath; //数据库mapper地址，相对地址
+
+
+    // Builder函数
+    public static class Builder {
+        private String projectDir;
+        private String tablePrefix;
+        private String packageName;
+        private String sqlsSourcePath;
+        private Class exceptionsClass;
+        private ESBSecurityLevel security = ESBSecurityLevel.userAuth;
+        private String mapperPath;
+
+        private boolean setGenXmlConfig = false;
+        private boolean genXmlConfig = false;
+        private boolean genAutoConfig = true;
+
+        private String relativeBeanXmlDir; //自定义路径，相对地址
+
+        private boolean separateXmlContext = true;//分离bean的上下文
+        private String relativeMapperPath;
+
+        public Builder setProjectDir(String projectDir) {
+            this.projectDir = projectDir;
+            return this;
+        }
+
+        public Builder setTablePrefix(String tablePrefix) {
+            this.tablePrefix = tablePrefix;
+            return this;
+        }
+
+        public Builder setPackageName(String packageName) {
+            this.packageName = packageName;
+            return this;
+        }
+
+        public Builder setSqlsSourcePath(String sqlsSourcePath) {
+            this.sqlsSourcePath = sqlsSourcePath;
+            return this;
+        }
+
+        public Builder setExceptionsClass(Class exceptionsClass) {
+            this.exceptionsClass = exceptionsClass;
+            return this;
+        }
+
+        public Builder setSecurity(ESBSecurityLevel security) {
+            this.security = security;
+            return this;
+        }
+
+        public Builder setMapperPath(String mapperPath) {
+            this.mapperPath = mapperPath;
+            return this;
+        }
+
+        // 是否自动生成sqlmap-config.xml
+        // 注意：SpringBoot工程若生成xml配置，则需要启动类添加@ImportResource(locations={"classpath:application-bean.xml"})注解
+        // 注意：Servlert工程若生成xml配置，则需要在web.xml中添加DispatcherServlet参数配置：
+        /*
+        <servlet>
+            <servlet-name>m</servlet-name>
+            <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+            <init-param>
+                <param-name>contextConfigLocation</param-name>
+                <param-value>classpath:application-bean.xml</param-value>
+            </init-param>
+            <load-on-startup>1</load-on-startup>
+        </servlet>
+        <servlet-mapping>
+            <servlet-name>m</servlet-name>
+            <url-pattern>/</url-pattern>
+        </servlet-mapping>
+        */
+        public Builder setGenXmlConfig(boolean genXmlConfig) {
+            this.genXmlConfig = genXmlConfig;
+            this.setGenXmlConfig = true;
+            return this;
+        }
+
+        public Builder setGenAutoConfig(boolean genAutoConfig) {
+            this.genAutoConfig = genAutoConfig;
+            return this;
+        }
+
+        public Builder setRelativeBeanXmlDir(String relativeBeanXmlDir) {
+            this.relativeBeanXmlDir = relativeBeanXmlDir;
+            return this;
+        }
+
+        public Builder setSeparateXmlContext(boolean separateXmlContext) {
+            this.separateXmlContext = separateXmlContext;
+            return this;
+        }
+
+        public Builder setRelativeMapperPath(String relativeMapperPath) {
+            this.relativeMapperPath = relativeMapperPath;
+            return this;
+        }
+
+        public ServiceGenerator build() {
+            if (packageName == null || packageName.length() == 0) {
+                return null;
+            }
+            if (sqlsSourcePath == null || sqlsSourcePath.length() == 0) {
+                return null;
+            }
+            if (exceptionsClass == null) {
+                return null;
+            }
+            ServiceGenerator generator = new ServiceGenerator(packageName,sqlsSourcePath,exceptionsClass,tablePrefix,projectDir,security);
+
+            if (setGenXmlConfig) {
+                generator.genXmlConfig = genXmlConfig;
+            }
+            generator.genAutoConfig = genAutoConfig;
+            generator.relativeBeanXmlDir = relativeBeanXmlDir;
+            generator.separateXmlContext = separateXmlContext;
+            generator.relativeMapperPath = relativeMapperPath;
+            return generator;
+        }
+    }
 
     /**
      *
@@ -122,20 +249,33 @@ public class ServiceGenerator extends Generator {
         }
 
         packageName = packageName.endsWith(".service")?packageName.substring(0,packageName.length() - ".service".length()):packageName;
-        MybatisGenerator tempMybatisGenerator = null;
-        if (daoModule != null) {
-            tempMybatisGenerator = new MybatisGenerator(this.rootProject,daoModule,sqlsSourcePath,tablePrefix,null);
-        } else {//则直接放到当前目录下
-            tempMybatisGenerator = new MybatisGenerator(this.rootProject, this.rootProject.copyModule(packageName + "." + "persistence"), sqlsSourcePath,tablePrefix,null);
-        }
-        tempMybatisGenerator.setAutoGenXmlConfig(true);
 
-        APIGenerator tempAPIGenerator = null;
-        if (apiModule != null) {
-            tempAPIGenerator = new APIGenerator(this.rootProject, apiModule, tempMybatisGenerator, exceptionsClass, security);
+        MybatisGenerator.Builder mybatisBuilder = new MybatisGenerator.Builder();
+        mybatisBuilder.setRootProject(this.rootProject);
+        if (daoModule != null) {
+            mybatisBuilder.setProject(daoModule);
         } else {
-            tempAPIGenerator = new APIGenerator(this.rootProject, this.rootProject.copyModule(packageName + "." + "api"), tempMybatisGenerator, exceptionsClass, security);
+            mybatisBuilder.setProject(this.rootProject.copyModule(packageName + "." + "persistence"));
         }
+        mybatisBuilder.setSqlsSourcePath(sqlsSourcePath);
+        mybatisBuilder.setTablePrefix(tablePrefix);
+        mybatisBuilder.setRelativeMapperPath(this.relativeBeanXmlDir);
+        mybatisBuilder.setGenXmlConfig(true);
+
+        MybatisGenerator tempMybatisGenerator = mybatisBuilder.build();
+
+        APIGenerator.Builder apiBuilder = new APIGenerator.Builder();
+        apiBuilder.setRootProject(this.rootProject);
+        if (apiModule != null) {
+            apiBuilder.setProject(apiModule);
+        } else {
+            apiBuilder.setProject(this.rootProject.copyModule(packageName + "." + "api"));
+        }
+        apiBuilder.setMybatisGenerator(tempMybatisGenerator);
+        apiBuilder.setExceptionsClass(exceptionsClass);
+        apiBuilder.setSecurity(security);
+
+        APIGenerator tempAPIGenerator = apiBuilder.build();
 
         this.apiGenerator = tempAPIGenerator;
         this.mybatisGenerator = tempMybatisGenerator;
@@ -160,18 +300,17 @@ public class ServiceGenerator extends Generator {
         <url-pattern>/</url-pattern>
     </servlet-mapping>
     */
-    public void setAutoGenXmlConfig(boolean auto) {
-        this.genXmlConfig = auto;
-    }
     public boolean autoGenXmlConfig() {
         return this.genXmlConfig;
     }
 
-    public void setAutoGenConfig(boolean auto) {
-        this.genAutoConfig = auto;
-    }
     public boolean autoGenConfig() {
         return this.genAutoConfig;
+    }
+
+
+    public String getRelativeBeanXmlDir() {
+        return relativeBeanXmlDir;
     }
 
     @Override
@@ -214,14 +353,38 @@ public class ServiceGenerator extends Generator {
             return true;
         }
         String xmlPath;
-        if (this.project.projectType == ProjectType.dubbo) {//spring启动容器目录
-            xmlPath = this.resourcesPath() + File.separator + "META-INF" + File.separator + "spring" + File.separator + DUBBO_PROVIDER_XML_NAME;
-            new File(this.resourcesPath() + File.separator + "META-INF" + File.separator + "spring").mkdirs();
+        //自定义provider地址
+        String xmlRelativeDir;
+        if (this.relativeBeanXmlDir != null && this.relativeBeanXmlDir.length() > 0) {
+            if (this.relativeBeanXmlDir.startsWith(File.separator) && this.relativeBeanXmlDir.endsWith(File.separator)) {
+                xmlPath = this.resourcesPath() + this.relativeBeanXmlDir + DUBBO_PROVIDER_XML_NAME;
+                xmlRelativeDir = this.relativeBeanXmlDir.substring(1);
+            } else if (this.relativeBeanXmlDir.startsWith(File.separator)) {
+                xmlPath = this.resourcesPath() + this.relativeBeanXmlDir + File.separator + DUBBO_PROVIDER_XML_NAME;
+                xmlRelativeDir = this.relativeBeanXmlDir.substring(1) + File.separator;
+            } else if (this.relativeBeanXmlDir.endsWith(File.separator)) {
+                xmlPath = this.resourcesPath() + File.separator + this.relativeBeanXmlDir + DUBBO_PROVIDER_XML_NAME;
+                xmlRelativeDir = this.relativeBeanXmlDir;
+            } else {
+                xmlPath = this.resourcesPath() + File.separator + this.relativeBeanXmlDir + File.separator + DUBBO_PROVIDER_XML_NAME;
+                xmlRelativeDir = this.relativeBeanXmlDir + File.separator;
+            }
         } else {
-            xmlPath = this.resourcesPath() + File.separator + SPRING_BEAN_XML_NAME;
+            if (this.project.projectType == ProjectType.dubbo) {//spring启动容器目录
+                xmlPath = this.resourcesPath() + File.separator + "META-INF" + File.separator + "spring" + File.separator + DUBBO_PROVIDER_XML_NAME;
+                new File(this.resourcesPath() + File.separator + "META-INF" + File.separator + "spring").mkdirs();
+                xmlRelativeDir = "META-INF" + File.separator + "spring" + File.separator;
+            } else {
+                xmlPath = this.resourcesPath() + File.separator + SPRING_BEAN_XML_NAME;
+                xmlRelativeDir = "";
+            }
         }
-        File xmlFile = new File(xmlPath);
-        writeXmlConfig(xmlFile,application,this.packageName(),mybatisGenerator.packageName(),apiGenerator.packageName(),tables,this.project.projectType == ProjectType.dubbo);
+        File providerXmlFile = new File(xmlPath);
+        File contextXmlFile = null;
+        if (this.separateXmlContext) {
+            contextXmlFile = new File(providerXmlFile.getParentFile().getAbsolutePath() + File.separator + DUBBO_CONTEXT_XML_NAME);
+        }
+        writeXmlConfig(providerXmlFile,contextXmlFile,xmlRelativeDir,application,this.packageName(),mybatisGenerator.packageName(),apiGenerator.packageName(),tables,this.project.projectType == ProjectType.dubbo);
 
         if (!this.genAutoConfig) {
             return true;
@@ -250,7 +413,7 @@ public class ServiceGenerator extends Generator {
         return true;
     }
 
-    private static void writeServiceImpl(File file, String projectName, String currentPackageName,String doaPackagaeName,String apiPackagaeName,  String sqlsSourcePath, String groupName, Class exceptionClass, ESBSecurityLevel security, MybatisGenerator.Table table, boolean isDubboProject, boolean genXmlConfig) {
+    private static void writeServiceImpl(File file, String projectName, String currentPackageName,String daoPackageName,String apiPackageName,  String sqlsSourcePath, String groupName, Class exceptionClass, ESBSecurityLevel security, MybatisGenerator.Table table, boolean isDubboProject, boolean genXmlConfig) {
         String theSecurity = "ESBSecurityLevel." + security.toString();
 
         StringBuilder serviceContent = new StringBuilder();
@@ -274,11 +437,11 @@ public class ServiceGenerator extends Generator {
         } else {
             serviceContent.append("import org.springframework.stereotype.Service;\n");
         }
-        serviceContent.append("import " + table.getDAOClassName(doaPackagaeName) + ";\n");
-        serviceContent.append("import " + table.getDObjectClassName(doaPackagaeName) + ";\n");
-        serviceContent.append("import " + table.getPOJOClassName(apiPackagaeName) + ";\n");
-        serviceContent.append("import " + table.getPOJOResultsClassName(apiPackagaeName) + ";\n");
-        serviceContent.append("import " + table.getCRUDServiceBeanName(apiPackagaeName) + ";\n");
+        serviceContent.append("import " + table.getDAOClassName(daoPackageName) + ";\n");
+        serviceContent.append("import " + table.getDObjectClassName(daoPackageName) + ";\n");
+        serviceContent.append("import " + table.getPOJOClassName(apiPackageName) + ";\n");
+        serviceContent.append("import " + table.getPOJOResultsClassName(apiPackageName) + ";\n");
+        serviceContent.append("import " + table.getCRUDServiceBeanName(apiPackageName) + ";\n");
         serviceContent.append("import javax.annotation.Resource;\n");
         serviceContent.append("\n\r\n\r");
 
@@ -380,7 +543,12 @@ public class ServiceGenerator extends Generator {
         }
     }
 
-    private static void writeXmlConfig(File file, String applicationName, String currentPackageName, String doaPackagaeName, String apiPackagaeName, List<MybatisGenerator.Table> tables, boolean isDubboProject) {
+    private static void writeXmlConfig(File file, File contextFile, String relativeXmlDir, String applicationName, String currentPackageName, String daoPackageName, String apiPackagaeName, List<MybatisGenerator.Table> tables, boolean isDubboProject) {
+        //表示分离context配置
+        if (contextFile != null) {//查看原来配置是否存在，如果存在，则不重写，如果不存在，就重写
+            writeContextXmlConfig(contextFile,applicationName,isDubboProject);
+        }
+
         //判断是否为更新
         StringBuilder content = new StringBuilder();
         boolean fileHeader = false;
@@ -400,33 +568,32 @@ public class ServiceGenerator extends Generator {
 
         //写入默认配置
         if (!fileHeader) {
-            if (isDubboProject) {
-                content.append(SpringXMLConst.theDubboProviderXmlConfigHead(applicationName));
+            if (contextFile != null) {//单独引入
+                if (isDubboProject) {
+                    content.append(SpringXMLConst.theDubboProviderXmlConfigHead(applicationName,true));
+                } else {
+                    content.append(SpringXMLConst.SPRING_XML_PURE_CONFIG_HEAD);
+                }
+
+                //检查是否需要包含
+                String contextFileName = contextFile.getName();
+                int idx = content.toString().indexOf(contextFileName);
+                if (idx < 0 || idx >= content.length()) {
+                    content.append("    <!-- 引用XML公用的配置信息，防止重复引用，故注释，使用者按需打开 -->\n");
+                    content.append("    <!-- <import resource=\"classpath:" + relativeXmlDir + contextFileName + "\"/> -->\n\n");
+                }
             } else {
-                content.append(SpringXMLConst.SPRING_XML_CONFIG_HEAD);
+                if (isDubboProject) {
+                    content.append(SpringXMLConst.theDubboProviderXmlConfigHead(applicationName,false));
+                } else {
+                    content.append(SpringXMLConst.SPRING_XML_CONFIG_HEAD);
+                }
             }
         }
 
-        if (isDubboProject) {
-            int idx = content.toString().indexOf("\"com.alibaba.dubbo.config.ApplicationConfig\"");
-            if (idx < 0 || idx >= content.length()) {
-                content.append(SpringXMLConst.theDubboApplicationConfig(applicationName));
-            }
-
-            idx = content.toString().indexOf("\"com.alibaba.dubbo.config.RegistryConfig\"");
-            if (idx < 0 || idx >= content.length()) {
-                content.append(SpringXMLConst.DUBBO_REGISTRY_CONFIG);
-            }
-
-            idx = content.toString().indexOf("\"com.alibaba.dubbo.config.ProtocolConfig\"");
-            if (idx < 0 || idx >= content.length()) {
-                content.append(SpringXMLConst.DUBBO_PROTOCOL_CONFIG);
-            }
-
-            idx = content.toString().indexOf("<dubbo:provider");
-            if (idx < 0 || idx >= content.length()) {
-                content.append(SpringXMLConst.DUBBO_PROVIDER_CONFIG);
-            }
+        //调整输入位置
+        if (content.toString().endsWith("\n")) {
+            content.append("    ");
         }
 
         // 添加为bean的
@@ -453,6 +620,72 @@ public class ServiceGenerator extends Generator {
         }
     }
 
+    private static void writeContextXmlConfig(File contextFile, String applicationName, boolean isDubboProject) {
+        if (!contextFile.exists()) {
+            //写新的配置文件
+            try {
+                if (isDubboProject) {
+                    writeFile(contextFile,SpringXMLConst.theDubboContextXmlConfig(applicationName).toString());
+                } else {
+                    writeFile(contextFile,SpringXMLConst.SPRING_XML_CONTEXT_CONFIG);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            return;
+        }
+
+        StringBuilder contextString = new StringBuilder();
+        try {
+            String old = FileUtils.readFile(contextFile.getAbsolutePath(), ESBConsts.UTF8);
+            int eidx = old.lastIndexOf("</beans>");
+            if (eidx >= 0 && eidx < old.length()) {
+                contextString.append(old.substring(0,eidx).trim());
+                contextString.append("\n\n    ");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        boolean changed = false;
+        if (isDubboProject) {
+            int idx = contextString.toString().indexOf("\"com.alibaba.dubbo.config.ApplicationConfig\"");
+            if (idx < 0 || idx >= contextString.length()) {
+                contextString.append(SpringXMLConst.theDubboApplicationConfig(applicationName));
+                changed = true;
+            }
+
+            idx = contextString.toString().indexOf("\"com.alibaba.dubbo.config.RegistryConfig\"");
+            if (idx < 0 || idx >= contextString.length()) {
+                contextString.append(SpringXMLConst.DUBBO_REGISTRY_CONFIG);
+                changed = true;
+            }
+
+            idx = contextString.toString().indexOf("\"com.alibaba.dubbo.config.ProtocolConfig\"");
+            if (idx < 0 || idx >= contextString.length()) {
+                contextString.append(SpringXMLConst.DUBBO_PROTOCOL_CONFIG);
+                changed = true;
+            }
+
+            idx = contextString.toString().indexOf("<dubbo:provider");
+            if (idx < 0 || idx >= contextString.length()) {
+                contextString.append(SpringXMLConst.DUBBO_PROVIDER_CONFIG);
+                changed = true;
+            }
+        }
+
+        contextString.append("\n</beans>");
+
+        if (changed) {
+            try {
+                writeFile(contextFile,contextString.toString());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     private static void writeAutoXmlConfig(File file, String applicationName, boolean isServlet, boolean isDubbo) {
         //判断是否为更新
         String relativePath = isServlet ? "WEB-INF/classes/" : "";
@@ -467,6 +700,21 @@ public class ServiceGenerator extends Generator {
         }
 
         StringBuilder content = new StringBuilder(old);
+
+        // application name
+        {
+            int idx = content.indexOf("application.name");
+            if (idx < 0 || idx >= content.length()) {
+                //插入
+                idx = content.indexOf("<config");
+                if (idx >= 0 && idx < content.length()) {
+                    idx = content.indexOf(">", (idx + "<config".length()));
+                    content.insert(idx + 1, "\n" + SpringXMLConst.ADD_APPLICATION_NAME_CONFIG_GROUP);
+                }
+
+            }
+        }
+
         //如果是dubbo
         if (isDubbo) {
             int idx = content.indexOf("dubbo.registry.url");
@@ -530,6 +778,15 @@ public class ServiceGenerator extends Generator {
         }
 
         StringBuilder content = new StringBuilder(old);
+
+        // application name
+        {
+            int idx = content.indexOf("application.name");
+            if (idx < 0 || idx >= content.length()) {
+                content.insert(0, SpringXMLConst.ADD_APPLICATION_NAME_CONFIG);
+            }
+        }
+
         //如果是dubbo
         if (isDubbo) {
             int idx = content.indexOf("dubbo.registry.url");
@@ -575,6 +832,14 @@ public class ServiceGenerator extends Generator {
         }
 
         StringBuilder content = new StringBuilder(old);
+
+        {
+            int idx = content.indexOf("application.name");
+            if (idx < 0 || idx >= content.length()) {
+                content.insert(0, SpringXMLConst.theApplicationPropertiesConfig(applicationName));
+            }
+        }
+
         //如果是dubbo
         if (isDubbo) {
             int idx = content.indexOf("dubbo.registry.url");

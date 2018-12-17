@@ -1,6 +1,8 @@
 package com.venus.gen;
 
+import com.venus.esb.lang.ESBConsts;
 import com.venus.esb.lang.ESBT;
+import com.venus.esb.utils.FileUtils;
 
 import java.io.*;
 import java.net.URL;
@@ -292,7 +294,49 @@ public abstract class Generator {
                 "resources" + File.separator +
                 "META-INF" + File.separator +
                 "spring");
-        return file.exists();
+        if (file.exists()) {
+            return true;
+        }
+
+        //取auto-config
+        String confFile = projectDir + File.separator +
+                "src" + File.separator +
+                "main" + File.separator +
+                "resources" + File.separator +
+                "xconfig.properties";
+        File conf = new File(confFile);
+        if (conf.exists()) {
+            try {
+                String content = FileUtils.readFile(confFile, ESBConsts.UTF8);
+                if (content != null && content.contains("dubbo")) {//包含dubbo的配置，说明是dubbo工程
+                    return true;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        //取auto-config
+        String vmFile = projectDir + File.separator +
+                "src" + File.separator +
+                "main" + File.separator +
+                "resources" + File.separator +
+                "META-INF" + File.separator +
+                "autoconf" + File.separator +
+                "config.properties.vm";
+        File vm = new File(vmFile);
+        if (vm.exists()) {
+            try {
+                String content = FileUtils.readFile(vmFile, ESBConsts.UTF8);
+                if (content != null && content.contains("dubbo")) {//包含dubbo的配置，说明是dubbo工程
+                    return true;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        return false;
     }
 
     public static String findModuleName(String pom) {

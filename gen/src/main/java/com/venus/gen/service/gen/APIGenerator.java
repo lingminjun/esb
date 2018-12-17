@@ -24,6 +24,95 @@ class APIGenerator extends Generator {
     public final ESBSecurityLevel security;
     private final boolean autoMybatisGenerator;
 
+    public static class Builder {
+        private String projectDir;
+        private String packageName;
+        private String sqlsSourcePath;
+        private Class exceptionsClass;
+        private String tablePrefix;
+        private ESBSecurityLevel security = ESBSecurityLevel.userAuth;
+
+        private ProjectModule rootProject;
+        private ProjectModule project;
+        private MybatisGenerator mybatisGenerator;
+
+        public Builder setProjectDir(String projectDir) {
+            this.projectDir = projectDir;
+            return this;
+        }
+
+        public Builder setPackageName(String packageName) {
+            this.packageName = packageName;
+            return this;
+        }
+
+        public Builder setSqlsSourcePath(String sqlsSourcePath) {
+            this.sqlsSourcePath = sqlsSourcePath;
+            return this;
+        }
+
+        public Builder setExceptionsClass(Class exceptionsClass) {
+            this.exceptionsClass = exceptionsClass;
+            return this;
+        }
+
+        public Builder setTablePrefix(String tablePrefix) {
+            this.tablePrefix = tablePrefix;
+            return this;
+        }
+
+        public Builder setSecurity(ESBSecurityLevel security) {
+            this.security = security;
+            return this;
+        }
+
+        public Builder setRootProject(ProjectModule rootProject) {
+            this.rootProject = rootProject;
+            return this;
+        }
+
+        public Builder setProject(ProjectModule project) {
+            this.project = project;
+            return this;
+        }
+
+        public Builder setMybatisGenerator(MybatisGenerator mybatisGenerator) {
+            this.mybatisGenerator = mybatisGenerator;
+            return this;
+        }
+
+        public APIGenerator build() {
+            if (exceptionsClass == null) {
+                return null;
+            }
+
+            if (security == null) {
+                security = ESBSecurityLevel.userAuth;
+            }
+
+            APIGenerator generator = null;
+            if (rootProject != null && project != null && mybatisGenerator != null) {
+                generator = new APIGenerator(rootProject,project,mybatisGenerator,exceptionsClass,security);
+            } else {
+                if (packageName == null || packageName.length() == 0) {
+                    return null;
+                }
+
+                if (sqlsSourcePath == null || sqlsSourcePath.length() == 0) {
+                    return null;
+                }
+
+                if (exceptionsClass == null) {
+                    return null;
+                }
+
+                generator = new APIGenerator(packageName,sqlsSourcePath,exceptionsClass,tablePrefix,projectDir,security);
+            }
+
+            return generator;
+        }
+    }
+
     /**
      *
      * @param packageName     项目包名【必填】

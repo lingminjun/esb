@@ -12,6 +12,40 @@ import java.io.File;
 public final class SpringXMLConst {
     public static final String SPRING_XSD_VERSION = "4.0";
 
+    public static final String SPRING_XML_CONTEXT_CONFIG = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<beans xmlns=\"http://www.springframework.org/schema/beans\"\n" +
+            "       xmlns:context=\"http://www.springframework.org/schema/context\"\n" +
+            "       xmlns:tx=\"http://www.springframework.org/schema/tx\"\n" +
+            "       xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n" +
+            "       xsi:schemaLocation=\"http://www.springframework.org/schema/beans\n" +
+            "           http://www.springframework.org/schema/beans/spring-beans-" + SPRING_XSD_VERSION + ".xsd\n" +
+            "           http://www.springframework.org/schema/context\n" +
+            "           http://www.springframework.org/schema/context/spring-context-" + SPRING_XSD_VERSION + ".xsd\n" +
+            "           http://www.springframework.org/schema/tx\n" +
+            "           http://www.springframework.org/schema/tx/spring-tx-" + SPRING_XSD_VERSION + ".xsd\"\n" +
+            "       default-lazy-init=\"false\">\n" +
+            "\n" +
+            "    <context:annotation-config/>\n" +
+            "    <context:property-placeholder file-encoding=\"UTF-8\"\n" +
+            "                                  ignore-unresolvable=\"true\"\n" +
+            "                                  ignore-resource-not-found=\"true\"\n" +
+            "                                  location=\"classpath:xconfig.properties\"/>\n\n" +
+            "</beans>";
+
+    public static final String SPRING_XML_PURE_CONFIG_HEAD = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<beans xmlns=\"http://www.springframework.org/schema/beans\"\n" +
+            "       xmlns:context=\"http://www.springframework.org/schema/context\"\n" +
+            "       xmlns:tx=\"http://www.springframework.org/schema/tx\"\n" +
+            "       xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n" +
+            "       xsi:schemaLocation=\"http://www.springframework.org/schema/beans\n" +
+            "           http://www.springframework.org/schema/beans/spring-beans-" + SPRING_XSD_VERSION + ".xsd\n" +
+            "           http://www.springframework.org/schema/context\n" +
+            "           http://www.springframework.org/schema/context/spring-context-" + SPRING_XSD_VERSION + ".xsd\n" +
+            "           http://www.springframework.org/schema/tx\n" +
+            "           http://www.springframework.org/schema/tx/spring-tx-" + SPRING_XSD_VERSION + ".xsd\"\n" +
+            "       default-lazy-init=\"false\">\n" +
+            "\n\n";
+
     public static final String SPRING_XML_CONFIG_HEAD = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             "<beans xmlns=\"http://www.springframework.org/schema/beans\"\n" +
             "       xmlns:context=\"http://www.springframework.org/schema/context\"\n" +
@@ -23,7 +57,7 @@ public final class SpringXMLConst {
             "           http://www.springframework.org/schema/context/spring-context-" + SPRING_XSD_VERSION + ".xsd\n" +
             "           http://www.springframework.org/schema/tx\n" +
             "           http://www.springframework.org/schema/tx/spring-tx-" + SPRING_XSD_VERSION + ".xsd\"\n" +
-            "       default-lazy-init=\"true\">\n" +
+            "       default-lazy-init=\"false\">\n" +
             "\n" +
             "    <context:annotation-config/>\n" +
             "    <context:property-placeholder file-encoding=\"UTF-8\"\n" +
@@ -47,7 +81,7 @@ public final class SpringXMLConst {
             "           http://www.springframework.org/schema/tx/spring-tx-" + SPRING_XSD_VERSION + ".xsd\"\n" +
             "           http://www.springframework.org/schema/mvc\n" +
             "           http://www.springframework.org/schema/mvc/spring-mvc-" + SPRING_XSD_VERSION + ".xsd\"\n" +
-            "       default-lazy-init=\"true\">\n" +
+            "       default-lazy-init=\"false\">\n" +
             "\n" +
             "    <context:annotation-config/>\n" +
             "    <context:property-placeholder file-encoding=\"UTF-8\"\n" +
@@ -57,7 +91,7 @@ public final class SpringXMLConst {
             "    <!-- 自动寻找注入bean -->\n" +
             "    <!--<context:component-scan base-package=\"com.venus.custom.beans\"/>-->\n\n    ";
 
-    private static final String DUBBO_PROVIDER_XML_CONFIG_HEAD = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+    private static final String DUBBO_CONTEXT_XML_CONFIG = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             "<beans xmlns=\"http://www.springframework.org/schema/beans\"\n" +
             "       xmlns:context=\"http://www.springframework.org/schema/context\"\n" +
             "       xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n" +
@@ -68,7 +102,7 @@ public final class SpringXMLConst {
             "            http://www.springframework.org/schema/context/spring-context-" + SPRING_XSD_VERSION + ".xsd\n" +
             "            http://code.alibabatech.com/schema/dubbo\n" +
             "            http://code.alibabatech.com/schema/dubbo/dubbo.xsd\"\n" +
-            "       default-lazy-init=\"true\">\n" +
+            "       default-lazy-init=\"false\">\n" +
             "    <context:annotation-config/>\n" +
             "    <context:property-placeholder file-encoding=\"UTF-8\"\n" +
             "                                  ignore-unresolvable=\"true\"\n" +
@@ -76,7 +110,8 @@ public final class SpringXMLConst {
             "                                  location=\"classpath:xconfig.properties\"/>\n" +
             "\n" +
             "    <bean id=\"dubboApplicationConfig\" class=\"com.alibaba.dubbo.config.ApplicationConfig\">\n" +
-            "        <property name=\"name\" value=\"@ApplicationName@\"/>\n" +
+            //"        <property name=\"name\" value=\"@ApplicationName@\"/>\n" +
+            "        <property name=\"name\" value=\"${application.name}\"/>\n" +
             "    </bean>\n" +
             "\n" +
             "    <bean id=\"dubboRegistryConfig\" class=\"com.alibaba.dubbo.config.RegistryConfig\">\n" +
@@ -87,7 +122,54 @@ public final class SpringXMLConst {
             "        <property name=\"port\" value=\"-1\"/>\n" +
             "    </bean>\n" +
             "\n" +
-            "    <!--<import resource=\"classpath*:@ApplicationName@-application-persistence.xml\"/>-->\n" +
+            "    <import resource=\"classpath*:@ApplicationName@-application-persistence.xml\"/>\n" +
+            "\n" +
+            "    <!-- 统一配置provider -->\n" +
+            "    <dubbo:provider application=\"dubboApplicationConfig\"\n" +
+            "                    version=\"${dubbo.export.version}\"\n" +
+            "                    protocol=\"dubboProtocolConfig\"\n" +
+            "                    registry=\"dubboRegistryConfig\"\n" +
+            "                    timeout=\"${dubbo.export.timeout}\"\n" +
+            "                    retries=\"0\"/>\n\n    " +
+            "</beans>";
+
+    public static final String theDubboContextXmlConfig(String application) {
+        return DUBBO_CONTEXT_XML_CONFIG.replaceAll(APPLICATION_NAME,application);
+    }
+
+    private static final String DUBBO_PROVIDER_XML_PURE_CONFIG_HEAD = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<beans xmlns=\"http://www.springframework.org/schema/beans\"\n" +
+            "       xmlns:context=\"http://www.springframework.org/schema/context\"\n" +
+            "       xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n" +
+            "       xmlns:dubbo=\"http://code.alibabatech.com/schema/dubbo\"\n" +
+            "       xsi:schemaLocation=\"http://www.springframework.org/schema/beans\n" +
+            "            http://www.springframework.org/schema/beans/spring-beans-" + SPRING_XSD_VERSION + ".xsd\n" +
+            "            http://www.springframework.org/schema/context\n" +
+            "            http://www.springframework.org/schema/context/spring-context-" + SPRING_XSD_VERSION + ".xsd\n" +
+            "            http://code.alibabatech.com/schema/dubbo\n" +
+            "            http://code.alibabatech.com/schema/dubbo/dubbo.xsd\"\n" +
+            "       default-lazy-init=\"false\">\n\n";
+
+    private static final String DUBBO_PROVIDER_XML_CONFIG = "    <context:annotation-config/>\n" +
+            "    <context:property-placeholder file-encoding=\"UTF-8\"\n" +
+            "                                  ignore-unresolvable=\"true\"\n" +
+            "                                  ignore-resource-not-found=\"true\"\n" +
+            "                                  location=\"classpath:xconfig.properties\"/>\n" +
+            "\n" +
+            "    <bean id=\"dubboApplicationConfig\" class=\"com.alibaba.dubbo.config.ApplicationConfig\">\n" +
+            //"        <property name=\"name\" value=\"@ApplicationName@\"/>\n" +
+            "        <property name=\"name\" value=\"${application.name}\"/>\n" +
+            "    </bean>\n" +
+            "\n" +
+            "    <bean id=\"dubboRegistryConfig\" class=\"com.alibaba.dubbo.config.RegistryConfig\">\n" +
+            "        <property name=\"address\" value=\"${dubbo.registry.url}\"/>\n" +
+            "    </bean>\n" +
+            "\n" +
+            "    <bean id=\"dubboProtocolConfig\" class=\"com.alibaba.dubbo.config.ProtocolConfig\">\n" +
+            "        <property name=\"port\" value=\"-1\"/>\n" +
+            "    </bean>\n" +
+            "\n" +
+            "    <import resource=\"classpath*:@ApplicationName@-application-persistence.xml\"/>\n" +
             "\n" +
             "    <!-- 统一配置provider -->\n" +
             "    <dubbo:provider application=\"dubboApplicationConfig\"\n" +
@@ -97,8 +179,12 @@ public final class SpringXMLConst {
             "                    timeout=\"${dubbo.export.timeout}\"\n" +
             "                    retries=\"0\"/>\n\n    ";
 
-    public static final String theDubboProviderXmlConfigHead(String application) {
-        return DUBBO_PROVIDER_XML_CONFIG_HEAD.replaceAll(APPLICATION_NAME,application);
+    public static final String theDubboProviderXmlConfigHead(String application, boolean pure) {
+        String content = DUBBO_PROVIDER_XML_PURE_CONFIG_HEAD;
+        if (!pure) {
+            content += DUBBO_PROVIDER_XML_CONFIG;
+        }
+        return content.replaceAll(APPLICATION_NAME,application);
     }
 
     public static final String DUBBO_PROVIDER_CONFIG = "<!-- 统一配置provider -->\n" +
@@ -246,7 +332,7 @@ public final class SpringXMLConst {
 
     public static final String APPLICATION_NAME = "@ApplicationName@";
     public static final String DUBBO_APPLICATION_CONFIG = "<bean id=\"dubboApplicationConfig\" class=\"com.alibaba.dubbo.config.ApplicationConfig\">\n" +
-            "        <property name=\"name\" value=\"@ApplicationName@\"/>\n" +
+            "        <property name=\"name\" value=\"${application.name}\"/>\n" +
             "    </bean>\n\n    ";
     public static final String theDubboApplicationConfig(String applicationName) {
         return DUBBO_APPLICATION_CONFIG.replaceAll(APPLICATION_NAME,applicationName);
@@ -269,7 +355,7 @@ public final class SpringXMLConst {
             "        <property name=\"com.venus.@ApplicationName@.log.home\" description=\"日志目录\" required=\"true\"/>\n" +
             "    </group>\n" +
             "\n    <script>\n" +
-            "        <generate template=\"config.properties.vm\" destfile=\"@RelativePath@config.properties\" charset=\"UTF-8\"/>\n" +
+            "        <generate template=\"config.properties.vm\" destfile=\"@RelativePath@xconfig.properties\" charset=\"UTF-8\"/>\n" +
             "    </script>\n" +
             "</config>";
     public final static String theAutoConfigXml(String project, String configRelativePath) {
@@ -278,9 +364,14 @@ public final class SpringXMLConst {
         return str;
     }
 
+    public final static String ADD_APPLICATION_NAME_CONFIG_GROUP = "    <group name=\"com.venus.application.setting\">\n" +
+            "        <property name=\"application.name\" description=\"服务名称\" required=\"true\"/>\n" +
+            "    </group>";
+
     public final static String ADD_DUBBO_AUTO_CONFIG_GROUP = "    <group name=\"com.venus.dubbo.setting\">\n" +
             "        <property name=\"dubbo.registry.url\" description=\"Dubbo服务注册地址\" required=\"true\"/>\n" +
             "        <property name=\"dubbo.reference.version\" description=\"Dubbo服务引用版本号\" required=\"true\"/>\n" +
+            "        <property name=\"dubbo.reference.timeout\" description=\"Dubbo服务调用超时时间\" required=\"true\"/>\n" +
             "        <property name=\"dubbo.export.version\" description=\"Dubbo服务暴露版本号\" required=\"true\"/>\n" +
             "        <property name=\"dubbo.export.timeout\" description=\"Dubbo服务暴露超时时间\" required=\"true\"/>\n" +
             "    </group>";
@@ -296,6 +387,7 @@ public final class SpringXMLConst {
 
     private final static String AUTO_CONFIG_VM = "dubbo.registry.url=${dubbo.registry.url}\n" +
             "dubbo.reference.version=${dubbo.reference.version}\n" +
+            "dubbo.reference.timeout=${dubbo.reference.timeout}\n" +
             "dubbo.export.version=${dubbo.export.version}\n" +
             "dubbo.export.timeout=${dubbo.export.timeout}\n\n" +
             "com.venus.@ApplicationName@.mysql.datasource.url=${com.venus.@ApplicationName@.mysql.datasource.url}\n" +
@@ -306,8 +398,11 @@ public final class SpringXMLConst {
         return AUTO_CONFIG_VM.replaceAll(APPLICATION_NAME,application);
     }
 
+    public final static String ADD_APPLICATION_NAME_CONFIG = "application.name=${application.name}\n\n";
+
     public final static String ADD_DUBBO_PROPERTIES_CONFIG = "dubbo.registry.url=${dubbo.registry.url}\n" +
             "dubbo.reference.version=${dubbo.reference.version}\n" +
+            "dubbo.reference.timeout=${dubbo.reference.timeout}\n" +
             "dubbo.export.version=${dubbo.export.version}\n" +
             "dubbo.export.timeout=${dubbo.export.timeout}\n";
 
@@ -320,6 +415,10 @@ public final class SpringXMLConst {
             "com.venus.@ApplicationName@.mysql.datasource.username=root\n" +
             "com.venus.@ApplicationName@.mysql.datasource.password=root\n";
 
+    public final static String theApplicationPropertiesConfig(String application) {
+        return ADD_APPLICATION_PROPERTIES_CONFIG_DEMO.replaceAll(APPLICATION_NAME, application);
+    }
+
     public final static String theDatasourcePropertiesConfig(String application, boolean vm) {
         if (vm) {
             return ADD_DATASOURCE_PROPERTIES_CONFIG.replaceAll(APPLICATION_NAME, application);
@@ -328,10 +427,14 @@ public final class SpringXMLConst {
         }
     }
 
+    public final static String ADD_APPLICATION_PROPERTIES_CONFIG_DEMO = "# application name配置\n" +
+            "application.name=@ApplicationName@\n\n";
+
     private final static String SERVICE_CONFIG_DEMO = "# dubbo配置\n" +
             "dubbo.registry.url = zookeeper://127.0.0.1:2181\n" +
             "dubbo.reference.version=DEV1\n" +
             "dubbo.export.version=DEV1\n" +
+            "dubbo.reference.timeout=30000\n" +
             "dubbo.export.timeout=30000\n\n" +
             "# @ApplicationName@数据库连接配置\n" +
             "com.venus.@ApplicationName@.mysql.datasource.url=jdbc:mysql://127.0.0.1:3306/demo?autoReconnect=true&useUnicode=true&characterEncoding=utf8\n" +
@@ -344,6 +447,7 @@ public final class SpringXMLConst {
             "dubbo.registry.url = zookeeper://127.0.0.1:2181\n" +
             "dubbo.reference.version=DEV1\n" +
             "dubbo.export.version=DEV1\n" +
+            "dubbo.reference.timeout=30000\n" +
             "dubbo.export.timeout=30000\n\n";
 
     public final static String theConfigProperties(String application) {

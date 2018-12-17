@@ -10,7 +10,6 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import com.venus.gen.Generator;
 
-import javax.xml.ws.spi.http.HttpHandler;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -519,10 +518,91 @@ public class MybatisGenerator extends Generator {
         }
     }
 
+
+
+    // Builder函数
+    public static class Builder {
+        private String projectDir;
+        private String tablePrefix;
+        private String packageName;
+        private String sqlsSourcePath;
+        private String relativeMapperPath;
+
+        private boolean genXmlConfig = true;
+
+        private ProjectModule rootProject;
+        private ProjectModule project;
+
+        public Builder() {}
+
+        public Builder setProjectDir(String projectDir) {
+            this.projectDir = projectDir;
+            return this;
+        }
+
+        public Builder setTablePrefix(String tablePrefix) {
+            this.tablePrefix = tablePrefix;
+            return this;
+        }
+
+        public Builder setPackageName(String packageName) {
+            this.packageName = packageName;
+            return this;
+        }
+
+        public Builder setSqlsSourcePath(String sqlsSourcePath) {
+            this.sqlsSourcePath = sqlsSourcePath;
+            return this;
+        }
+
+        public Builder setRelativeMapperPath(String mapperPath) {
+            this.relativeMapperPath = mapperPath;
+            return this;
+        }
+
+        public Builder setRootProject(ProjectModule rootProject) {
+            this.rootProject = rootProject;
+            return this;
+        }
+
+        public Builder setProject(ProjectModule project) {
+            this.project = project;
+            return this;
+        }
+
+        // 是否自动生成sqlmap-config.xml
+        public Builder setGenXmlConfig(boolean genXmlConfig) {
+            this.genXmlConfig = genXmlConfig;
+            return this;
+        }
+
+        public MybatisGenerator build() {
+            if (sqlsSourcePath == null || sqlsSourcePath.length() == 0) {
+                return null;
+            }
+
+            MybatisGenerator generator = null;
+            if (this.rootProject != null && this.project != null) {
+                generator = new MybatisGenerator(rootProject,project,sqlsSourcePath,tablePrefix,relativeMapperPath);
+            } else {
+                if (packageName == null || packageName.length() == 0) {
+                    return null;
+                }
+                generator = new MybatisGenerator(packageName,projectDir,sqlsSourcePath,tablePrefix,relativeMapperPath);
+            }
+
+            if (generator != null) {
+                generator.genXmlConfig = genXmlConfig;
+            }
+            return generator;
+        }
+    }
+
+
     private static final String SELECT_RESULT_COLUMN_FORMAT = "$_column_format_$";
 
     public final String sqlsSourcePath;
-    public final String mapperPath;
+    public final String mapperSettingName;
     public final String tablePrefix;
     protected final List<Table> tables;
 
@@ -564,41 +644,53 @@ public class MybatisGenerator extends Generator {
      * @param projectDir  项目目录，可以不填
      * @param sqlsSourcePath    sqls文件资源路径:sqls/xxx.sqls【必填】
      * @param tablePrefix  表定义前缀,只有匹配前缀有效时起作用
-     * @param mapperPath  Mybatis Configuration配置文件路径:资源路径
+     * @param relativeMapperPath  Mybatis Configuration配置文件路径:资源路径
      */
-    public MybatisGenerator(String packageName, String projectDir,  String sqlsSourcePath, String tablePrefix,String mapperPath) {
+    public MybatisGenerator(String packageName, String projectDir,  String sqlsSourcePath, String tablePrefix,String relativeMapperPath) {
         super(packageName,projectDir);
 
-        if (mapperPath == null || mapperPath.length() == 0) {
+        if (relativeMapperPath == null || relativeMapperPath.length() == 0) {
             String application = this.getProjectSimpleName();
             String file_prefix = (application != null && application.length() > 0 ? application + "-" : "");
-            mapperPath = file_prefix + SQLMAP_CONFIG_NAME;
+            relativeMapperPath = file_prefix + SQLMAP_CONFIG_NAME;
+        }
+
+        if (relativeMapperPath.startsWith(File.separator)) {
+            relativeMapperPath = relativeMapperPath.substring(File.separator.length());
+        }
+        if (relativeMapperPath.endsWith(File.separator)) {
+            relativeMapperPath = relativeMapperPath.substring(0,relativeMapperPath.length() - File.separator.length());
         }
 
         this.sqlsSourcePath = sqlsSourcePath;
-        this.mapperPath = mapperPath;
+        this.mapperSettingName = relativeMapperPath;
         this.tablePrefix = tablePrefix;
         this.tables = parseSqlTables(sqlsSourcePath,tablePrefix);//解析sqls中的tables
     }
 
-    public MybatisGenerator(ProjectModule rootProject, ProjectModule project,  String sqlsSourcePath, String tablePrefix,String mapperPath) {
+    public MybatisGenerator(ProjectModule rootProject, ProjectModule project,  String sqlsSourcePath, String tablePrefix,String relativeMapperPath) {
         super(rootProject,project);
-        if (mapperPath == null || mapperPath.length() == 0) {
+
+        if (relativeMapperPath == null || relativeMapperPath.length() == 0) {
             String application = this.getProjectSimpleName();
             String file_prefix = (application != null && application.length() > 0 ? application + "-" : "");
-            mapperPath = file_prefix + SQLMAP_CONFIG_NAME;
+            relativeMapperPath = file_prefix + SQLMAP_CONFIG_NAME;
+        }
+
+        if (relativeMapperPath.startsWith(File.separator)) {
+            relativeMapperPath = relativeMapperPath.substring(File.separator.length());
+        }
+        if (relativeMapperPath.endsWith(File.separator)) {
+            relativeMapperPath = relativeMapperPath.substring(0,relativeMapperPath.length() - File.separator.length());
         }
 
         this.sqlsSourcePath = sqlsSourcePath;
-        this.mapperPath = mapperPath;
+        this.mapperSettingName = relativeMapperPath;
         this.tablePrefix = tablePrefix;
         this.tables = parseSqlTables(sqlsSourcePath,tablePrefix);//解析sqls中的tables
     }
 
-    // 是否自动生成sqlmap-config.xml
-    public void setAutoGenXmlConfig(boolean auto) {
-        this.genXmlConfig = auto;
-    }
+
     public boolean autoGenXmlConfig() {
         return this.genXmlConfig;
     }
@@ -635,11 +727,11 @@ public class MybatisGenerator extends Generator {
             String application = this.getProjectSimpleName();
             String file_prefix = (application != null && application.length() > 0 ? application + "-" : "");
 
-            String mapperName = mapperPath;
+            String mapperName = this.mapperSettingName;
             String mapperConf = null;
             //mybatis配置路径
-            if (mapperPath != null && mapperPath.length() > 0) {
-                mapperConf = this.resourcesPath() + File.separator + mapperPath;
+            if (this.mapperSettingName != null && this.mapperSettingName.length() > 0) {
+                mapperConf = this.resourcesPath() + File.separator + this.mapperSettingName;
             } else {
                 mapperName = file_prefix + SQLMAP_CONFIG_NAME;
                 mapperConf = this.resourcesPath() + File.separator + file_prefix + SQLMAP_CONFIG_NAME;
@@ -2081,7 +2173,7 @@ public class MybatisGenerator extends Generator {
 
     // 修改写入逻辑，将替换同名的mapper
     private static void writeMapperSetting(String mapperPath, List<MapperInfo> mappers) {
-//        File file = new File(mapperPath);
+//        File file = new File(relativeMapperPath);
         //判断是否为更新
         StringBuilder content = new StringBuilder();
 //        boolean fileHeader = false;

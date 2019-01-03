@@ -32,6 +32,11 @@ import java.util.regex.Pattern;
  */
 public final class ESBT {
 
+    //字符串是否为空
+    public static boolean isEmpty(final CharSequence value) {
+        return value == null || value.length() == 0;
+    }
+
     public static String string(final CharSequence value) {
         return string(value,"");
     }

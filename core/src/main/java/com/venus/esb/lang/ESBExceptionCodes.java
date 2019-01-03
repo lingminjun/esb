@@ -148,4 +148,9 @@ public final class ESBExceptionCodes {
     public static ESBException MOCKER_FAILED(String reason) {
         return new ESBException("MOCKER调用出错",ESB_EXCEPTION_DOMAIN,MOCKER_FAILED_CODE,reason);
     }
+
+    public final static int SERVICE_RETURN_NULL_CODE = -142;
+    public static ESBException SERVICE_RETURN_NULL(String reason) {
+        return new ESBException("服务返回异常数据",ESB_EXCEPTION_DOMAIN,SERVICE_RETURN_NULL_CODE,reason);
+    }
 }

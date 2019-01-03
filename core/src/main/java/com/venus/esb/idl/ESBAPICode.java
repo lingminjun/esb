@@ -27,6 +27,10 @@ public final class ESBAPICode implements Serializable {
         return ("" + domain + "." + code).hashCode();
     }
 
+    public final String getCodeId() {
+        return  "" + domain + "." + code;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {return true;}

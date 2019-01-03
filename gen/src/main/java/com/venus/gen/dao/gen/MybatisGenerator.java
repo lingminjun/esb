@@ -1,14 +1,15 @@
 package com.venus.gen.dao.gen;
 
+
 import com.venus.esb.lang.ESBConsts;
 import com.venus.esb.utils.FileUtils;
 import com.venus.gen.SpringXMLConst;
 import com.venus.gen.dao.SQL;
 import com.venus.gen.dao.TableDAO;
 import com.venus.gen.dao.ViewDAO;
+import com.venus.gen.Generator;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import com.venus.gen.Generator;
 
 import java.io.File;
 import java.io.IOException;
@@ -95,6 +96,8 @@ public class MybatisGenerator extends Generator {
         String defaultValue; //默认值为NULL注意
         boolean notNull; //虽然是两个含义，此处简单处理，只要有default时就默认可以传入空，毕竟业务接口上只能以空来做判断
 
+        boolean primary; //主键
+
         public String getName() {
             return name;
         }
@@ -114,6 +117,10 @@ public class MybatisGenerator extends Generator {
         public boolean isNotNull() {
 //            return defaultValue == null;//此处简单处理,只要有default时就默认可以传入空，毕竟业务接口上只能以空来做判断
             return notNull;
+        }
+
+        public boolean isPrimary() {
+            return primary;
         }
 
         public String getDefinedType() {
@@ -218,6 +225,11 @@ public class MybatisGenerator extends Generator {
         }
 
         public Column getPrimaryColumn() {
+            for (Column column : columns) {
+                if (column.primary) {
+                    return column;
+                }
+            }
             for (ColumnIndex column : indexs) {
                 if (column.isPrimary) { return column.columns.get(0); }
             }
@@ -231,6 +243,14 @@ public class MybatisGenerator extends Generator {
                 }
             }
             return null;
+        }
+
+        public String getPrimaryKeyName() {
+            Column key = getPrimaryColumn();
+            if (key == null) {
+                return "id";
+            }
+            return key.name;
         }
 
         public boolean justViewTable() {
@@ -1240,6 +1260,9 @@ public class MybatisGenerator extends Generator {
                 for (Column col : table.columns) {
                     if (col.name.equals(s)) {
                         columnIndex.columns.add(col);
+                        if (primary) {//设置主键
+                            col.primary = primary;
+                        }
                         break;
                     }
                 }
@@ -1257,6 +1280,7 @@ public class MybatisGenerator extends Generator {
         String type = strs[1];
 
         boolean notNull = false;
+        boolean isPrimary = false;
 
         //检查default和comment
         String defaultValue = "NULL";
@@ -1268,6 +1292,8 @@ public class MybatisGenerator extends Generator {
                 comment = strs[i + 1];
             } else if (strs[i].equalsIgnoreCase("NOT") && i + 1 < strs.length) {
                 notNull = strs[i + 1].equalsIgnoreCase("NULL");
+            } else if (strs[i].equalsIgnoreCase("AUTO_INCREMENT") || strs[i].equalsIgnoreCase("PRIMARY")) {//自动递增，默认为主键（是否合理）
+                isPrimary = true;
             }
         }
 
@@ -1300,10 +1326,11 @@ public class MybatisGenerator extends Generator {
         col.cmmt = comment;
         col.notNull = notNull;
         col.defaultValue = defaultValue;
+        col.primary = isPrimary;
 
         table.columns.add(col);
 
-        System.out.println("Column:" + column + "; Type:" + type + "; NOT_NULL:" + notNull + "; DEFAULT:" + defaultValue + "; COMMENT:" + comment);
+        System.out.println("Column:" + column + "; Type:" + type + "; NOT_NULL:" + notNull + (isPrimary ? "; PRIMARY:true" : "") + "; DEFAULT:" + defaultValue + "; COMMENT:" + comment);
     }
 
     private static class MapperMethod {
@@ -1356,7 +1383,7 @@ public class MybatisGenerator extends Generator {
         dobjContent.append(" * Creator: ESB MybatisGenerator\n");
         dobjContent.append(" * Version: 1.0.0\n");
         dobjContent.append(" * GitHub: https://github.com/lingminjun/esb\n");
-        dobjContent.append(" * Since: " + new Date() + "\n");
+//        dobjContent.append(" * Since: " + new Date() + "\n");
         dobjContent.append(" * Table: " + table.name + "\n");
         dobjContent.append(" */\n");
         dobjContent.append("public final class " + className + "DO implements Serializable {\n");
@@ -1563,7 +1590,7 @@ public class MybatisGenerator extends Generator {
         content.append(" * Creator: ESB MybatisGenerator\n");
         content.append(" * Version: 1.0.0\n");
         content.append(" * GitHub: https://github.com/lingminjun/esb\n");
-        content.append(" * Since: " + new Date() + "\n");
+//        content.append(" * Since: " + new Date() + "\n");
         content.append(" * Table: " + table.name + "\n");
         content.append(" */\n");
 
@@ -1633,7 +1660,7 @@ public class MybatisGenerator extends Generator {
         content.append(" * Creator: ESB MybatisGenerator\n");
         content.append(" * Version: 1.0.0\n");
         content.append(" * GitHub: https://github.com/lingminjun/esb\n");
-        content.append(" * Since: " + new Date() + "\n");
+//        content.append(" * Since: " + new Date() + "\n");
         content.append(" * Table: " + table.name + "\n");
         content.append(" */\n");
 
@@ -1737,7 +1764,7 @@ public class MybatisGenerator extends Generator {
         content.append(" * Creator: ESB MybatisGenerator\n");
         content.append(" * Version: 1.0.0\n");
         content.append(" * GitHub: https://github.com/lingminjun/esb\n");
-        content.append(" * Since: " + new Date() + "\n");
+//        content.append(" * Since: " + new Date() + "\n");
         content.append(" * Table: " + table.name + "\n");
         content.append(" */\n");
 
@@ -1916,7 +1943,8 @@ public class MybatisGenerator extends Generator {
             flds.append(field);
 
             // 插入语句不需要的字段
-            if (cl.name.equals("id")
+            if (cl.isPrimary()
+                    || cl.name.equals("id")
                     || cl.name.equals("is_delete")
                     || cl.name.equals("delete")) {
                 continue;
@@ -1936,7 +1964,10 @@ public class MybatisGenerator extends Generator {
         StringBuilder upBuilder = new StringBuilder();
         boolean hasModify = false;
         for (Column cl : table.columns) {
-            if (cl.name.equals("id") || cl.name.equals("create_at") || cl.name.equals("created_at")) {
+            if (cl.isPrimary()
+                    || cl.name.equals("id")
+                    || cl.name.equals("create_at")
+                    || cl.name.equals("created_at")) {
                 continue;
             }
 
@@ -1977,26 +2008,31 @@ public class MybatisGenerator extends Generator {
                 upBuilder.append("        </if>\n");
             }
         }
+
+        String primaryKey = table.getPrimaryKeyName();
+        String primaryParam = toHumpString(primaryKey,false);
+
         if (!hasModify) {
-            upBuilder.insert(0,"            id = id \n");//为了语法不错，故意设置id作为第一项
+            upBuilder.insert(0,"            " + primaryKey + " = " + primaryKey + " \n");//为了语法不错，故意设置id作为第一项
         }
 
         if (!table.justViewTable()) {//纯视图表，不存在增删改
             //默认的sql文件编写
 //        public void insert(DO entity) throws DataAccessException;
-            content.append("    <insert id=\"insert\" useGeneratedKeys=\"true\" keyProperty=\"id\" parameterType=\"" + doName + "\">\n");
+
+            content.append("    <insert id=\"insert\" useGeneratedKeys=\"true\" keyProperty=\"" + primaryParam + "\" parameterType=\"" + doName + "\">\n");
             content.append("        insert into `" + table.name + "` (" + incols.toString() + ") values (" + inflds.toString() + ")\n");
             content.append("    </insert>\n\n");
 
 //        public void insertOrUpdate(DO entity) throws DataAccessException;
-            content.append("    <insert id=\"insertOrUpdate\" useGeneratedKeys=\"true\" keyProperty=\"id\" parameterType=\"" + doName + "\">\n");
+            content.append("    <insert id=\"insertOrUpdate\" useGeneratedKeys=\"true\" keyProperty=\"" + primaryParam + "\" parameterType=\"" + doName + "\">\n");
             content.append("        insert into `" + table.name + "` (" + incols.toString() + ") values (" + inflds.toString() + ") on duplicate key update \n");
             content.append(upBuilder.toString());
             content.append("    </insert>\n\n");
 
             //public long batchInsert(List<DO> entities) throws DataAccessException;
             content.append("    <insert id=\"batchInsert\" useGeneratedKeys=\"true\" parameterType=\"java.util.List\">\n");
-            content.append("        <selectKey resultType=\"long\" keyProperty=\"id\" order=\"AFTER\">\n");
+            content.append("        <selectKey resultType=\"long\" keyProperty=\"" + primaryParam+ "\" order=\"AFTER\">\n");
             content.append("            SELECT LAST_INSERT_ID()\n");
             content.append("        </selectKey>\n");
             content.append("        insert into `" + table.name + "` (" + incols.toString() + ") values \n");
@@ -2009,26 +2045,26 @@ public class MybatisGenerator extends Generator {
             content.append("    <update id=\"update\" parameterType=\"" + doName + "\">\n");
             content.append("        update `" + table.name + "` set \n");
             content.append(upBuilder.toString());
-            content.append("        where id = #{id} \n");
+            content.append("        where " + primaryKey + " = #{" + primaryParam + "} \n");
             content.append("    </update>\n\n");
 
 //        public int deleteById(Long pk) throws DataAccessException;
             content.append("    <delete id=\"deleteById\">\n");
-            content.append("        delete from `" + table.name + "` where id = #{id} \n");
+            content.append("        delete from `" + table.name + "` where " + primaryKey + " = #{" + primaryParam + "} \n");
             content.append("    </delete>\n\n");
 
 //        public DO getById(Long pk) throws DataAccessException;
             content.append("    <select id=\"getById\" resultMap=\"" + resultEntity + "\">\n");
             content.append("        select " + cols.toString() + " \n");
             content.append("        from `" + table.name + "` \n");
-            content.append("        where id = #{id} \n");
+            content.append("        where " + primaryKey + " = #{" + primaryParam + "} \n");
             content.append("    </select>\n\n");
 
 //        public DO getByIdForUpdate(Long pk) throws DataAccessException;
             content.append("    <select id=\"getByIdForUpdate\" resultMap=\"" + resultEntity + "\">\n");
             content.append("        select " + cols.toString() + " \n");
             content.append("        from `" + table.name + "` \n");
-            content.append("        where id = #{id} \n");
+            content.append("        where " + primaryKey + " = #{" + primaryParam + "} \n");
             content.append("        for update \n");
             content.append("    </select>\n\n");
 
@@ -2036,7 +2072,7 @@ public class MybatisGenerator extends Generator {
             content.append("    <select id=\"queryByIds\" resultMap=\"" + resultEntity + "\">\n");
             content.append("        select " + cols.toString() + " \n");
             content.append("        from `" + table.name + "` \n");
-            content.append("        where id in \n");
+            content.append("        where " + primaryKey + " in \n");
             content.append("        <foreach collection=\"list\" item=\"theId\" index=\"index\" \n");
             content.append("             open=\"(\" close=\")\" separator=\",\"> \n");
             content.append("             #{theId}  \n");
@@ -2138,7 +2174,7 @@ public class MybatisGenerator extends Generator {
                 sql = sql.replaceAll("_@!#4#!@_"," <![CDATA[ > ]]> ");
 
                 if (sql.toLowerCase().startsWith("insert")) {
-                    content.append("    <insert id=\"" + mapperMethod.id + "\" useGeneratedKeys=\"true\" keyProperty=\"id\" >\n");
+                    content.append("    <insert id=\"" + mapperMethod.id + "\" useGeneratedKeys=\"true\" keyProperty=\"" + primaryParam + "\" >\n");
                     content.append("        " + sql + "\n");
                     content.append("    </insert>\n\n");
                 } else if (sql.toLowerCase().startsWith("update")) {

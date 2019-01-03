@@ -58,16 +58,53 @@ public final class ESBConfigCenter {
         ClassLoader loader = Thread.currentThread().getContextClassLoader();//ESBConfigCenter.class.getClassLoader();
 
         InputStream input = null;
-        try {
-            input = loader.getResourceAsStream("config.properties");
-            prop.load(input);
-        } catch (Throwable e) {
+        boolean load = false;
+        if (!load) {
+            try {
+                input = loader.getResourceAsStream("esb.properties");
+                if (input != null) {
+                    prop.load(input);
+                    load = true;
+                }
+            } catch (Throwable e) {
+                logger.error("esb.properties 缺少ESB相关配置", e);
+            }
+        }
+
+        if (!load) {
+            try {
+                input = loader.getResourceAsStream("config.properties");
+                if (input != null) {
+                    prop.load(input);
+                    load = true;
+                }
+            } catch (Throwable e) {
+                logger.error("config.properties 缺少ESB相关配置", e);
+            }
+        }
+
+        if (!load) {
+            try {
+                input = loader.getResourceAsStream("xconfig.properties");
+                if (input != null) {
+                    prop.load(input);
+                    load = true;
+                }
+            } catch (Throwable e) {
+                logger.error("xconfig.properties 缺少ESB相关配置", e);
+            }
+        }
+
+        if (!load) {
             try {
                 input = loader.getResourceAsStream("application.properties");
-                prop.load(input);
-            } catch (Throwable ee) {}
-            logger.error("缺少ESB相关配置" , e);
-//            throw new RuntimeException("缺少ESB相关配置",e);
+                if (input != null) {
+                    prop.load(input);
+                    load = true;
+                }
+            } catch (Throwable e) {
+                logger.error("application.properties 缺少ESB相关配置", e);
+            }
         }
 
         appName = ESBT.getServiceName();//直接取服务名

@@ -231,7 +231,7 @@ class APIGenerator extends Generator {
         pojoContent.append(" * Creator: ESB ServiceGenerator\n");
         pojoContent.append(" * Version: 1.0.0\n");
         pojoContent.append(" * GitHub: https://github.com/lingminjun/esb\n");
-        pojoContent.append(" * Since: " + new Date() + "\n");
+//        pojoContent.append(" * Since: " + new Date() + "\n");
         pojoContent.append(" * Table: " + table.getName() + "\n");
         pojoContent.append(" */\n");
         pojoContent.append("@ESBDesc(\"" + table.getName() + "对象生成\")\n");
@@ -325,7 +325,7 @@ class APIGenerator extends Generator {
         resultContent.append(" * Creator: ESB ServiceGenerator\n");
         resultContent.append(" * Version: 1.0.0\n");
         resultContent.append(" * GitHub: https://github.com/lingminjun/esb\n");
-        resultContent.append(" * Since: " + new Date() + "\n");
+//        resultContent.append(" * Since: " + new Date() + "\n");
         resultContent.append(" * Description: " + table.getSimplePOJOClassName() + "结果集\n");
         resultContent.append(" */\n");
         resultContent.append("@ESBDesc(\"" + table.getSimplePOJOClassName() + "结果集\")\n");
@@ -364,7 +364,7 @@ class APIGenerator extends Generator {
         serviceContent.append(" * Creator: ESB ServiceGenerator\n");
         serviceContent.append(" * Version: 1.0.0\n");
         serviceContent.append(" * GitHub: https://github.com/lingminjun/esb\n");
-        serviceContent.append(" * Since: " + new Date() + "\n");
+//        serviceContent.append(" * Since: " + new Date() + "\n");
         serviceContent.append(" * Table: " + table.getName() + "\n");
         serviceContent.append(" */\n");
 
@@ -461,11 +461,12 @@ class APIGenerator extends Generator {
         //实现代码
         String theDaoBean = "this." + toLowerHeadString(table.getSimpleDAOClassName());
         String dataObj = table.getSimpleDObjectClassName();
+        String primaryField = toHumpString(table.getPrimaryKeyName(),false);
 
         serviceContent.append("        " + dataObj + " dobj = new " + dataObj + "();\n");
         serviceContent.append("        Injects.fill(" + param + ",dobj);\n");
         serviceContent.append("        if (" + theDaoBean + ".insertOrUpdate(dobj) > 0) {\n");
-        serviceContent.append("            return (Long)dobj.id;\n");
+        serviceContent.append("            return (Long)dobj." + primaryField + ";\n");
         serviceContent.append("        } else {\n");
         serviceContent.append("            return -1l;\n");
         serviceContent.append("        }\n");
@@ -617,13 +618,14 @@ class APIGenerator extends Generator {
         String theDaoBean = "this." + toLowerHeadString(table.getSimpleDAOClassName());
 
         String dataObj = table.getSimpleDObjectClassName();
+        String primaryField = toHumpString(table.getPrimaryKeyName(),false);
 
         serviceContent.append("        " + dataObj + " dobj = new " + dataObj + "();\n");
         MybatisGenerator.Column primary = table.getPrimaryColumn();
         if (primary != null) {
-            serviceContent.append("        dobj.id = (" + primary.getDataType() + ")id;\n");
+            serviceContent.append("        dobj." + primaryField + " = (" + primary.getDataType() + ")id;\n");
         } else {
-            serviceContent.append("        dobj.id = id;\n");
+            serviceContent.append("        dobj." + primaryField + " = id;\n");
         }
         for (MybatisGenerator.Column cl : params) {
             String paramName = toHumpString(cl.getName(),false);

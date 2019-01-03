@@ -56,7 +56,7 @@ public final class ESBException extends Exception implements Serializable {
         this.codeId = domain+"."+code;
     }
 
-    public String getCodeId() {
+    public final String getCodeId() {
         return codeId;
     }
 

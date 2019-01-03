@@ -55,7 +55,7 @@ public final class ESBAPIDef implements Serializable {
 
     // 错误码 map<code,api_code>
     @ESBDesc("接口包含所有的错误码")
-    public Map<Integer,ESBAPICode> codes;
+    public Map<String,ESBAPICode> codes;
 
     /**
      * 返回唯一API统一id
@@ -152,9 +152,9 @@ public final class ESBAPIDef implements Serializable {
 
         if (codes != null) {
             //codes { domain_code : {code,desc}}
-            Iterator<Map.Entry<Integer, ESBAPICode>> entries = codes.entrySet().iterator();
+            Iterator<Map.Entry<String, ESBAPICode>> entries = codes.entrySet().iterator();
             while (entries.hasNext()) {
-                Map.Entry<Integer, ESBAPICode> entry = entries.next();
+                Map.Entry<String, ESBAPICode> entry = entries.next();
                 builder.append("\t"+entry.getValue().toString()+"\n");//简单处理
             }
         }

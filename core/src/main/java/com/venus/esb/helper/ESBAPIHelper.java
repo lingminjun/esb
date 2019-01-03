@@ -365,17 +365,17 @@ public class ESBAPIHelper {
      * @param group
      */
     public static Map<Integer,ESBAPICode> loadCodes(String domain, ESBGroup group) {
-        String apiDomain = domain;
-        if (apiDomain == null || apiDomain.length() == 0) {
-            apiDomain = group.domain();
-        }
+//        String apiDomain = domain;
+//        if (apiDomain == null || apiDomain.length() == 0) {
+//            apiDomain = group.domain();
+//        }
 
         Class<?> codeDefineClazz = group.codeDefine();
-        if (apiDomain == null || apiDomain.length() == 0 || codeDefineClazz == null) {
+        if (codeDefineClazz == null) {
             return new HashMap<Integer, ESBAPICode>();
         }
 
-        return loadCodes(codeDefineClazz,apiDomain);
+        return loadCodes(codeDefineClazz,null);
     }
     /**
      * 加载codes
@@ -477,8 +477,32 @@ public class ESBAPIHelper {
         }
 
         Class<?> codeDefineClazz = group.codeDefine();
-        int[] codes = error.value();
-        Map<Integer,ESBAPICode> map = loadCodes(apiDomain,group);
+        Map<Integer,ESBAPICode> map = loadCodes(error.value(),codeDefineClazz);
+        if (map.size() > 0 && esbapiInfo.api.codes == null) {
+            esbapiInfo.api.codes = new HashMap<String, ESBAPICode>();
+        }
+
+        for (ESBAPICode code : map.values()) {
+            esbapiInfo.api.codes.put(code.getCodeId(),code);
+        }
+
+        //其他的错误码
+        for (int i = 0; i < error.codes().length; i++ ) {
+            ESBCode extCode = error.codes()[i];
+            Map<Integer,ESBAPICode> extMap = loadCodes(extCode.value(),extCode.codeDefine());
+            if (extMap.size() > 0 && esbapiInfo.api.codes == null) {
+                esbapiInfo.api.codes = new HashMap<String, ESBAPICode>();
+            }
+            for (ESBAPICode code : extMap.values()) {
+                esbapiInfo.api.codes.put(code.getCodeId(),code);
+            }
+        }
+    }
+
+
+    private static Map<Integer,ESBAPICode> loadCodes(int[] codes, Class<?> codeDefineClazz) {
+        Map<Integer,ESBAPICode> cds = new HashMap<Integer, ESBAPICode>();
+        Map<Integer,ESBAPICode> map = loadCodes(codeDefineClazz,null);
         //遍历
         for (int i = 0; i < codes.length; i++) {
             ESBAPICode code = map.get(codes[i]);
@@ -488,13 +512,13 @@ public class ESBAPIHelper {
                         ".java文件中找到错误码" + codes[i] +
                         "的定义");
             } else {
-                if (esbapiInfo.api.codes == null) {
-                    esbapiInfo.api.codes = new HashMap<Integer, ESBAPICode>();
-                }
-                esbapiInfo.api.codes.put(code.code,code);
+                cds.put(code.code,code);
             }
         }
+        return cds;
     }
+
+
     //按文件存储错误码
     private static HashMap<String,HashMap<Integer,ESBAPICode>> codesDefinedCache = new HashMap<String, HashMap<Integer, ESBAPICode>>();
 

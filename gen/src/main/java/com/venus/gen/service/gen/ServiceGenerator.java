@@ -455,7 +455,7 @@ public class ServiceGenerator extends Generator {
         serviceContent.append(" * Creator: ESB ServiceGenerator\n");
         serviceContent.append(" * Version: 1.0.0\n");
         serviceContent.append(" * GitHub: https://github.com/lingminjun/esb\n");
-        serviceContent.append(" * Since: " + new Date() + "\n");
+//        serviceContent.append(" * Since: " + new Date() + "\n");
         serviceContent.append(" * SQLFile: " + sqlsSourcePath + "\n");
         serviceContent.append(" */\n");
 

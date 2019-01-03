@@ -3,6 +3,7 @@ package com.venus.esb;
 import com.alibaba.dubbo.common.utils.StringUtils;
 import com.venus.esb.ESBAPIInfo;
 import com.venus.esb.ESBInvocation;
+import com.venus.esb.config.ESBConfigCenter;
 import com.venus.esb.dubbo.ESBGenericCaller;
 import com.venus.esb.lang.*;
 
@@ -25,7 +26,13 @@ public final class ESBDubboAPIInvoker {
         } catch (Throwable e) {
             throw ESBExceptionCodes.PARAMETER_ERROR("参数无法正确解析").setCoreCause(e);
         }
-        return ESBGenericCaller.getInstance().genericInvoke(invocation.serverName, invocation.methodName, methodParams);
+        return ESBGenericCaller.getInstance().genericInvoke(
+                invocation.serverName,
+                invocation.methodName,
+                methodParams,
+                ESBConfigCenter.instance().getDubboVersion(),
+                ESBConfigCenter.instance().getDubboTimeout(),
+                ESBConfigCenter.instance().getDubboRetries());
     }
 
     //屏蔽数据转换的差别

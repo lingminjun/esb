@@ -9,11 +9,17 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ESBError {
     /**
-     * 暴露的错误码,会自动绑定到当前domain上,
+     * 当前域暴露的错误码，只需要简单定义code
      * 也可以在通过ESBException.isExposed来控制对外暴露
      * 所有错误定义描述将会查找 ESBGroup.codeDefine 指定的文件中定义
      * 若没有找到,则忽略
      * @return
      */
     int[] value();
+
+    /**
+     * 其他域暴露的错误，需要额外指定codeDefine类
+     * @return
+     */
+    ESBCode[] codes() default {};
 }

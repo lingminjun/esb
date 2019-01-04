@@ -2,6 +2,7 @@ package com.venus.esb.brave;
 
 import com.venus.esb.lang.ESBConsts;
 import com.venus.esb.utils.GZIP;
+import com.venus.esb.utils.ProcessUtils;
 import okhttp3.*;
 
 import java.io.*;
@@ -29,6 +30,12 @@ public final class HttpBrave {
             return;
         }
 
+        //检查是否有其他上报进程在
+        if (checkExistBrave()) {
+            System.out.println("当前存在Brave进程，故退出进程");
+            return;
+        }
+
         System.out.println("监听进程成功启动:" + zipkinHost + ";" + braveDir);
         String url = zipkinHost + (zipkinHost.endsWith("/")?"":"/") + "api/v1/spans";
 
@@ -42,17 +49,52 @@ public final class HttpBrave {
             dirPath = dirPath + File.separator;
         }
 
-        //检查是否有其他上报进程在
-
         while (true) {
             try {
                 working(url, dirPath);
                 System.out.println("brave once");
                 Thread.sleep(60*1000);//延迟一分钟后继续检查
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                System.out.println("中断后停止Brave进程");
+                break;
             } catch (Throwable e) {
                 e.printStackTrace();
             }
         }
+    }
+
+    private static boolean checkExistBrave() {
+        String out = null;
+        try {
+            //mac不支持ps -x
+            //ps -aux | grep com.venus.esb.brave.HttpBrave | grep -v grep
+            out = ProcessUtils.exec("ps -ef | grep " + HttpBrave.class.getName() + " | grep -v grep",10*1000);
+        } catch (Throwable e) {
+            e.printStackTrace();//直接退出
+            return false;
+        }
+
+        if (out != null) {
+            String[] lines = out.split(System.lineSeparator());
+            //保留第一个
+            for (int i = 1; i < lines.length; i++) {
+                String line = lines[i];
+                String[] ss = line.split("\\s+");
+                String pid = ss[1];
+                try {
+                    ProcessUtils.exec("kill " + pid, 5000);
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                    continue;
+                }
+            }
+
+            if (lines.length > 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static OkHttpClient _client;

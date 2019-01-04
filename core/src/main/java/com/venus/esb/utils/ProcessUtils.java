@@ -1,5 +1,7 @@
 package com.venus.esb.utils;
 
+import com.venus.esb.brave.HttpBrave;
+import com.venus.esb.lang.ESBT;
 import org.springframework.core.io.UrlResource;
 
 import java.io.*;
@@ -8,11 +10,15 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * Created by lingminjun on 17/9/17.
  */
 public final class ProcessUtils {
+    // fork java进程
     public static void fork(final Class<?> clz, final String[] vars, boolean async, final boolean debug) {
         if (clz == null) {
             return;
@@ -34,17 +40,48 @@ public final class ProcessUtils {
     }
 
     //判断子进程是否已经存在
-    private static boolean exitChildProcess(Class<?> clz) {
-        /*
-        ProcessBuilder pb = new ProcessBuilder("ps -ef | grep \" " + clz.getName() + " \" | grep -qv grep");
+    private static String exitChildProcess(Class<?> clz, boolean limit) {
+        String out = null;
         try {
-            Process p = pb.start();
-
+            //mac不支持ps -x
+            //ps -aux | grep com.venus.esb.brave.HttpBrave | grep -v grep
+            out = ProcessUtils.exec("ps -ef | grep \"" + clz.getName() + "\" | grep -v grep",10*1000);
         } catch (Throwable e) {
-            e.printStackTrace();
+            e.printStackTrace();//直接退出
+            return null;
         }
-        */
-        return false;
+
+        String processId = null;
+        if (!ESBT.isEmpty(out)) {
+            String[] lines = out.split(System.lineSeparator());
+            //保留第一个
+            for (int i = 0; i < lines.length; i++) {
+                String line = lines[i].trim();
+                if (ESBT.isEmpty(line)) {
+                    continue;
+                }
+                String[] ss = line.split("\\s+");
+                String pid = ss[1];
+                if (i == 0) {
+                    processId = pid;
+                }
+
+                if (!limit) {
+                    break;
+                }
+
+                //停止多余进程
+                if (i > 0 && limit) {
+                    try {
+                        ProcessUtils.exec("kill " + pid, 5000);
+                    } catch (Throwable e) {
+                        e.printStackTrace();
+                        continue;
+                    }
+                }
+            }
+        }
+        return processId;
     }
 
     private static String getClassPath() {
@@ -98,8 +135,9 @@ public final class ProcessUtils {
 
         //[/Library/Java/JavaVirtualMachines/jdk1.7.0_71.jdk/Contents/Home/jre/bin/java, -classpath, "/usr/local/tmcat7/bin/bootstrap.jar:/usr/local/tmcat7/bin/tomcat-juli.jar", com.venus.esb.brave.HttpBrave, http://127.0.0.1:9411/, /Users/lingminjun/logs/brave/]
         //针对tomcat单个进程,需要控制,并不需要启用多个上报进程
-        if (exitChildProcess(clz)) {
-            System.out.println("java -cp " + classpath + " " + clz.getName() + " 进程已经被启动");
+        String pid = exitChildProcess(clz,true);
+        if (!ESBT.isEmpty(pid)) {
+            System.out.println("已经存在相似进程 " + pid + " ，不重新启动，详细： java -cp " + classpath + " " + clz.getName());
             return;
         }
 
@@ -116,6 +154,7 @@ public final class ProcessUtils {
         }
 
         pb = new ProcessBuilder(list);
+        pb.redirectErrorStream(false);
 
         p = pb.start();
 
@@ -129,24 +168,13 @@ public final class ProcessUtils {
 
         if (debug) {
             // process error and output message
-            StreamWatch errorWatch = new StreamWatch(p.getErrorStream(), "ERROR", true);
-            StreamWatch outputWatch = new StreamWatch(p.getInputStream(), "OUTPUT", true);
+            StreamWatch outputWatch = new StreamWatch(p, true);
             // start to watch
-            errorWatch.start();
             outputWatch.start();
 
             //wait for exit
             int exitVal = p.waitFor();
         }
-
-
-
-
-//
-            //print the content from ERROR and OUTPUT
-//            System.out.println("ERROR: " + errorWatch.getOutput());
-//            System.out.println("OUTPUT: " + outputWatch.getOutput());
-//            System.out.println("the return code is " + exitVal);
     }
 
     public static String exec(String cmd, int timeout) throws IOException {
@@ -155,73 +183,149 @@ public final class ProcessUtils {
             return null;
         }
 
-        String[] cmds = cmd.split("\\s");
+//        String[] cmds = cmd.split("\\s+");
         // build my command as a list of strings
         List<String> command = new ArrayList<String>();
-        for (String c : cmds) {
-            command.add(c);
-        }
-
+        command.add("/bin/sh");
+        command.add("-c");
+        command.add(cmd);
+//        for (String c : cmds) {
+//            command.add(c);
+//        }
         ProcessBuilder pb = new ProcessBuilder(command);
+        pb.redirectErrorStream(false);
+
         Process p = pb.start();
 
-        PrintWriter pw = null;
-        InputStreamReader isr = new InputStreamReader(p.getInputStream());
-        BufferedReader br = new BufferedReader(isr);
+        StreamWatch outputWatch = new StreamWatch(p, true);
+        System.out.println(pb.command());
 
-        String line = null;
-        long now = System.currentTimeMillis();
-        long expired = now + timeout;
-        while ((line = br.readLine()) != null) {
-            if (line != null && line.length() > 0) {
-                return line;
-            }
-            now = System.currentTimeMillis();
-            if (now > expired) {
-                break;
-            }
+        outputWatch.start();
+        List<String> outs = outputWatch.waitAllOuts();
+        StringBuilder builder = new StringBuilder();
+        for (String line : outs) {
+            builder.append(line);
+            builder.append("\n");
         }
-
-        return line;
+        return builder.toString();
     }
 
     static class StreamWatch extends Thread {
-        InputStream is;
-        String type;
-//        List<String> output = new ArrayList<String>();
-        boolean debug = false;
+        private Process process;
+        private BufferedReader is;
+        private BufferedReader es;
+        private BlockingQueue<String> outs = new LinkedBlockingQueue(100);
+        private BlockingQueue<String> errs = new LinkedBlockingQueue(100);
+        private boolean debug = false;
+        private boolean exit = false;
 
-        StreamWatch(InputStream is, String type) {
-            this(is, type, false);
+        StreamWatch(Process process) {
+            this(process, false);
         }
 
-        StreamWatch(InputStream is, String type, boolean debug) {
-            this.is = is;
-            this.type = type;
+        StreamWatch(Process process, boolean debug) {
+//            this.is = process.getInputStream();
+//            this.es = process.getErrorStream();
+            this.process = process;
+            // 获取标准输出
+            this.is = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            // 获取错误输出
+            this.es = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+
             this.debug = debug;
         }
 
         public void run() {
             try {
-//                PrintWriter pw = null;
-                InputStreamReader isr = new InputStreamReader(is);
-                BufferedReader br = new BufferedReader(isr);
                 String line = null;
-                while ((line = br.readLine()) != null) {
-//                    output.add(line);
-                    if (debug) {
-                        System.out.println(type + ">" + line);
+                String err = null;
+                while((line = this.is.readLine()) != null || (err = this.es.readLine()) != null){
+                    if (line != null) {
+                        outs.offer(line);
                     }
+                    if (err != null) {
+                        errs.offer(err);
+                    }
+                    if (debug) {
+                        if (line != null) {
+                            System.out.println("OUTPUT >" + line);
+                        }
+                    }
+                    if (err != null) {
+                        System.out.println("ERROR >" + err);
+                    }
+                    line = null;
+                    err = null;
                 }
-//                if (pw != null)
-//                    pw.flush();
+
             } catch (IOException ioe) {
                 ioe.printStackTrace();
+            } finally {
+                exit = true;
+                this.process.destroy();
+                try {
+                    this.is.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                try {
+                    this.es.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
 
-//        public List<String> getOutput() {
-//            return output;
-//        }
+        public String waitOutLine() {
+            try {
+                return outs.take();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+        public List<String> waitAllOuts() {
+            List<String> list = new ArrayList<>();
+            while (!outs.isEmpty()) {
+                String line = outs.poll();
+                if (line != null) {
+                    list.add(line);
+                }
+            }
+            while (!exit) {
+                String line = outs.poll();
+                if (line != null) {
+                    list.add(line);
+                }
+            }
+            return list;
+        }
+
+        public String waitError() {
+            try {
+                return errs.take();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+        public List<String> waitAllErrors() {
+            List<String> list = new ArrayList<>();
+            while (!errs.isEmpty()) {
+                String line = errs.poll();
+                if (line != null) {
+                    list.add(line);
+                }
+            }
+            while (!exit) {
+                String line = errs.poll();
+                if (line != null) {
+                    list.add(line);
+                }
+            }
+            return list;
+        }
     }
 }

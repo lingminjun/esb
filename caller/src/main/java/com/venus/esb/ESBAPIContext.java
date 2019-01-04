@@ -1,6 +1,5 @@
 package com.venus.esb;
 
-import com.alibaba.dubbo.common.utils.StringUtils;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.annotation.JSONField;
 import com.venus.esb.annotation.ESBDesc;
@@ -362,7 +361,7 @@ public final class ESBAPIContext extends ESBContext {
         context.ssoToAid = ESBT.integer(parseValue(ESBSTDKeys.SSO_TO_AID_KEY,context.aid,params,header,cookies));
         context.ssoToDomain = parseValue(ESBSTDKeys.SSO_TO_DOMAIN_KEY,context.aid,params,header,cookies);
         context.extsString = parseValue(ESBSTDKeys.TOKEN_EXTS_KEY,context.aid,params,header,cookies);
-        if (!StringUtils.isEmpty(context.extsString)) {//直接覆盖不是很好，最好是merge
+        if (!ESBT.isEmpty(context.extsString)) {//直接覆盖不是很好，最好是merge
             try {
                 context.exts = JSON.parseObject(context.extsString, ESBExts.class);
             } catch (Throwable e) {}

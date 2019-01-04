@@ -1,7 +1,7 @@
 package com.venus.esb.utils;
 
-import com.alibaba.dubbo.common.utils.StringUtils;
 import com.venus.esb.lang.ESBConsts;
+import com.venus.esb.lang.ESBT;
 
 import java.io.*;
 import java.nio.charset.Charset;
@@ -225,7 +225,7 @@ public final class FileUtils {
                 return null;
             }
 
-            if (StringUtils.isEmpty(content)) {
+            if (ESBT.isEmpty(content)) {
                 return null;
             }
 
@@ -248,7 +248,7 @@ public final class FileUtils {
             }
 
             methodString = methodString.substring(0,end).trim();
-            if (StringUtils.isEmpty(methodString)) {
+            if (ESBT.isEmpty(methodString)) {
                 return null;
             }
 
@@ -279,7 +279,7 @@ public final class FileUtils {
     }
 
     private static boolean verifyParamName(String name) {
-        if (StringUtils.isEmpty(name)) {
+        if (ESBT.isEmpty(name)) {
             return false;
         }
 

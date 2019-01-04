@@ -2,7 +2,6 @@ package com.venus.esb.dubbo;
 
 
 import com.alibaba.dubbo.common.Constants;
-import com.alibaba.dubbo.common.utils.StringUtils;
 import com.alibaba.dubbo.config.ApplicationConfig;
 import com.alibaba.dubbo.config.ReferenceConfig;
 import com.alibaba.dubbo.config.RegistryConfig;
@@ -17,7 +16,7 @@ import com.venus.esb.lang.ESBExceptionCodes;
 import com.venus.esb.lang.ESBRuntimeException;
 import com.venus.esb.lang.ESBT;
 
-import java.util.*;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -96,8 +95,8 @@ public final class ESBGenericCaller {
      */
     public Object genericInvoke(String interfaceClass, String methodName, MethodParams params, String version, Integer timeout, Integer retries) throws ESBException {
 
-        if (StringUtils.isEmpty(interfaceClass)
-                || StringUtils.isEmpty(methodName)) {
+        if (ESBT.isEmpty(interfaceClass)
+                || ESBT.isEmpty(methodName)) {
             throw new RuntimeException("dubbo接口调用必须指定接口类和对应的方法");
         }
 
@@ -314,7 +313,7 @@ public final class ESBGenericCaller {
                 throw new RuntimeException("请指定正确的下标设置参数类型和值");
             }
 
-            if (StringUtils.isEmpty(clazz)) {
+            if (ESBT.isEmpty(clazz)) {
                 throw new RuntimeException("请设置正确的参数类型");
             }
 
@@ -327,7 +326,7 @@ public final class ESBGenericCaller {
 
         public MethodParams add(String clazz, Object value) {
 
-            if (StringUtils.isEmpty(clazz)) {
+            if (ESBT.isEmpty(clazz)) {
                 throw new RuntimeException("请设置正确的参数类型");
             }
             _last = (_last + 1) % typs.length;
@@ -451,7 +450,7 @@ public final class ESBGenericCaller {
 //         * @return
 //         */
 //        public GenericPOJOBuilder put(String field, Object value) {
-//            if (StringUtils.isEmpty(field)) {
+//            if (ESBT.isEmpty(field)) {
 //                return this;
 //            }
 //
@@ -489,7 +488,7 @@ public final class ESBGenericCaller {
 //        }
 //
 //        public GenericPOJOBuilder remove(String field) {
-//            if (StringUtils.isEmpty(field)) {
+//            if (ESBT.isEmpty(field)) {
 //                return this;
 //            }
 //

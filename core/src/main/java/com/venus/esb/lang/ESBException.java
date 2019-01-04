@@ -1,8 +1,6 @@
 package com.venus.esb.lang;
 
-import com.alibaba.dubbo.common.utils.StringUtils;
 import com.alibaba.fastjson.annotation.JSONField;
-import com.venus.esb.config.ESBConfigCenter;
 import com.venus.esb.idl.ESBAPICode;
 import com.venus.esb.l10n.ESBI18N;
 
@@ -150,7 +148,7 @@ public final class ESBException extends Exception implements Serializable {
             info = new HashMap<String,Object>();
         }
 
-        if (StringUtils.isEmpty(key)) {
+        if (ESBT.isEmpty(key)) {
             return this;
         }
 
@@ -167,7 +165,7 @@ public final class ESBException extends Exception implements Serializable {
         if (info == null) {
             return;
         }
-        if (StringUtils.isEmpty(key)) {
+        if (ESBT.isEmpty(key)) {
             return;
         }
         info.remove(key);

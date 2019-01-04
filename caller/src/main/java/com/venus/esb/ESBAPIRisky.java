@@ -1,9 +1,6 @@
 package com.venus.esb;
 
 
-import com.alibaba.dubbo.common.utils.StringUtils;
-import com.venus.esb.ESBAPIInfo;
-import com.venus.esb.ESBSecurityLevel;
 import com.venus.esb.lang.*;
 
 import java.io.*;
@@ -45,7 +42,7 @@ public class ESBAPIRisky implements ESB.APIRisky {
         } else if (result == ESB.APIRiskyLevel.DANGER) {
 
             //如果此时发现已经提交验证码
-            if (!StringUtils.isEmpty(context.captcha)) {
+            if (!ESBT.isEmpty(context.captcha)) {
                 //进一步验证验证码
                 //TODO : 进一步验证验证码
             }
@@ -62,7 +59,7 @@ public class ESBAPIRisky implements ESB.APIRisky {
      * @return
      */
     private ESB.APIRiskyLevel sniffer(String ip) {
-        if (StringUtils.isEmpty(ip)) {//直接不允许无ip访问
+        if (ESBT.isEmpty(ip)) {//直接不允许无ip访问
             return ESB.APIRiskyLevel.DENIED;
         }
 

@@ -47,7 +47,7 @@ public final class ESBDubboMethod implements Serializable {
      * @return
      */
 //    public String getUUID() {
-//        if (StringUtils.isEmpty(this.dubbo)) {
+//        if ((this.dubbo)) {
 //            return "";
 //        }
 //        //方法签名,

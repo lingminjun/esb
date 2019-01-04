@@ -1,13 +1,8 @@
 package com.venus.esb.config;
 
-import com.alibaba.dubbo.common.utils.StringUtils;
 import com.venus.esb.lang.ESBT;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Properties;
 
 /**
  * Created by lingminjun on 17/4/30.
@@ -52,149 +47,92 @@ public final class ESBConfigCenter {
 
     private boolean esbCloseFilter;//关闭ESBRequestFilter过滤
 
+    private ESBProperties properties;
+
     private ESBConfigCenter() {
 
-        Properties prop = new Properties();
-        ClassLoader loader = Thread.currentThread().getContextClassLoader();//ESBConfigCenter.class.getClassLoader();
-
-        InputStream input = null;
-        boolean load = false;
-        if (!load) {
-            try {
-                input = loader.getResourceAsStream("esb.properties");
-                if (input != null) {
-                    prop.load(input);
-                    load = true;
-                }
-            } catch (Throwable e) {
-                logger.error("esb.properties 缺少ESB相关配置", e);
-            }
-        }
-
-        if (!load) {
-            try {
-                input = loader.getResourceAsStream("config.properties");
-                if (input != null) {
-                    prop.load(input);
-                    load = true;
-                }
-            } catch (Throwable e) {
-                logger.error("config.properties 缺少ESB相关配置", e);
-            }
-        }
-
-        if (!load) {
-            try {
-                input = loader.getResourceAsStream("xconfig.properties");
-                if (input != null) {
-                    prop.load(input);
-                    load = true;
-                }
-            } catch (Throwable e) {
-                logger.error("xconfig.properties 缺少ESB相关配置", e);
-            }
-        }
-
-        if (!load) {
-            try {
-                input = loader.getResourceAsStream("application.properties");
-                if (input != null) {
-                    prop.load(input);
-                    load = true;
-                }
-            } catch (Throwable e) {
-                logger.error("application.properties 缺少ESB相关配置", e);
-            }
-        }
+        properties = new ESBProperties(new String[]{"application.properties","xconfig.properties","config.properties","esb.properties"});
 
         appName = ESBT.getServiceName();//直接取服务名
         if (appName == null || appName.length() == 0) {
             appName = "esb-consumer";
         }
 
-        if (prop.getProperty("registry.address") != null) {
-            registry = prop.getProperty("registry.address");
+        if (properties.getString("registry.address") != null) {
+            registry = properties.getString("registry.address");
         } else {
-            registry = prop.getProperty("dubbo.registry.url");
+            registry = properties.getString("dubbo.registry.url");
         }
 
-        esbLoader = prop.getProperty("com.venus.esb.loader");
-        if (StringUtils.isEmpty(esbLoader)) {
+        esbLoader = properties.getString("com.venus.esb.loader");
+        if (ESBT.isEmpty(esbLoader)) {
             esbLoader = "com.venus.esb.ESBAPILoader";
         }
-        esbInvoker = prop.getProperty("com.venus.esb.invoker");
-        if (StringUtils.isEmpty(esbInvoker)) {
+        esbInvoker = properties.getString("com.venus.esb.invoker");
+        if (ESBT.isEmpty(esbInvoker)) {
             esbInvoker = "com.venus.esb.ESBAPIInvoker";
         }
 
-        esbParser = prop.getProperty("com.venus.esb.parser");
-        if (StringUtils.isEmpty(esbParser)) {
+        esbParser = properties.getString("com.venus.esb.parser");
+        if (ESBT.isEmpty(esbParser)) {
             esbParser = "com.venus.esb.ESBAPIParser";
         }
 
-        esbVerify = prop.getProperty("com.venus.esb.verify");
-        if (StringUtils.isEmpty(esbVerify)) {
+        esbVerify = properties.getString("com.venus.esb.verify");
+        if (ESBT.isEmpty(esbVerify)) {
             esbVerify = "com.venus.esb.ESBAPIVerify";
         }
 
-        esbMocker = prop.getProperty("com.venus.esb.mocker");
-        esbObserver = prop.getProperty("com.venus.esb.observer");
-        esbLogger = prop.getProperty("com.venus.esb.logger");
+        esbMocker = properties.getString("com.venus.esb.mocker");
+        esbObserver = properties.getString("com.venus.esb.observer");
+        esbLogger = properties.getString("com.venus.esb.logger");
 
-        esbRisky = prop.getProperty("com.venus.esb.risky");
-//        if (StringUtils.isEmpty(esbRisky)) {
+        esbRisky = properties.getString("com.venus.esb.risky");
+//        if (ESBT.isEmpty(esbRisky)) {
 //            esbRisky = "com.venus.esb.ESBAPIRisky";
 //        }
 
-        if (prop.getProperty("com.venus.esb.api.capacity.size") != null) {
-            apiCapacitySize = ESBT.integer(prop.getProperty("com.venus.esb.api.capacity.size"));
+        if (properties.getString("com.venus.esb.api.capacity.size") != null) {
+            apiCapacitySize = ESBT.integer(properties.getString("com.venus.esb.api.capacity.size"));
         }
         if (apiCapacitySize <= 0) {
             apiCapacitySize = 20000;//默认值两万
         }
 
         //配置loader相关配置
-        apisDir = prop.getProperty("com.venus.esb.apis.dir");
-        apisJSONListPath = prop.getProperty("com.venus.esb.apis.json.list.path");
+        apisDir = properties.getString("com.venus.esb.apis.dir");
+        apisJSONListPath = properties.getString("com.venus.esb.apis.json.list.path");
 
         //认证相关
-        pubRSAKey = prop.getProperty("com.venus.esb.rsa.pub.key");
-        priRSAKey = prop.getProperty("com.venus.esb.rsa.pri.key");
-        aesKey = prop.getProperty("com.venus.esb.aes.key");//
-        signKey = prop.getProperty("com.venus.esb.static.sign.key");
+        pubRSAKey = properties.getString("com.venus.esb.rsa.pub.key");
+        priRSAKey = properties.getString("com.venus.esb.rsa.pri.key");
+        aesKey = properties.getString("com.venus.esb.aes.key");//
+        signKey = properties.getString("com.venus.esb.static.sign.key");
 
         //dubbo调用
-        dubboTimeout = ESBT.integer(prop.getProperty("dubbo.reference.timeout"),2000);
-        dubboRetries = ESBT.integer(prop.getProperty("dubbo.reference.retries"),0);
-        dubboVersion = prop.getProperty("dubbo.reference.version");
+        dubboTimeout = properties.getInt("dubbo.reference.timeout",2000);
+        dubboRetries = properties.getInt("dubbo.reference.retries",0);
+        dubboVersion = properties.getString("dubbo.reference.version");
 
         //http调用
-        httpConnectTimeout = ESBT.integer(prop.getProperty("dubbo.reference.timeout"),2000);
-        httpReadTimeout = ESBT.integer(prop.getProperty("dubbo.reference.retries"),2000);
+        httpConnectTimeout = properties.getInt("dubbo.reference.timeout",2000);
+        httpReadTimeout = properties.getInt("dubbo.reference.retries",2000);
 
         //这里配置dubbo的注册中心信息，因此demo没有额外的dubbo.xml配置文件
-        if (prop.getProperty("dubbo.generic.filter") != null) {
-            genericFilter = prop.getProperty("dubbo.generic.filter");
+        if (properties.getString("dubbo.generic.filter") != null) {
+            genericFilter = properties.getString("dubbo.generic.filter");
         }
 
         //这里配置dubbo的注册中心信息，因此demo没有额外的dubbo.xml配置文件
-        if (prop.getProperty("com.venus.esb.zipkin.host") != null) {
-            zipkinHost = prop.getProperty("com.venus.esb.zipkin.host");
+        if (properties.getString("com.venus.esb.zipkin.host") != null) {
+            zipkinHost = properties.getString("com.venus.esb.zipkin.host");
         }
-        if (prop.getProperty("com.venus.esb.zipkin.brave.log.dir") != null) {
-            braveDir = prop.getProperty("com.venus.esb.zipkin.brave.log.dir");
+        if (properties.getString("com.venus.esb.zipkin.brave.log.dir") != null) {
+            braveDir = properties.getString("com.venus.esb.zipkin.brave.log.dir");
         }
-        brave = ESBT.bool(prop.getProperty("com.venus.esb.open.brave"));
+        brave = properties.getBoolean("com.venus.esb.open.brave");
 
-        esbCloseFilter = ESBT.bool(prop.getProperty("com.venus.esb.exclude.servlet.filter"));
-
-        if (input != null) {
-            try {
-                input.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
+        esbCloseFilter = properties.getBoolean("com.venus.esb.exclude.servlet.filter");
     }
 
     public static ESBConfigCenter instance() {
@@ -309,5 +247,9 @@ public final class ESBConfigCenter {
 
     private static class SingletonHolder {
         private static ESBConfigCenter INSTANCE = new ESBConfigCenter();
+    }
+
+    public ESBProperties getProperties() {
+        return properties;
     }
 }

@@ -1,14 +1,12 @@
 package com.venus.esb;
 
 
-import com.alibaba.dubbo.common.utils.StringUtils;
-import com.venus.esb.*;
 import com.venus.esb.config.ESBConfigCenter;
 import com.venus.esb.factory.ESBBeanFactory;
 import com.venus.esb.idl.ESBAPIDef;
 import com.venus.esb.idl.ESBReturnType;
-import com.venus.esb.sign.ESBTokenSign;
 import com.venus.esb.lang.*;
+import com.venus.esb.sign.ESBTokenSign;
 import com.venus.esb.sign.ESBUUID;
 import com.venus.esb.utils.Injects;
 import com.venus.esb.utils.MD5;
@@ -180,7 +178,7 @@ public final class ESB {
      * 刷洗接口,接口将需要重新重loader中获取
      */
     public void refresh(String selector) {
-        if (!StringUtils.isEmpty(selector)) {
+        if (!ESBT.isEmpty(selector)) {
 
             if (loader != null) {
                 try {
@@ -269,7 +267,7 @@ public final class ESB {
 
         //方法
         String selectors = context.selector;
-        if (StringUtils.isEmpty(selectors)) {
+        if (ESBT.isEmpty(selectors)) {
             throw ESBExceptionCodes.UNKNOWN_METHOD("没有传入正确的方法选标器");
         }
 
@@ -759,27 +757,27 @@ public final class ESB {
 
     //判断所有token的有效性
     private boolean isTokenInvalid(ESBAPIContext context, Map<String,String> header, Map<String,ESBCookie> cookies) {
-        if (!StringUtils.isEmpty(context.dtoken) && context.dsecur == null) {
+        if (!ESBT.isEmpty(context.dtoken) && context.dsecur == null) {
             return true;
         }
 
-        if (!StringUtils.isEmpty(context.utoken) && context.usecur == null) {
+        if (!ESBT.isEmpty(context.utoken) && context.usecur == null) {
             return true;
         }
 
-        if (!StringUtils.isEmpty(context.stoken) && context.ssecur == null) {
+        if (!ESBT.isEmpty(context.stoken) && context.ssecur == null) {
             return true;
         }
 
-        if (!StringUtils.isEmpty(context.rtoken) && context.rsecur == null) {
+        if (!ESBT.isEmpty(context.rtoken) && context.rsecur == null) {
             return true;
         }
 
-        if (!StringUtils.isEmpty(context.ttoken) && context.tsecur == null) {
+        if (!ESBT.isEmpty(context.ttoken) && context.tsecur == null) {
             return true;
         }
 
-        if (!StringUtils.isEmpty(context.ssoToken) && context.ssoSecur == null) {
+        if (!ESBT.isEmpty(context.ssoToken) && context.ssoSecur == null) {
             return true;
         }
 
@@ -1112,7 +1110,7 @@ public final class ESB {
         for (int m = 0; m < names.length; m++) {
             String selector = names[m];
 
-            if (StringUtils.isEmpty(selector)) {
+            if (ESBT.isEmpty(selector)) {
                 throw ESBExceptionCodes.UNKNOWN_METHOD(selector + "服务未找到配置");
             }
 
@@ -1245,7 +1243,7 @@ public final class ESB {
         //两种结果返回,第一种,如果是首次请求,返回关系如下
         //1、usecur(用户ok) + ssecur(域名ok) ==> ESBSSOToken (一次性token)
         if (context.usecur != null && context.ssecur != null) {//返回ESBSSOToken
-            if (!StringUtils.isEmpty(context.ssoToDomain)
+            if (!ESBT.isEmpty(context.ssoToDomain)
                     && context.ssoToDid != 0
                     && context.ssoToAid != 0) {
                 ESBSSOToken token = ESBTokenSign.injectSSOToken(null,context,context.ssoToAid,context.ssoToDid,context.ssoToDomain);

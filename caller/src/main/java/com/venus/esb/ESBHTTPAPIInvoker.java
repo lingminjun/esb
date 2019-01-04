@@ -1,22 +1,14 @@
 package com.venus.esb;
 
-import com.alibaba.dubbo.common.utils.StringUtils;
-import com.alibaba.dubbo.rpc.RpcContext;
 import com.github.kristofa.brave.Brave;
-import com.venus.esb.ESBAPIInfo;
-import com.venus.esb.ESBInvocation;
 import com.venus.esb.brave.ESBBraveFactory;
 import com.venus.esb.brave.Utils;
 import com.venus.esb.config.ESBConfigCenter;
-import com.venus.esb.dubbo.brave.DubboClientRequestAdapter;
-import com.venus.esb.dubbo.brave.DubboResponseAdapter;
-import com.venus.esb.dubbo.brave.DubboServerRequestAdapter;
 import com.venus.esb.lang.*;
 import com.venus.esb.servlet.brave.HTTPClientRequestAdapter;
 import com.venus.esb.servlet.brave.HTTPResponseAdapter;
 import com.venus.esb.utils.HTTP;
 
-import java.net.URL;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
@@ -98,7 +90,7 @@ public final class ESBHTTPAPIInvoker {
             String value = ESBAPIContext.getRightValue(key, context, params, cookies, index);
             if (ESBContext.class.equals(field.type)) {//直接赋值
                 value = context.toJson();
-            } else if (value == null && !StringUtils.isEmpty(field.defaultValue)) {
+            } else if (value == null && !ESBT.isEmpty(field.defaultValue)) {
                 value = field.defaultValue;
             }
 

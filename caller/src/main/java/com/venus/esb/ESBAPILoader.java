@@ -1,11 +1,10 @@
 package com.venus.esb;
 
 import com.alibaba.dubbo.common.utils.LRUCache;
-import com.alibaba.dubbo.common.utils.StringUtils;
 import com.alibaba.fastjson.JSON;
-import com.venus.esb.ESBAPIInfo;
 import com.venus.esb.config.ESBConfigCenter;
 import com.venus.esb.lang.ESBConsts;
+import com.venus.esb.lang.ESBT;
 import com.venus.esb.utils.FileUtils;
 import com.venus.esb.utils.MD5;
 
@@ -22,7 +21,7 @@ public class ESBAPILoader implements ESB.APILoader {
     private String dir = "/home/admin/esb/apis/";//存储api配置地址
 
     public ESBAPILoader() {
-        if (!StringUtils.isEmpty(ESBConfigCenter.instance().getApisDir())) {
+        if (!ESBT.isEmpty(ESBConfigCenter.instance().getApisDir())) {
             dir = ESBConfigCenter.instance().getApisDir();
             if (!dir.endsWith(File.separator)) {
                 dir += File.separator;
@@ -68,13 +67,13 @@ public class ESBAPILoader implements ESB.APILoader {
         ESBAPIInfo api = null;
 
         String path = path(selector);
-        if (StringUtils.isEmpty(path)) {
+        if (ESBT.isEmpty(path)) {
             return api;
         }
 
         try {
             String json = FileUtils.readFile(path, ESBConsts.UTF8);
-            if (!StringUtils.isEmpty(json)) {
+            if (!ESBT.isEmpty(json)) {
                 api = JSON.parseObject(json,ESBAPIInfo.class);
             }
         } catch (IOException e) {
@@ -86,13 +85,13 @@ public class ESBAPILoader implements ESB.APILoader {
 
     protected final void saveFileCacheAPI(String selector, ESBAPIInfo info) {
         String path = path(selector);
-        if (StringUtils.isEmpty(path)) {
+        if (ESBT.isEmpty(path)) {
             return;
         }
         if (info != null && info.api != null && info.api.getAPISelector() != null && info.api.getAPISelector().equals(selector)) {
             try {
                 String json = JSON.toJSONString(info, ESBConsts.FASTJSON_SERIALIZER_FEATURES);
-                if (!StringUtils.isEmpty(json)) {
+                if (!ESBT.isEmpty(json)) {
                     FileUtils.writeFile(path,json,ESBConsts.UTF8);
                 }
             } catch (IOException e) {
@@ -103,7 +102,7 @@ public class ESBAPILoader implements ESB.APILoader {
 
     protected final void removeFileCacheAPI(String selector) {
         String path = path(selector);
-        if (StringUtils.isEmpty(path)) {
+        if (ESBT.isEmpty(path)) {
             return;
         }
         try {
@@ -114,12 +113,12 @@ public class ESBAPILoader implements ESB.APILoader {
     }
 
     private String path(String key) {
-        if (StringUtils.isEmpty(key)) {
+        if (ESBT.isEmpty(key)) {
             return null;
         }
 
         String md5 = MD5.md5(key);
-        if (StringUtils.isEmpty(md5)) {
+        if (ESBT.isEmpty(md5)) {
             return null;
         }
 

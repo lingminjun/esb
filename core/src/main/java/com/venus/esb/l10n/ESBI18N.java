@@ -1,8 +1,8 @@
 package com.venus.esb.l10n;
 
 
-import com.alibaba.dubbo.common.utils.StringUtils;
 import com.venus.esb.lang.ESBSTDKeys;
+import com.venus.esb.lang.ESBT;
 import com.venus.esb.lang.ESBThreadLocal;
 import com.sun.org.apache.xerces.internal.parsers.DOMParser;
 import org.springframework.core.io.Resource;
@@ -223,7 +223,7 @@ public final class ESBI18N {
                         value = nd.getTextContent();
 
                         //开始写入
-                        if (!StringUtils.isEmpty(key) && !StringUtils.isEmpty(value)) {
+                        if (!ESBT.isEmpty(key) && !ESBT.isEmpty(value)) {
                             if (rs.containsKey(key)) {
 //                                System.out.println("warning duplicate key:" + key + "=" + value);
                             }

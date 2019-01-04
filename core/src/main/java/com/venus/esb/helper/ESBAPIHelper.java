@@ -1,6 +1,5 @@
 package com.venus.esb.helper;
 
-import com.alibaba.dubbo.common.utils.StringUtils;
 import com.venus.esb.ESBAPIInfo;
 import com.venus.esb.ESBInvocation;
 import com.venus.esb.ESBSecurityLevel;
@@ -10,13 +9,10 @@ import com.venus.esb.idl.ESBAPICode;
 import com.venus.esb.idl.ESBAPIDef;
 import com.venus.esb.idl.ESBAPIParam;
 import com.venus.esb.idl.ESBAPIStruct;
-import com.venus.esb.lang.ESBField;
+import com.venus.esb.lang.*;
 import com.venus.esb.servlet.ESBHTTPMethod;
 import com.venus.esb.utils.HTTP;
 import com.venus.esb.utils.JavaCodeAssist;
-import com.venus.esb.lang.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
@@ -24,7 +20,6 @@ import sun.reflect.generics.reflectiveObjects.TypeVariableImpl;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
-import java.sql.Date;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -85,7 +80,7 @@ public class ESBAPIHelper {
                                       String apiOwner,
                                       String apiDetail,
                                       String baseUrl) {
-        if (serverProvider == null || StringUtils.isEmpty(methodName)) {
+        if (serverProvider == null || ESBT.isEmpty(methodName)) {
             throw new RuntimeException("请务必输入正确的serverProvider和methodName");
         }
 
@@ -524,20 +519,20 @@ public class ESBAPIHelper {
 
     private static void fillAPIInfo(String apiName, ESBGroup group, ESBAPI esbapi, ESBAPIDef apiDef) {
         //owner
-        if (StringUtils.isEmpty(apiDef.owner) && esbapi != null) {
+        if (ESBT.isEmpty(apiDef.owner) && esbapi != null) {
             apiDef.owner = esbapi.owner();
         }
-        if (StringUtils.isEmpty(apiDef.owner) && group != null) {
+        if (ESBT.isEmpty(apiDef.owner) && group != null) {
             apiDef.owner = group.owner();
         }
 
         //desc
-        if (StringUtils.isEmpty(apiDef.desc) && esbapi != null) {
+        if (ESBT.isEmpty(apiDef.desc) && esbapi != null) {
             apiDef.desc = esbapi.desc();
         }
 
         //detail
-        if (StringUtils.isEmpty(apiDef.detail) && esbapi != null) {
+        if (ESBT.isEmpty(apiDef.detail) && esbapi != null) {
             apiDef.detail = esbapi.detail();
         }
 
@@ -553,7 +548,7 @@ public class ESBAPIHelper {
 
     private static String tidyAPIName(String methodName, String apiName, ESBAPI esbapi) {
         //参数优先
-        if (!StringUtils.isEmpty(apiName)) {
+        if (!ESBT.isEmpty(apiName)) {
             return apiName;
         }
 
@@ -568,7 +563,7 @@ public class ESBAPIHelper {
 
     private static String tidyAPIModule(String apiModule, ESBAPI esbapi, String apiDomain) {
         //参数优先
-        if (!StringUtils.isEmpty(apiModule)) {
+        if (!ESBT.isEmpty(apiModule)) {
             return apiModule;
         }
 
@@ -583,7 +578,7 @@ public class ESBAPIHelper {
 
     private static String tidyDomainString(Class<?> serverProvider, String apiDomain, ESBGroup group) {
         //首先使用输入参数作为最后module
-        if (!StringUtils.isEmpty(apiDomain)) {
+        if (!ESBT.isEmpty(apiDomain)) {
             return apiDomain;
         }
 
@@ -930,7 +925,7 @@ public class ESBAPIHelper {
                 field.autoInjected = true;
             }
 
-            if (StringUtils.isEmpty(field.name)) {
+            if (ESBT.isEmpty(field.name)) {
 
                 //先用兼容方案修复
                 if (!useCompatibility) {
@@ -944,7 +939,7 @@ public class ESBAPIHelper {
                 }
             }
 
-            if (StringUtils.isEmpty(field.name)) {
+            if (ESBT.isEmpty(field.name)) {
                 throw new RuntimeException("api参数未被标记" + method.getName() + " in " + service.getName());
             }
 
@@ -1317,7 +1312,7 @@ public class ESBAPIHelper {
      * @return
      */
     public static boolean verifyDomain(String domain) {
-        if (StringUtils.isEmpty(domain)) {
+        if (ESBT.isEmpty(domain)) {
             return false;
         }
 
@@ -1331,7 +1326,7 @@ public class ESBAPIHelper {
      * @return
      */
     public static boolean verifyAPIName(String apiName) {
-        if (StringUtils.isEmpty(apiName)) {
+        if (ESBT.isEmpty(apiName)) {
             return false;
         }
 

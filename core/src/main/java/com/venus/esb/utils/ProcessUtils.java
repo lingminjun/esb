@@ -51,7 +51,10 @@ public final class ProcessUtils {
         String classpath = System.getProperty("java.class.path");
         //当前是Web Application
         ClassLoader loader = Thread.currentThread().getContextClassLoader();
-        if (loader.getClass().getSimpleName().equals("WebappClassLoader")) {
+//        if (loader.getClass().getSimpleName().equals("WebappClassLoader") // tomcat7
+//                || loader.getClass().getSimpleName().equals("ParallelWebappClassLoader") //tomcat8
+//                || loader.getClass().getSimpleName().equals("WebappClassLoaderBase")) {
+        if (loader.getClass().getSimpleName().contains("WebappClassLoader")) {// tomcat7和tomcat8使用的ebappClassLoader不一样
             try {
                 URL url = loader.getResource("../lib");
                 if (url != null) {

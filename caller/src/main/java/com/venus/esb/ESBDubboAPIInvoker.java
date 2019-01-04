@@ -1,8 +1,5 @@
 package com.venus.esb;
 
-import com.alibaba.dubbo.common.utils.StringUtils;
-import com.venus.esb.ESBAPIInfo;
-import com.venus.esb.ESBInvocation;
 import com.venus.esb.config.ESBConfigCenter;
 import com.venus.esb.dubbo.ESBGenericCaller;
 import com.venus.esb.lang.*;
@@ -69,7 +66,7 @@ public final class ESBDubboAPIInvoker {
                 }
 
                 String value = ESBAPIContext.getRightValue(key, context, params, cookies, index);
-                if (value == null && !StringUtils.isEmpty(field.defaultValue)) {
+                if (value == null && !ESBT.isEmpty(field.defaultValue)) {
                     value = field.defaultValue;
                 }
 

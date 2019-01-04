@@ -1,6 +1,5 @@
 package com.venus.esb.sign;
 
-import com.alibaba.dubbo.common.utils.StringUtils;
 import com.venus.esb.ESBSecurityLevel;
 import com.venus.esb.config.ESBConfigCenter;
 import com.venus.esb.lang.*;
@@ -149,7 +148,7 @@ public final class ESBTokenSign {
 //            }
 
             //写入设备指纹
-            if (!StringUtils.isEmpty(client.dna)) {
+            if (!ESBT.isEmpty(client.dna)) {
 //                if (oauthid == null) {//需要留一个读取位
 //                    dos.writeShort(0);
 //                }
@@ -358,14 +357,14 @@ public final class ESBTokenSign {
         return parseDefaultToken(token,context,null);
     }
     public static ESBSecur parseDefaultToken(String token, ESBContext context, String utoken) {
-        if (StringUtils.isEmpty(token)) {return null;}
+        if (ESBT.isEmpty(token)) {return null;}
         ESBSecur client = ESBTokenSign.defaultSign().parseToken(token);
         if (client == null) {
             return client;
         }
 
         //aid一定要对应上
-        if (context != null && !StringUtils.isEmpty(context.aid)) {
+        if (context != null && !ESBT.isEmpty(context.aid)) {
             //校验合法性,不允许有变化,跨域采用跨域手段完成
             if (!context.aid.equals(""+client.aid)) {
                 return null;
@@ -375,7 +374,7 @@ public final class ESBTokenSign {
         }
 
         //did也需要对应上
-        if (context != null && !StringUtils.isEmpty(context.did)) {
+        if (context != null && !ESBT.isEmpty(context.did)) {
             //校验合法性,不允许有变化
             if (!context.did.equals(""+client.did)) {
                 return null;
@@ -387,7 +386,7 @@ public final class ESBTokenSign {
         //uid的校验
         if (client.uid != 0) {
             //校验合法性
-            if (context != null && !StringUtils.isEmpty(context.uid) && !context.uid.equals(""+client.uid)) {
+            if (context != null && !ESBT.isEmpty(context.uid) && !context.uid.equals(""+client.uid)) {
                 return null;
             }
             if (context != null) {
@@ -398,7 +397,7 @@ public final class ESBTokenSign {
         //acct的校验
         if (client.acct != 0) {
             //校验合法性
-            if (context != null && !StringUtils.isEmpty(context.acct) && !context.acct.equals(""+client.acct)) {
+            if (context != null && !ESBT.isEmpty(context.acct) && !context.acct.equals(""+client.acct)) {
                 return null;
             }
             if (context != null) {
@@ -413,10 +412,10 @@ public final class ESBTokenSign {
         //      3、security token和refresh token，签署 user token
         //      4、其他token，不做校验
 
-        if (!StringUtils.isEmpty(client.dna)) {
+        if (!ESBT.isEmpty(client.dna)) {
             //第1种情况
             if (client.securityLevel == ESBSecurityLevel.userAuth.getCode()) {
-                if (context != null && !StringUtils.isEmpty(context.dna) && context.dna.equals(client.dna)) {
+                if (context != null && !ESBT.isEmpty(context.dna) && context.dna.equals(client.dna)) {
                     return null;
                 }
                 if (context != null) {
@@ -432,7 +431,7 @@ public final class ESBTokenSign {
             } else if (client.securityLevel == ESBSecurityLevel.secretAuth.getCode()
                     || client.securityLevel == ESBSecurityLevel.extend.getCode()) {
                 // 业务ESB同样会验证
-                if (!StringUtils.isEmpty(utoken) && !MD5.md5(utoken).equals(client.dna)) {
+                if (!ESBT.isEmpty(utoken) && !MD5.md5(utoken).equals(client.dna)) {
                     return null;
                 }
             }
@@ -442,7 +441,7 @@ public final class ESBTokenSign {
     }
 
     public static ESBSSOSecur parseSSOToken(String token, ESBContext context) {
-        if (StringUtils.isEmpty(token)) {return null;}
+        if (ESBT.isEmpty(token)) {return null;}
 
         ESBSSOSecur client = ESBTokenSign.defaultSign().parseSSOToken(token);
         if (client == null) {
@@ -452,7 +451,7 @@ public final class ESBTokenSign {
         //uid的校验
         if (client.uid != 0) {
             //校验合法性
-            if (context != null && !StringUtils.isEmpty(context.uid) && !context.uid.equals(""+client.uid)) {
+            if (context != null && !ESBT.isEmpty(context.uid) && !context.uid.equals(""+client.uid)) {
                 return null;
             }
             if (context != null) {

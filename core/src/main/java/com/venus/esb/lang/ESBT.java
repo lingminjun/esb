@@ -1,13 +1,7 @@
 package com.venus.esb.lang;
 
-import com.alibaba.dubbo.common.utils.StringUtils;
 import com.alibaba.dubbo.config.ApplicationConfig;
-import com.venus.esb.config.ESBConfigCenter;
 import com.venus.esb.factory.ESBBeanFactory;
-import com.sun.org.apache.xerces.internal.impl.xs.identity.Selector;
-import com.sun.org.apache.xerces.internal.parsers.DOMParser;
-import org.springframework.beans.factory.BeanFactory;
-import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.core.io.support.ResourcePatternResolver;
@@ -15,14 +9,13 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.*;
-import java.net.URL;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -1068,7 +1061,7 @@ public final class ESBT {
      * @return
      */
     public static Class<?> classForName(String name) {
-        if (StringUtils.isEmpty(name)) {
+        if (ESBT.isEmpty(name)) {
             return null;
         }
         try {
@@ -1103,7 +1096,7 @@ public final class ESBT {
      * @return
      */
     public static <T extends Object> T createObject(String className, Class<T> type) {
-        if (!StringUtils.isEmpty(className)) {
+        if (!ESBT.isEmpty(className)) {
             try {
                 Class<?> clazz = ESBT.classForName(className);
                 if (clazz != null && type.isAssignableFrom(clazz)) {
@@ -1119,7 +1112,7 @@ public final class ESBT {
      * @return
      */
     public static String convertCoreType(String finalType) {
-        if (StringUtils.isEmpty(finalType)) {
+        if (ESBT.isEmpty(finalType)) {
             return "";
         }
 
@@ -1155,7 +1148,7 @@ public final class ESBT {
      * @return
      */
     public static String convertFinalType(String type, boolean isList, boolean isArray) {
-        if (StringUtils.isEmpty(type)) {
+        if (ESBT.isEmpty(type)) {
             return "";
         }
 
@@ -1634,7 +1627,7 @@ public final class ESBT {
         ClassLoader loader = Thread.currentThread().getContextClassLoader();
 
         //只有WebappClassLoader才能断定是tomcat
-        if (!loader.getClass().getSimpleName().equals("WebappClassLoader")) {
+        if (!loader.getClass().getSimpleName().contains("WebappClassLoader")) {
             return null;
         }
 

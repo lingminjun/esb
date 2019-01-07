@@ -318,7 +318,6 @@ public final class ESBGenericCaller {
             }
 
             $set(index,clazz,value);
-
             _last = index;
 
             return this;
@@ -338,7 +337,7 @@ public final class ESBGenericCaller {
             //对泛型接口的支持
             int idx = clazz.indexOf("<");
             if (idx >= 0 && idx < clazz.length()) {
-                typs[_last] = clazz.substring(0,idx);
+                typs[index] = clazz.substring(0,idx);
                 String t = clazz.substring(idx+1,clazz.length() - 1);
                 if (value instanceof Map) {
                     if (!((Map) value).containsKey("class")) {
@@ -346,9 +345,9 @@ public final class ESBGenericCaller {
                     }
                 }
             } else {
-                typs[_last] = clazz;
+                typs[index] = clazz;
             }
-            objs[_last] = value;
+            objs[index] = value;
         }
     }
 

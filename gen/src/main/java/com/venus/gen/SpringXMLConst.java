@@ -351,8 +351,8 @@ public final class SpringXMLConst {
     public final static String CONFIG_PROPERTIES_RELATIVE_PATH_MASK = "@RelativePath@";//WEB-INF/classes/
     private final static String AUTO_CONFIG_XML = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n" +
             "<config description=\"autoConf配置信息\">\n" +
-            "    <group name=\"com.venus.@ApplicationName@.log.setting\">\n" +
-            "        <property name=\"com.venus.@ApplicationName@.log.home\" description=\"日志目录\" required=\"true\"/>\n" +
+            "    <group name=\"com.venus.log.setting\">\n" +
+            "        <property name=\"com.venus.log.home\" description=\"日志目录\" required=\"true\"/>\n" +
             "    </group>\n" +
             "\n    <script>\n" +
             "        <generate template=\"config.properties.vm\" destfile=\"@RelativePath@xconfig.properties\" charset=\"UTF-8\"/>\n" +
@@ -393,7 +393,7 @@ public final class SpringXMLConst {
             "com.venus.@ApplicationName@.mysql.datasource.url=${com.venus.@ApplicationName@.mysql.datasource.url}\n" +
             "com.venus.@ApplicationName@.mysql.datasource.username=${com.venus.@ApplicationName@.mysql.datasource.username}\n" +
             "com.venus.@ApplicationName@.mysql.datasource.password=${com.venus.@ApplicationName@.mysql.datasource.password}\n\n" +
-            "com.venus.@ApplicationName@.log.home=${com.venus.@ApplicationName@.log.home}";
+            "com.venus.log.home=${com.venus.log.home}";
     public final static String theAutoConfigVMGroup(String application) {
         return AUTO_CONFIG_VM.replaceAll(APPLICATION_NAME,application);
     }
@@ -441,7 +441,7 @@ public final class SpringXMLConst {
             "com.venus.@ApplicationName@.mysql.datasource.username=root\n" +
             "com.venus.@ApplicationName@.mysql.datasource.password=root\n\n" +
             "# 基本配置\n" +
-            "com.venus.@ApplicationName@.log.home=/Users/lingminjun/logs/@ApplicationName@-service/\n";
+            "com.venus.log.home=/Users/lingminjun/logs/@ApplicationName@-service/\n";
 
     public final static String ADD_DUBBO_PROPERTIES_CONFIG_DEMO = "# dubbo配置\n" +
             "dubbo.registry.url = zookeeper://127.0.0.1:2181\n" +

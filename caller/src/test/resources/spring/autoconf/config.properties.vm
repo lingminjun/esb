@@ -37,4 +37,4 @@ com.venus.esb.zipkin.host=${com.venus.esb.zipkin.host}
 com.venus.esb.zipkin.brave.log.dir=
 
 # log配置
-com.venus.template.log.home=/admin/home/logs/esb/
+com.venus.log.home=/admin/home/logs/esb/

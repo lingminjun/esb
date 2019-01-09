@@ -809,11 +809,11 @@ public class ServiceGenerator extends Generator {
         }
 
 
-        // 配置script作用
+        // 配置script作用 //配置含工程路径名无意义，多个jar融合反而引发问题
         {
-            int idx = content.indexOf("com.venus." + applicationName + ".log.home");
+            int idx = content.indexOf("com.venus.log.home");
             if (idx < 0 || idx >= content.length()) {
-                content.append("\ncom.venus." + applicationName + ".log.home=${com.venus." + applicationName + ".log.home}\n");
+                content.append("\ncom.venus.log.home=${com.venus.log.home}\n");
             }
         }
 
@@ -864,9 +864,9 @@ public class ServiceGenerator extends Generator {
 
         // 配置script作用
         {
-            int idx = content.indexOf("com.venus." + applicationName + ".log.home");
+            int idx = content.indexOf("com.venus.log.home");
             if (idx < 0 || idx >= content.length()) {
-                content.append("\n# 日志目录配置\ncom.venus." + applicationName + ".log.home=/Home/admin/logs/" + applicationName + "-service/\n");
+                content.append("\n# 日志目录配置\ncom.venus.log.home=/Home/admin/logs/" + applicationName + "-service/\n");
             }
         }
 

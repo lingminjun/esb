@@ -2,12 +2,12 @@
     <property resource="config.properties"/>
 
     <appender name="InfoFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${com.venus.template.log.home}/info/info.log</file>
+        <file>${com.venus.log.home}/info/info.log</file>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
             <level>INFO</level>
         </filter>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <FileNamePattern>${com.venus.template.log.home}/info/info-%d{yyyy-MM-dd}-%i.log</FileNamePattern>
+            <FileNamePattern>${com.venus.log.home}/info/info-%d{yyyy-MM-dd}-%i.log</FileNamePattern>
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <maxFileSize>20MB</maxFileSize>
             </timeBasedFileNamingAndTriggeringPolicy>
@@ -21,14 +21,14 @@
     </appender>
 
     <appender name="ErrorFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${com.venus.template.log.home}/error/error.log</file>
+        <file>${com.venus.log.home}/error/error.log</file>
         <filter class="ch.qos.logback.classic.filter.LevelFilter">
             <level>ERROR</level>
             <onMatch>ACCEPT</onMatch>
             <onMismatch>DENY</onMismatch>
         </filter>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <FileNamePattern>${com.venus.template.log.home}/error/error-%d{yyyy-MM-dd}-%i.log</FileNamePattern>
+            <FileNamePattern>${com.venus.log.home}/error/error-%d{yyyy-MM-dd}-%i.log</FileNamePattern>
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <maxFileSize>20MB</maxFileSize>
             </timeBasedFileNamingAndTriggeringPolicy>
@@ -42,12 +42,12 @@
     </appender>
 
     <appender name="timeWatchFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${com.venus.template.log.home}/timewatch/timewatch.log</file>
+        <file>${com.venus.log.home}/timewatch/timewatch.log</file>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
             <level>INFO</level>
         </filter>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <FileNamePattern>${com.venus.template.log.home}/timewatch/timewatch-%d{yyyy-MM-dd}-%i.log</FileNamePattern>
+            <FileNamePattern>${com.venus.log.home}/timewatch/timewatch-%d{yyyy-MM-dd}-%i.log</FileNamePattern>
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <maxFileSize>20MB</maxFileSize>
             </timeBasedFileNamingAndTriggeringPolicy>

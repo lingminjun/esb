@@ -152,6 +152,23 @@ public final class FileUtils {
         return true;
     }
 
+    public static boolean writeFile(String path, byte[] bytes) throws IOException {
+        FileOutputStream out = null;
+        try {
+            out = new FileOutputStream(path);
+            out.write(bytes);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (out != null) {
+                out.close();
+            }
+        }
+        return true;
+    }
+
+
     public static boolean deleteFile(String path) throws IOException {
         try {
             File file = new File(path);

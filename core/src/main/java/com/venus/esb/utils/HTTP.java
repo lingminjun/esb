@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.venus.esb.lang.ESBConsts;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
+import org.bouncycastle.est.jcajce.SSLSocketFactoryCreator;
 
 import javax.net.ssl.*;
 import java.io.*;
@@ -77,16 +78,21 @@ public final class HTTP {
         }
     }
 
+
+    public static String post(String url, String content, Map<String,String> header) throws Exception {
+        return post(url,content,header,null);
+    }
+
     /**
      * 发送信息到服务端
      * @param content
      * @return success response
      * @throws Exception
      */
-    public static String post(String url, String content, Map<String,String> header) throws Exception {
+    public static String post(String url, String content, Map<String,String> header,SSLSocketFactory sslSocketFactory) throws Exception {
         try {
             String charset = ESBConsts.UTF8_STR;
-            HttpURLConnection httpURLConnection = postConnection(new URL(url),0,0, ContentType.text, charset,null);
+            HttpURLConnection httpURLConnection = postConnection(new URL(url),0,0, ContentType.text, charset,null, sslSocketFactory);
             if (null == httpURLConnection) {
                 throw new Exception("Create httpURLConnection Failure");
             }
@@ -121,6 +127,10 @@ public final class HTTP {
             map.put("Authorization",authorization);
         }
         return post(url,content,map);
+    }
+
+    public static String post(String url, String content, SSLSocketFactory sslSocketFactory) throws Exception {
+        return post(url,content,null,sslSocketFactory);
     }
 
     /**
@@ -189,16 +199,10 @@ public final class HTTP {
         return postForm(url,content,(Map<String, String>) null);
     }
 
-    /**
-     * 发送信息到服务端
-     * @param params
-     * @return success response
-     * @throws Exception
-     */
-    public static String post(String url, Map<String, String> params, Map<String,String> header, int connectTimeout, int readTimeout) throws Exception {
+    public static String post(String url, Map<String, String> params, Map<String,String> header, int connectTimeout, int readTimeout, SSLSocketFactory sslSocketFactory) throws Exception {
         try {
             String charset = ESBConsts.UTF8_STR;
-            HttpURLConnection httpURLConnection = postConnection(new URL(url),connectTimeout,readTimeout, ContentType.form, charset,null);
+            HttpURLConnection httpURLConnection = postConnection(new URL(url),connectTimeout,readTimeout, ContentType.form, charset,null,sslSocketFactory);
             if (null == httpURLConnection) {
                 throw new Exception("Create httpURLConnection Failure");
             }
@@ -217,6 +221,16 @@ public final class HTTP {
 //            e.printStackTrace();
             throw e;
         }
+    }
+
+    /**
+     * 发送信息到服务端
+     * @param params
+     * @return success response
+     * @throws Exception
+     */
+    public static String post(String url, Map<String, String> params, Map<String,String> header, int connectTimeout, int readTimeout) throws Exception {
+        return post(url,params,header,connectTimeout,readTimeout,null);
     }
 
     /**
@@ -251,6 +265,16 @@ public final class HTTP {
      */
     public static String post(String url, Map<String, String> params) throws Exception {
         return post(url,params,(Map<String, String>) null);
+    }
+
+    /**
+     * 发送信息到服务端
+     * @param params
+     * @return success response
+     * @throws Exception
+     */
+    public static String post(String url, Map<String, String> params, SSLSocketFactory sslSocketFactory) throws Exception {
+        return post(url,params,(Map<String, String>) null,0,60,sslSocketFactory);
     }
 
     /**
@@ -332,7 +356,7 @@ public final class HTTP {
     public static String putJSON(String url, Object object, Map<String,String> header,int connectTimeout, int readTimeout) throws Exception {
         try {
             String charset = ESBConsts.UTF8_STR;
-            HttpURLConnection httpURLConnection = postConnection(Method.PUT, new URL(url),connectTimeout,readTimeout, ContentType.json, charset,null);
+            HttpURLConnection httpURLConnection = postConnection(Method.PUT, new URL(url),connectTimeout,readTimeout, ContentType.json, charset,null,null);
             if (null == httpURLConnection) {
                 throw new Exception("Create httpURLConnection Failure");
             }
@@ -865,9 +889,12 @@ public final class HTTP {
      * @throws ProtocolException
      */
     private static HttpURLConnection postConnection(URL url, int connectTimeout, int readTimeout, ContentType type, String charset, String boundary) throws ProtocolException {
-        return postConnection(Method.POST,url,connectTimeout,readTimeout,type,charset,boundary);
+        return postConnection(Method.POST,url,connectTimeout,readTimeout,type,charset,boundary,null);
     }
-    private static HttpURLConnection postConnection(Method method, URL url, int connectTimeout, int readTimeout, ContentType type, String charset, String boundary) throws ProtocolException {
+    private static HttpURLConnection postConnection(URL url, int connectTimeout, int readTimeout, ContentType type, String charset, String boundary, SSLSocketFactory sslSocketFactory) throws ProtocolException {
+        return postConnection(Method.POST,url,connectTimeout,readTimeout,type,charset,boundary,sslSocketFactory);
+    }
+    private static HttpURLConnection postConnection(Method method, URL url, int connectTimeout, int readTimeout, ContentType type, String charset, String boundary, SSLSocketFactory sslSocketFactory) throws ProtocolException {
         if (url == null) {
             return null;
         }
@@ -907,7 +934,11 @@ public final class HTTP {
         if ("https".equalsIgnoreCase(url.getProtocol())) {
             HttpsURLConnection husn = (HttpsURLConnection) httpURLConnection;
             //是否验证https证书，测试环境请设置false，生产环境建议优先尝试true，不行再false
-            husn.setSSLSocketFactory(new BaseHttpSSLSocketFactory());
+            if (sslSocketFactory == null) {
+                husn.setSSLSocketFactory(new BaseHttpSSLSocketFactory());
+            } else {
+                husn.setSSLSocketFactory(sslSocketFactory);
+            }
             husn.setHostnameVerifier(new TrustAnyHostnameVerifier());//解决由于服务器证书问题导致HTTPS无法访问的情况
             return husn;
         }

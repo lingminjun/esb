@@ -385,6 +385,39 @@ public final class ESB {
         }
     }
 
+    // 预处理返回结果
+    private String preprocessResult(Object obj, ESBAPIInfo api, ESBAPIContext context, ESBAPISerializer serializer) throws ESBException {
+        //特殊类型支持,将数据注入
+        if (!context.isTransmit() && ESBT.isBaseType(obj.getClass())) {
+            obj = wrapperResult(api, obj);
+        } else if (obj instanceof ESBToken) {
+            injectTokenResult((ESBToken) obj, context);
+        } else if (obj instanceof ESBDeviceToken) {
+            injectDeviceTokenResult((ESBDeviceToken) obj, context);
+        } //坑，dubbo泛型调用，不知道类型是 ESBToken
+        else if (ESBToken.class.getName().equals(api.api.returned.type)) {
+            obj = injectGenericTokenResult(obj, context);
+        } else if (ESBDeviceToken.class.getName().equals(api.api.returned.type)) {
+            obj = injectGenericDeviceTokenResult(obj, context);
+        } else {// 精简返回
+            obj = tailor(obj, api, context);
+        }
+
+        if (obj == null) {
+            throw ESBExceptionCodes.SERIALIZE_FAILED("组合请求异常");
+        }
+
+        //最后转文本
+        String rst = serializer.serialized(obj);
+        if (rst != null) {//过滤掉dubbo解析数据的class
+            //"class":"com.venus.scm.entities.ScmSkuImagePOJO",
+            rst = rst.replaceAll("\\{\"class\":\"[a-zA-Z_\\$]+[\\w\\$\\.]*\"\\}", "{}");
+            rst = rst.replaceAll("\\{\"class\":\"[a-zA-_\\$]+[\\w\\$\\.]*\",", "{");
+            rst = rst.replaceAll(",\"class\":\"[a-zA-_\\$]+[\\w\\$\\.]*\"", "");
+        }
+        return rst;
+    }
+
     //需要优化,若非组合请求,且没有其他多个请求组装时,切换到单一调用
     private void concurrentFillResponse(List<ESBResponse> ress,List<ESBAPIInfo> apis, ESBAPIContext context, Map<String,String> params, Map<String,String> header, Map<String,ESBCookie> cookies, ESBAPISerializer serializer) throws ESBException {
         HashMap<Integer,List<Future<TaskResponse>>> task = new HashMap<Integer, List<Future<TaskResponse>>>();
@@ -405,7 +438,8 @@ public final class ESB {
             task.put(api.hashCode(),list);
         }
 
-        //统一获取结果
+        //统一获取结果,单个请求，忽略ignore参数
+        boolean ignoreError = apis.size() <= 1 ? false : ESBT.bool(params.get(ESBSTDKeys.MULT_APIS_IGNORE_MASTER_ERROR_KEY));
         for (int i = 0; i < apis.size(); i++) {
             ESBAPIInfo api = apis.get(i);
 
@@ -427,7 +461,7 @@ public final class ESB {
                             //合并ext和cookie
                             mergeExts(context,response);
 
-                        } else if (i == 0) {//主请求若异常，直接抛出错误
+                        } else if (!ignoreError && i == 0) {//主请求若异常，直接抛出错误
                             throw response.exception;
                         } else {
                             if (fidx == 0) {//记录首个请求异常
@@ -438,7 +472,7 @@ public final class ESB {
                         }
                     }
                 } catch (ESBException e) {
-                    if (i == 0) {//主请求将错误抛出去
+                    if (!ignoreError && i == 0) {//主请求将错误抛出去
                         throw e;
                     } else {
                         if (fidx == 0) {//记录首个请求异常
@@ -448,7 +482,7 @@ public final class ESB {
                         logback.error("组合请求异常"+api.api.getAPISelector(), e);
                     }
                 } catch (Throwable e) {
-                    if (i == 0) {//主请求将错误抛出去
+                    if (!ignoreError && i == 0) {//主请求将错误抛出去
                         throw ESBExceptionCodes.INTERNAL_SERVER_ERROR("请求异常").setCoreCause(e);
                     } else {
                         if (fidx == 0) {//记录首个请求异常
@@ -462,61 +496,26 @@ public final class ESB {
 
             //兼容null被返回
             if (obj != null) {
-
-                //基础类型包装一下
-                if (!context.isTransmit() && ESBT.isBaseType(obj.getClass())) {
-                    try {
-                        obj = wrapperResult(api, obj);
-                    } catch (ESBException e) {
-                        if (i == 0) {//主请求将错误抛出去
-                            throw e;
-                        } else {
-                            res.exception = e;
-                            logback.error("包装结果" + api.api.getAPISelector(), e);
-                        }
-                    } catch (Throwable e) {
-                        if (i == 0) {//主请求将错误抛出去
-                            throw ESBExceptionCodes.SERIALIZE_FAILED("请求异常").setCoreCause(e);
-                        } else {
-                            res.exception = ESBExceptionCodes.SERIALIZE_FAILED("请求异常").setCoreCause(e);
-                            logback.error("包装结果" + api.api.getAPISelector(), e);
-                        }
-                    }
-                }
-
-                //特殊类型支持,将数据注入
-                if (obj instanceof ESBToken) {
-                    injectTokenResult((ESBToken) obj, context);
-                } else if (obj instanceof ESBDeviceToken) {
-                    injectDeviceTokenResult((ESBDeviceToken) obj, context);
-                } //坑，dubbo泛型调用，不知道类型是 ESBToken
-                else if (ESBToken.class.getName().equals(api.api.returned.type)) {
-                    obj = injectGenericTokenResult(obj, context);
-                } else if (ESBDeviceToken.class.getName().equals(api.api.returned.type)) {
-                    obj = injectGenericDeviceTokenResult(obj, context);
-                } else {// 精简返回
-                    obj = tailor(obj, api, context);
-                }
-
                 try {
-                    String rst = serializer.serialized(obj);
-                    if (rst != null) {//过滤掉dubbo解析数据的class
-                        //"class":"com.venus.scm.entities.ScmSkuImagePOJO",
-                        rst = rst.replaceAll("\\{\"class\":\"[a-zA-Z_\\$]+[\\w\\$\\.]*\"\\}", "{}");
-                        rst = rst.replaceAll("\\{\"class\":\"[a-zA-_\\$]+[\\w\\$\\.]*\",", "{");
-                        rst = rst.replaceAll(",\"class\":\"[a-zA-_\\$]+[\\w\\$\\.]*\"", "");
-                    }
-                    res.result = rst;
+                    //预处理结果
+                    res.result = preprocessResult(obj,api,context,serializer);
                 } catch (ESBException e) {
-                    if (i == 0) {//主请求将错误抛出去
+                    if (!ignoreError && i == 0) {//主请求将错误抛出去
                         throw e;
                     } else {
                         res.exception = e;
-                        logback.error("组合请求异常" + api.api.getAPISelector(), e);
+                        logback.error("组合请求包装结果" + api.api.getAPISelector(), e);
+                    }
+                } catch (Throwable e) {
+                    if (!ignoreError && i == 0) {//主请求将错误抛出去
+                        throw ESBExceptionCodes.SERIALIZE_FAILED("请求异常").setCoreCause(e);
+                    } else {
+                        res.exception = ESBExceptionCodes.SERIALIZE_FAILED("请求异常").setCoreCause(e);
+                        logback.error("组合请求包装结果" + api.api.getAPISelector(), e);
                     }
                 }
             } else if (res.exception == null) { //没有异常的情况，自动补充异常
-                if (i == 0) {//主请求将错误抛出去
+                if (!ignoreError && i == 0) {//主请求将错误抛出去
                     throw ESBExceptionCodes.SERVICE_RETURN_NULL("无法返回了非法的null");
                 } else {
                     res.exception = ESBExceptionCodes.SERVICE_RETURN_NULL("无法返回了非法的null");
@@ -592,19 +591,20 @@ public final class ESB {
     }
 
     //判断是否有开窗需求，将在后面的版本中实现
-    private boolean isSerialRequest(List<ESBAPIInfo> apis) {
-//        return false;
+    private boolean isSerialRequest(List<ESBAPIInfo> apis, Map<String,String> params) {
 
         //以下是对单个请求的优化，没必要开启线程组
         if (apis == null || apis.size() == 0) {
             return true;
         }
-        if (apis.size() > 1) {
-            return false;
+
+        // 只有一个api，没有多个子请求
+        if (apis.size() == 1 && (apis.get(0).rules == null || apis.get(0).rules.size() <= 1)) {
+            return true;
         }
 
-        ESBAPIInfo api = apis.get(0);
-        if (api.rules == null || api.rules.size() <= 1) {
+        boolean serial = ESBT.bool(params.get(ESBSTDKeys.MULT_APIS_SERIAL_CALL_KEY));
+        if (serial) {
             return true;
         }
 
@@ -613,7 +613,7 @@ public final class ESB {
     }
 
     private void fillResponse(List<ESBResponse> ress,List<ESBAPIInfo> apis, ESBAPIContext context, Map<String,String> params, Map<String,String> header, Map<String,ESBCookie> cookies, ESBAPISerializer serializer) throws ESBException {
-        if (isSerialRequest(apis)) {
+        if (isSerialRequest(apis,params)) {
             serialFillResponse(ress,apis,context,params,header,cookies,serializer);
         } else {
             concurrentFillResponse(ress,apis,context,params,header,cookies,serializer);
@@ -621,8 +621,10 @@ public final class ESB {
     }
 
     private void serialFillResponse(List<ESBResponse> ress, List<ESBAPIInfo> apis, ESBAPIContext context, Map<String,String> params, Map<String,String> header, Map<String,ESBCookie> cookies, ESBAPISerializer serializer) throws ESBException {
-        for (int i = 0; i < apis.size(); i++) {
+        // 默认,单个请求，忽略ignore参数
+        boolean ignoreError = apis.size() <= 1 ? false : ESBT.bool(params.get(ESBSTDKeys.MULT_APIS_IGNORE_MASTER_ERROR_KEY));
 
+        for (int i = 0; i < apis.size(); i++) {
             ESBAPIInfo api = apis.get(i);
             ESBResponse res = new ESBResponse();
 
@@ -633,14 +635,14 @@ public final class ESB {
                 try {
                     res.result = syncInvoke(api, context, params, header, cookies, serializer, (apis.size() == 1 ? -1 : i));
                 } catch (ESBException e) {
-                    if (i == 0) {//主请求直接抛
+                    if (!ignoreError && i == 0) {//主请求直接抛，忽略错误，继续
                         throw e;
                     } else {
                         res.exception = e;
                         logback.error("组合请求异常" + api.api.getAPISelector(), e);
                     }
                 } catch (Throwable e) {
-                    if (i == 0) {//主请求直接抛
+                    if (!ignoreError && i == 0) {//主请求直接抛，忽略错误，继续
                         throw ESBExceptionCodes.INTERNAL_SERVER_ERROR("请求异常").setCoreCause(e);
                     } else {
                         res.exception = ESBExceptionCodes.INTERNAL_SERVER_ERROR("请求异常").setCoreCause(e);
@@ -697,33 +699,7 @@ public final class ESB {
         }
 
         //基础类型包装一下
-        if (ESBT.isBaseType(obj.getClass())) {
-            obj = wrapperResult(api,obj);
-        } else if (obj instanceof ESBToken) {//特殊类型支持,将数据注入
-            injectTokenResult((ESBToken)obj,context);
-        } else if (obj instanceof ESBDeviceToken) {
-            injectDeviceTokenResult((ESBDeviceToken)obj,context);
-        } //坑，dubbo泛型调用，不知道类型是 ESBToken
-        else if (ESBToken.class.getName().equals(api.api.returned.type)) {
-            obj = injectGenericTokenResult(obj,context);
-        } else if (ESBDeviceToken.class.getName().equals(api.api.returned.type)) {
-            obj = injectGenericDeviceTokenResult(obj,context);
-        } else {// 精简返回
-            obj = tailor(obj,api,context);
-        }
-
-//        try {
-        String rst = serializer.serialized(obj);
-        if (rst != null) {//过滤掉dubbo解析数据的class
-            //"class":"com.venus.scm.entities.ScmSkuImagePOJO",
-            rst = rst.replaceAll("\\{\"class\":\"[a-zA-Z_\\$]+[\\w\\$\\.]*\"\\}","{}");
-            rst = rst.replaceAll("\\{\"class\":\"[a-zA-_\\$]+[\\w\\$\\.]*\",","{");
-            rst = rst.replaceAll(",\"class\":\"[a-zA-_\\$]+[\\w\\$\\.]*\"","");
-        }
-        return rst;
-//        } catch (IOException e) {
-//            throw ESBExceptionCodes.SERIALIZE_FAILED("请求最后序列化出错").setCoreCause(e);
-//        }
+        return preprocessResult(obj,api,context,serializer);
     }
 
     private static Object tailor(Object obj, ESBAPIInfo api, ESBAPIContext context) {

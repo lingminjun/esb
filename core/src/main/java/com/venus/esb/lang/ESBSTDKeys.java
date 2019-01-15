@@ -356,6 +356,18 @@ public final class ESBSTDKeys {
 //        _nkeys.add(MOCK_FLAG_KEY);
 //    }
 
+    @ESBDesc("合并请求专用参数，链式请求标记")
+    public static final String MULT_APIS_SERIAL_CALL_KEY = "_mult_serial";
+    static {
+        _nkeys.add(MULT_APIS_SERIAL_CALL_KEY);
+    }
+
+    @ESBDesc("合并请求专用参数，忽略主错误（不因第一个请求异常终止）。注意：默认为false")
+    public static final String MULT_APIS_IGNORE_MASTER_ERROR_KEY = "_mult_ignore";
+    static {
+        _nkeys.add(MULT_APIS_IGNORE_MASTER_ERROR_KEY);
+    }
+
 
     public static boolean isSTDKey(String key) {
         return _keys.contains(key);

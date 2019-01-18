@@ -1890,8 +1890,11 @@ public class MybatisGenerator extends Generator {
         StringBuilder cols = new StringBuilder();
 
         StringBuilder inflds = new StringBuilder();
-        StringBuilder item_inflds = new StringBuilder();
         StringBuilder incols = new StringBuilder();
+        StringBuilder item_inflds = new StringBuilder();
+
+        StringBuilder inupflds = new StringBuilder();
+        StringBuilder inupcols = new StringBuilder();
 
         for (Column cl : table.columns) {
 
@@ -1943,10 +1946,25 @@ public class MybatisGenerator extends Generator {
             flds.append(field);
 
             // 插入语句不需要的字段
+            if (cl.name.equals("is_delete")
+                    || cl.name.equals("delete")
+                    || cl.name.equals("is_deleted")
+                    || cl.name.equals("deleted")) {
+                continue;
+            }
+
+            //insert or update 需要保留主键，但是insert不需要
+            if (inupcols.length() > 0) {
+                inupcols.append(",");
+                inupflds.append(",");
+            }
+            inupcols.append("`" + cl.name + "`");
+            inupflds.append(field);
+
             if (cl.isPrimary()
                     || cl.name.equals("id")
-                    || cl.name.equals("is_delete")
-                    || cl.name.equals("delete")) {
+//                    || cl.name.equals("rowid")
+            ) {
                 continue;
             }
 
@@ -1966,6 +1984,7 @@ public class MybatisGenerator extends Generator {
         for (Column cl : table.columns) {
             if (cl.isPrimary()
                     || cl.name.equals("id")
+//                    || cl.name.equals("rowid")
                     || cl.name.equals("create_at")
                     || cl.name.equals("created_at")) {
                 continue;
@@ -2026,7 +2045,7 @@ public class MybatisGenerator extends Generator {
 
 //        public void insertOrUpdate(DO entity) throws DataAccessException;
             content.append("    <insert id=\"insertOrUpdate\" useGeneratedKeys=\"true\" keyProperty=\"" + primaryParam + "\" parameterType=\"" + doName + "\">\n");
-            content.append("        insert into `" + table.name + "` (" + incols.toString() + ") values (" + inflds.toString() + ") on duplicate key update \n");
+            content.append("        insert into `" + table.name + "` (" + inupcols.toString() + ") values (" + inupflds.toString() + ") on duplicate key update \n");
             content.append(upBuilder.toString());
             content.append("    </insert>\n\n");
 

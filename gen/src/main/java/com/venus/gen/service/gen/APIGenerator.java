@@ -857,7 +857,7 @@ class APIGenerator extends Generator {
         serviceContent.append("     * @return \n");
         serviceContent.append("     */\n");
         if (!implement) {
-            serviceContent.append("    @ESBAPI(module = \"" + groupName + "\",name = \"" + methodName + "\", desc = \"批量插入" + pojoName + "\", security = " + (hasCache ? "ESBSecurityLevel.integrated" : theSecurity) + ")\n");
+            serviceContent.append("    @ESBAPI(module = \"" + groupName + "\",name = \"" + methodName + "\", desc = \"查询" + pojoName + "\", security = " + (hasCache ? "ESBSecurityLevel.integrated" : theSecurity) + ")\n");
         } else {
             serviceContent.append("    @Override\n");
             if (hasCache) {

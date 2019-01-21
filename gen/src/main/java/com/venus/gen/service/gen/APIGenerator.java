@@ -539,6 +539,9 @@ class APIGenerator extends Generator {
             return;
         }
 
+        //改名字，主键id
+        String primaryKey = toHumpString(table.getPrimaryKeyName(),false);
+
         serviceContent.append("    /**\n");
         serviceContent.append("     * remove " + pojoName + "\n");
         serviceContent.append("     * @return \n");
@@ -548,9 +551,9 @@ class APIGenerator extends Generator {
             serviceContent.append("    @ESBAPI(module = \"" + groupName + "\",name = \"" + removeMethod + "\", desc = \"删除" + pojoName + "\", security = " + theSecurity + ")\n");
         } else {
             serviceContent.append("    @Override\n");
-            serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + "_#{id}\", evict = true)\n");
+            serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + "_#{" + primaryKey + "}\", evict = true)\n");
         }
-        serviceContent.append("    public boolean " + removeMethod + "(@ESBParam(name = \"id\", desc = \"对象id\", required = true) final long id");
+        serviceContent.append("    public boolean " + removeMethod + "(@ESBParam(name = \"" + primaryKey + "\", desc = \"对象的" + primaryKey + "\", required = true) final long " + primaryKey);
 
         if (!implement) {
             serviceContent.append(") throws ESBException;\n\n");
@@ -562,7 +565,7 @@ class APIGenerator extends Generator {
         //实现代码
         String theDaoBean = "this." + toLowerHeadString(table.getSimpleDAOClassName());
 
-        serviceContent.append("        " + theDaoBean + ".deleteById(id);\n");
+        serviceContent.append("        " + theDaoBean + ".deleteById(" + primaryKey + ");\n");
         serviceContent.append("        return true;\n");
 
         serviceContent.append("    }\n\n");
@@ -576,22 +579,30 @@ class APIGenerator extends Generator {
         serviceContent.append("     * @return \n");
         serviceContent.append("     */\n");
         String updateMethod = "updateThe" + tableModelName;
+
+        //改名字，主键id
+        String primaryKey = toHumpString(table.getPrimaryKeyName(),false);
+
         if (!implement) {
             serviceContent.append("    @ESBAPI(module = \"" + groupName + "\",name = \"" + updateMethod + "\", desc = \"更新" + pojoName + "，仅更新不为空的字段\", security = " + theSecurity + ")\n");
         } else {
             serviceContent.append("    @Override\n");
-            serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + "_#{id}\", evict = true)\n");
+            serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + "_#{" + primaryKey + "}\", evict = true)\n");
         }
 
-        String defineMethod = "    public boolean " + updateMethod + "(@ESBParam(name = \"id\", desc = \"更新对象的id\", required = true) final long id";
+        String defineMethod = "    public boolean " + updateMethod + "(@ESBParam(name = \"" + primaryKey + "\", desc = \"更新对象的" + primaryKey + "\", required = true) final long " + primaryKey;
+
         String spacing = formatSpaceParam(defineMethod);
 
         serviceContent.append(defineMethod);//首段写入
         List<MybatisGenerator.Column> params = new ArrayList<MybatisGenerator.Column>();
         for (MybatisGenerator.Column cl : table.getColumns()) {
             //忽略字段
-            if (cl.getName().equals("is_delete")
+            if (cl.isPrimary()
+                    || cl.getName().equals("is_delete")
                     || cl.getName().equals("delete")
+                    || cl.getName().equals("is_deleted")
+                    || cl.getName().equals("deleted")
                     || cl.getName().equals("id")
                     || cl.getName().equals("create_at")
                     || cl.getName().equals("created_at")
@@ -618,14 +629,13 @@ class APIGenerator extends Generator {
         String theDaoBean = "this." + toLowerHeadString(table.getSimpleDAOClassName());
 
         String dataObj = table.getSimpleDObjectClassName();
-        String primaryField = toHumpString(table.getPrimaryKeyName(),false);
 
         serviceContent.append("        " + dataObj + " dobj = new " + dataObj + "();\n");
         MybatisGenerator.Column primary = table.getPrimaryColumn();
         if (primary != null) {
-            serviceContent.append("        dobj." + primaryField + " = (" + primary.getDataType() + ")id;\n");
+            serviceContent.append("        dobj." + primaryKey + " = (" + primary.getDataType() + ")" + primaryKey + ";\n");
         } else {
-            serviceContent.append("        dobj." + primaryField + " = id;\n");
+            serviceContent.append("        dobj." + primaryKey + " = " + primaryKey + ";\n");
         }
         for (MybatisGenerator.Column cl : params) {
             String paramName = toHumpString(cl.getName(),false);
@@ -639,11 +649,14 @@ class APIGenerator extends Generator {
 
     public static void writeFindByIdMethod(String tableModelName, String groupName, String pojoName, String theSecurity, StringBuilder serviceContent, MybatisGenerator.Table table, boolean implement, boolean hasCache) {
 
+        //改名字，主键id
+        String primaryKey = toHumpString(table.getPrimaryKeyName(),false);
+
         serviceContent.append("    /**\n");
         if (hasCache) {
-            serviceContent.append("     * backend find " + pojoName + " by id\n");
+            serviceContent.append("     * backend find " + pojoName + " by " + primaryKey + "\n");
         } else {
-            serviceContent.append("     * find " + pojoName + " by id\n");
+            serviceContent.append("     * find " + pojoName + " by " + primaryKey + "\n");
         }
         serviceContent.append("     * @return \n");
         serviceContent.append("     */\n");
@@ -658,11 +671,11 @@ class APIGenerator extends Generator {
         } else {
             serviceContent.append("    @Override\n");
             if (hasCache) {
-                serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + "_#{id}\", async = true, condition=\"!#{noCache}\")\n");
+                serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + "_#{" + primaryKey + "}\", async = true, condition=\"!#{noCache}\")\n");
             }
         }
 
-        String defineMethod = "    public " + pojoName + " " + findMethod + "(@ESBParam(name = \"id\", desc = \"对象id\", required = true) final long id";
+        String defineMethod = "    public " + pojoName + " " + findMethod + "(@ESBParam(name = \"" + primaryKey + "\", desc = \"对象的" + primaryKey + "\", required = true) final long " + primaryKey;
         serviceContent.append(defineMethod);
         String spacing = formatSpaceParam(defineMethod);
 
@@ -687,13 +700,13 @@ class APIGenerator extends Generator {
 
         if (!hasCache) {
             serviceContent.append("        // Please add the cached code here.\n");
-            serviceContent.append("        // String cackeKey = \"" + table.getAlias().toUpperCase() + "_\" + id;\n\n");
+            serviceContent.append("        // String cackeKey = \"" + table.getAlias().toUpperCase() + "_\" + " + primaryKey + ";\n\n");
             serviceContent.append("        return this.");
             serviceContent.append("raw");
             serviceContent.append(toUpperHeadString(findMethod));
-            serviceContent.append("(id,false);\n");
+            serviceContent.append("(" + primaryKey + ",false);\n");
         } else {
-            serviceContent.append("        " + dataObj + " dobj = " + theDaoBean + ".getById(id);\n");
+            serviceContent.append("        " + dataObj + " dobj = " + theDaoBean + ".getById(" + primaryKey + ");\n");
             serviceContent.append("        " + pojoName + " pojo = new " + pojoName + "();\n");
             serviceContent.append("        Injects.fill(dobj,pojo);\n");
             serviceContent.append("        return pojo;\n");
@@ -705,30 +718,33 @@ class APIGenerator extends Generator {
 
     public static void writeQueryByIdsMethod(String tableModelName, String groupName, String pojoName, String theSecurity, StringBuilder serviceContent, MybatisGenerator.Table table, boolean implement, boolean hasCache) {
 
+        //改名字，主键id
+        String primaryKey = toHumpString(table.getPrimaryKeyName(),false);
+
         serviceContent.append("    /**\n");
         if (hasCache) {
-            serviceContent.append("     * backend query " + pojoName + " by ids\n");
+            serviceContent.append("     * backend query " + pojoName + " by " + primaryKey + "s\n");
         } else {
-            serviceContent.append("     * query " + pojoName + " by ids\n");
+            serviceContent.append("     * query " + pojoName + " by " + primaryKey + "s\n");
         }
         serviceContent.append("     * @return \n");
         serviceContent.append("     */\n");
         String findMethod = null;
         if (hasCache) {
-            findMethod = "rawQuery" + tableModelName + "ByIds";
+            findMethod = "rawQuery" + tableModelName + "By" + toHumpString(primaryKey,true) + "s";
         } else {
-            findMethod = "query" + tableModelName + "ByIds";
+            findMethod = "query" + tableModelName + "By" + toHumpString(primaryKey,true) + "s";
         }
         if (!implement) {
             serviceContent.append("    @ESBAPI(module = \"" + groupName + "\",name = \"" + findMethod + "\", desc = \"查找" + pojoName + "\", security = " + (hasCache ? "ESBSecurityLevel.integrated" : theSecurity) + ")\n");
         } else {
             serviceContent.append("    @Override\n");
             if (hasCache) {
-                serviceContent.append("    //@AutoCache(key = \"BATCH_" + table.getAlias().toUpperCase() + "_#{ids}\", async = true, condition=\"!#{noCache}\")\n");
+                serviceContent.append("    //@AutoCache(key = \"BATCH_" + table.getAlias().toUpperCase() + "_#{" + primaryKey + "s}\", async = true, condition=\"!#{noCache}\")\n");
             }
         }
 
-        String defineMethod = "    public " + table.getSimplePOJOResultsClassName() + " " + findMethod + "(@ESBParam(name = \"ids\", desc = \"对象id集合\", required = true) final long[] ids";
+        String defineMethod = "    public " + table.getSimplePOJOResultsClassName() + " " + findMethod + "(@ESBParam(name = \"" + primaryKey + "s\", desc = \"对象id集合\", required = true) final long[] " + primaryKey + "s";
         serviceContent.append(defineMethod);
         String spacing = formatSpaceParam(defineMethod);
 
@@ -754,19 +770,19 @@ class APIGenerator extends Generator {
 
         if (!hasCache) {
             serviceContent.append("        // Please add the cached code here.\n");
-            serviceContent.append("        // String cackeKey = \"BATCH_" + table.getAlias().toUpperCase() + "_\" + ids.toString();\n\n");
+            serviceContent.append("        // String cackeKey = \"BATCH_" + table.getAlias().toUpperCase() + "_\" + " + primaryKey + "s.toString();\n\n");
             serviceContent.append("        return this.");
             serviceContent.append("raw");
             serviceContent.append(toUpperHeadString(findMethod));
-            serviceContent.append("(ids,false);\n");
+            serviceContent.append("(" + primaryKey + "s,false);\n");
         } else {
 
-            serviceContent.append("        if (ids == null || ids.length <= 0) {\n");
+            serviceContent.append("        if (" + primaryKey + "s == null || " + primaryKey + "s.length <= 0) {\n");
             serviceContent.append("            throw new ESBException(\"参数错误\",\"" + groupName + "\",-1,\"id集合不能为空\");\n");
             serviceContent.append("        }\n");
 
             serviceContent.append("        List<Long> idList = new ArrayList<Long>();\n");
-            serviceContent.append("        for (long id : ids) {\n");
+            serviceContent.append("        for (long id : " + primaryKey + "s) {\n");
             serviceContent.append("            idList.add(id);\n");
             serviceContent.append("        }\n");
 
@@ -792,7 +808,7 @@ class APIGenerator extends Generator {
 
     public static void writeQueryMethod(String tableModelName, String groupName, String pojoName, String queryMethodName, List<MybatisGenerator.Column> columns, String theSecurity, StringBuilder serviceContent, MybatisGenerator.Table table, boolean implement, boolean hasCache, boolean isViewQuery) {
 
-        String methodName = (hasCache ? "rawQuery" : "query") + tableModelName + queryMethodName.substring(5,queryMethodName.length());//.replace("query", "query" + tableModelName);
+        String methodName = (hasCache ? "rawQuery" : "query") + tableModelName + queryMethodName.substring(5);//.replace("query", "query" + tableModelName);
 
         String defineMethod = "    public " + table.getSimplePOJOResultsClassName() + " " + methodName + "(@ESBParam(name = \"pageIndex\", desc = \"页索引，从1开始，传入0或负数无数据返回\", required = true) final int pageIndex";
         String spacing = formatSpaceParam(defineMethod);
@@ -899,7 +915,7 @@ class APIGenerator extends Generator {
 
         String dataObj = table.getSimpleDObjectClassName();
         String resultsName = table.getSimplePOJOResultsClassName();
-        String countMethodName = "count" + queryMethodName.substring(5,queryMethodName.length());
+        String countMethodName = "count" + queryMethodName.substring(5);
         String methodParamsString = methodParams.toString();
 
         if (!hasCache) {

@@ -325,7 +325,10 @@ public class MybatisGenerator extends Generator {
 
         public Column getDeleteStateColumn() {
             for (Column col : columns) {
-                if (col.name.equals("is_delete") || col.name.equals("delete")) {
+                if (col.name.equals("is_delete")
+                        || col.name.equals("delete")
+                        || col.name.equals("is_deleted")
+                        || col.name.equals("deleted")) {
                     return col;
                 }
             }
@@ -334,7 +337,10 @@ public class MybatisGenerator extends Generator {
 
         public static boolean hasDeleteStateColumn(List<Column> columns) {
             for (Column col : columns) {
-                if (col.name.equals("is_delete") || col.name.equals("delete")) {
+                if (col.name.equals("is_delete")
+                        || col.name.equals("delete")
+                        || col.name.equals("is_deleted")
+                        || col.name.equals("deleted")) {
                     return true;
                 }
             }

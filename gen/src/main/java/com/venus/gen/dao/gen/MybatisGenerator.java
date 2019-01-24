@@ -2,6 +2,7 @@ package com.venus.gen.dao.gen;
 
 
 import com.venus.esb.lang.ESBConsts;
+import com.venus.esb.lang.ESBT;
 import com.venus.esb.utils.FileUtils;
 import com.venus.gen.SpringXMLConst;
 import com.venus.gen.dao.SQL;
@@ -1259,6 +1260,10 @@ public class MybatisGenerator extends Generator {
 
             String ss[] = columns.trim().split(",");
             for (String s : ss) {
+                s = s.trim();
+                if (s == null || s.length() == 0) {
+                    continue;
+                }
                 if (s.startsWith("`") && s.endsWith("`")) {
                     s = s.substring(1,s.length() - 1);
                 }
@@ -1984,6 +1989,7 @@ public class MybatisGenerator extends Generator {
             item_inflds.append(itemField);
 
         }
+
 
         StringBuilder upBuilder = new StringBuilder();
         boolean hasModify = false;

@@ -672,6 +672,8 @@ class APIGenerator extends Generator {
             serviceContent.append("    @Override\n");
             if (hasCache) {
                 serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + "_#{" + primaryKey + "}\", async = true, condition=\"!#{noCache}\")\n");
+            } else {// Spring AOP下，不支持内部转调走代理
+                serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + "_#{" + primaryKey + "}\", async = true)\n");
             }
         }
 
@@ -699,6 +701,7 @@ class APIGenerator extends Generator {
         String dataObj = table.getSimpleDObjectClassName();
 
         if (!hasCache) {
+            serviceContent.append("        // If you wan't to use annotation caching automatically.\n");
             serviceContent.append("        // Please add the cached code here.\n");
             serviceContent.append("        // String cackeKey = \"" + table.getAlias().toUpperCase() + "_\" + " + primaryKey + ";\n\n");
             serviceContent.append("        return this.");
@@ -741,6 +744,8 @@ class APIGenerator extends Generator {
             serviceContent.append("    @Override\n");
             if (hasCache) {
                 serviceContent.append("    //@AutoCache(key = \"BATCH_" + table.getAlias().toUpperCase() + "_#{" + primaryKey + "s}\", async = true, condition=\"!#{noCache}\")\n");
+            } else {
+                serviceContent.append("    //@AutoCache(key = \"BATCH_" + table.getAlias().toUpperCase() + "_#{" + primaryKey + "s}\", async = true)\n");
             }
         }
 
@@ -769,6 +774,7 @@ class APIGenerator extends Generator {
         String resultsName = table.getSimplePOJOResultsClassName();
 
         if (!hasCache) {
+            serviceContent.append("        // If you wan't to use annotation caching automatically.\n");
             serviceContent.append("        // Please add the cached code here.\n");
             serviceContent.append("        // String cackeKey = \"BATCH_" + table.getAlias().toUpperCase() + "_\" + " + primaryKey + "s.toString();\n\n");
             serviceContent.append("        return this.");
@@ -882,6 +888,12 @@ class APIGenerator extends Generator {
                 } else {
                     serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + (isViewQuery ? "" : "_QUERY_BY_") + cacheKeyDef.toString() + "\", async = true, condition=\"!#{noCache}\")\n");
                 }
+            } else {
+                if (hasDeleted) {
+                    serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + (isViewQuery ? "" : "_QUERY_BY_") + cacheKeyDef.toString() + "\", async = true, condition=\"!#{isDeleted}\")\n");
+                } else {
+                    serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + (isViewQuery ? "" : "_QUERY_BY_") + cacheKeyDef.toString() + "\", async = true)\n");
+                }
             }
         }
 
@@ -919,6 +931,7 @@ class APIGenerator extends Generator {
         String methodParamsString = methodParams.toString();
 
         if (!hasCache) {
+            serviceContent.append("        // If you wan't to use annotation caching automatically.\n");
             serviceContent.append("        // Please add the cached code here.\n");
             serviceContent.append("        // String cackeKey = \"" + table.getAlias().toUpperCase() + (isViewQuery ? "" : "_QUERY_BY_") + cacheKeyDef.toString() + "\";\n\n");
             serviceContent.append("        return this.");

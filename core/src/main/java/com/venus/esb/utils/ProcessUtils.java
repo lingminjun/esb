@@ -41,22 +41,22 @@ public final class ProcessUtils {
 
     //判断子进程是否已经存在
     private static String exitChildProcess(Class<?> clz, boolean limit) {
-        String out = null;
+        List<String> outs = null;
         try {
             //mac不支持ps -x
             //ps -aux | grep com.venus.esb.brave.HttpBrave | grep -v grep
-            out = ProcessUtils.exec("ps -ef | grep \"" + clz.getName() + "\" | grep -v grep",10*1000);
+            outs = ProcessUtils.exec("ps -ef | grep \"" + clz.getName() + "\" | grep -v grep",10*1000);
         } catch (Throwable e) {
             e.printStackTrace();//直接退出
             return null;
         }
 
         String processId = null;
-        if (!ESBT.isEmpty(out)) {
-            String[] lines = out.split(System.lineSeparator());
+        if (outs != null && !outs.isEmpty()) {
             //保留第一个
-            for (int i = 0; i < lines.length; i++) {
-                String line = lines[i].trim();
+            System.out.println("查找到类似进程有" + outs.size() + "条!");
+            for (int i = 0; i < outs.size(); i++) {
+                String line = outs.get(i).trim();
                 if (ESBT.isEmpty(line)) {
                     continue;
                 }
@@ -69,10 +69,11 @@ public final class ProcessUtils {
                 if (!limit) {
                     break;
                 }
-
+                System.out.println("处理第" + i + "条进程" + pid);
                 //停止多余进程
                 if (i > 0 && limit) {
                     try {
+                        System.out.println("准备kill第" + i + "条进程" + pid);
                         ProcessUtils.exec("kill " + pid, 5000);
                     } catch (Throwable e) {
                         e.printStackTrace();
@@ -179,7 +180,7 @@ public final class ProcessUtils {
         }
     }
 
-    public static String exec(String cmd, int timeout) throws IOException {
+    public static List<String> exec(String cmd, int timeout) throws IOException {
 
         if (cmd == null || cmd.trim().length() == 0) {
             return null;
@@ -203,16 +204,19 @@ public final class ProcessUtils {
         System.out.println(pb.command());
 
         outputWatch.start();
-        List<String> outs = outputWatch.waitAllOuts();
-        StringBuilder builder = new StringBuilder();
-        for (String line : outs) {
-            builder.append(line);
-            builder.append("\n");
-        }
-        return builder.toString();
+        return outputWatch.waitAllOuts();
+//        StringBuilder builder = new StringBuilder();
+//        for (String line : outs) {
+//            builder.append(line);
+//            builder.append("\n");
+//        }
+//        return builder.toString();
     }
 
     static class StreamWatch extends Thread {
+
+        private static final String END_FLAG = "0_$_end_";
+
         private Process process;
         private BufferedReader is;
         private BufferedReader es;
@@ -264,6 +268,9 @@ public final class ProcessUtils {
                 ioe.printStackTrace();
             } finally {
                 exit = true;
+                //结束通知，此处存在代码语句前后依赖，必须 exit 后设置
+                outs.offer(END_FLAG);
+                errs.offer(END_FLAG);
                 this.process.destroy();
                 try {
                     this.is.close();
@@ -279,8 +286,15 @@ public final class ProcessUtils {
         }
 
         public String waitOutLine() {
+            if (exit) {
+                return null;
+            }
             try {
-                return outs.take();
+                String e = outs.take();
+                if (END_FLAG.equals(e)) {
+                    return null;
+                }
+                return e;
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -291,13 +305,18 @@ public final class ProcessUtils {
             List<String> list = new ArrayList<>();
             while (!outs.isEmpty()) {
                 String line = outs.poll();
-                if (line != null) {
+                if (line != null && !END_FLAG.equals(line)) {
                     list.add(line);
                 }
             }
             while (!exit) {
-                String line = outs.poll();
-                if (line != null) {
+                String line = null;
+                try {
+                    line = outs.take();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                if (line != null && !END_FLAG.equals(line)) {
                     list.add(line);
                 }
             }
@@ -305,8 +324,15 @@ public final class ProcessUtils {
         }
 
         public String waitError() {
+            if (exit) {
+                return null;
+            }
             try {
-                return errs.take();
+                String e = errs.take();
+                if (END_FLAG.equals(e)) {
+                    return null;
+                }
+                return e;
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -317,13 +343,18 @@ public final class ProcessUtils {
             List<String> list = new ArrayList<>();
             while (!errs.isEmpty()) {
                 String line = errs.poll();
-                if (line != null) {
+                if (line != null && !END_FLAG.equals(line)) {
                     list.add(line);
                 }
             }
             while (!exit) {
-                String line = errs.poll();
-                if (line != null) {
+                String line = null;
+                try {
+                    line = errs.take();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                if (line != null && !END_FLAG.equals(line)) {
                     list.add(line);
                 }
             }

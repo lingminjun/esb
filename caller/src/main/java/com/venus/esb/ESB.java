@@ -293,8 +293,9 @@ public final class ESB {
         }
 
         // token的时效性判断
-        if (isTokenExpired(context)) {
-            throw ESBExceptionCodes.TOKEN_EXPIRED("token过期");
+        if (isTokenExpired(context,ESBConsts.REFRESH_TOKEN_SPECIFIC_SELECTOR.equals(selectors))) {
+//            System.out.println(selectors);
+            throw ESBExceptionCodes.TOKEN_EXPIRED("token过期! sel:" + selectors);
         }
 
         // 接口验证权限 (需要验证最高权限的)
@@ -784,7 +785,7 @@ public final class ESB {
         return false;
     }
 
-    private boolean isTokenExpired(ESBAPIContext context) throws ESBException {
+    private boolean isTokenExpired(ESBAPIContext context, boolean refresh) throws ESBException {
 
         // 刷新token过期，只能踢出用户
         if (context.rsecur != null && context.rsecur.expire > 0 && context.rsecur.expire * 1000l < context.at) {
@@ -796,20 +797,27 @@ public final class ESB {
             throw ESBExceptionCodes.TOKEN_INVALID("device token已经失效了，必须重新登录");
         }
 
+        // refresh不care user token 过期
         if (context.usecur != null && context.usecur.expire > 0 && context.usecur.expire * 1000l < context.at) {
-            return true;
+//            logback.info("user token expired; refresh:" + refresh);
+            if (!refresh) {
+                throw ESBExceptionCodes.TOKEN_EXPIRED("user token过期; refresh:" + refresh);
+            }
         }
 
+        // secret token 过期，尽量本次操作被打回
         if (context.ssecur != null && context.ssecur.expire > 0 && context.ssecur.expire * 1000l < context.at) {
-            return true;
+            throw ESBExceptionCodes.TOKEN_INVALID("secret token已经失效了，必须重新登录");
         }
 
         if (context.tsecur != null && context.tsecur.expire > 0 && context.tsecur.expire * 1000l< context.at) {
-            return true;
+//            logback.info("temporary token expired; refresh:" + refresh);
+            throw ESBExceptionCodes.TOKEN_EXPIRED("temporary token过期; refresh:" + refresh);
         }
 
         if (context.ssoSecur != null && context.ssoSecur.expire > 0 && context.ssoSecur.expire * 1000l < context.at) {
-            return true;
+//            logback.info("sso token expired; refresh:" + refresh);
+            throw ESBExceptionCodes.TOKEN_EXPIRED("sso token过期; refresh:" + refresh);
         }
 
         return false;

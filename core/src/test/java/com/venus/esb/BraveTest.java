@@ -7,6 +7,7 @@ import com.twitter.zipkin.gen.Span;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * Created by lingminjun on 17/9/14.
@@ -75,7 +76,7 @@ public class BraveTest {
     @Test
     public void cmdTest() throws IOException {
         //无法获得root权限
-        String out = ProcessUtils.exec("sudo ps -ef -u lingminjun -p lingminjun",1000);
+        List<String> out = ProcessUtils.exec("sudo ps -ef -u lingminjun -p lingminjun",1000);
         System.out.println(">>"+out);
     }
 }

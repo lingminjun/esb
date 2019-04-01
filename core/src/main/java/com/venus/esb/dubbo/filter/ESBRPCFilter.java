@@ -83,6 +83,9 @@ public class ESBRPCFilter implements Filter {
             if (esbcxt.getPid() != null) {
                 context.setAttachment(ESBSTDKeys.PID_KEY, esbcxt.getPid());
             }
+            if (esbcxt.getGuid() != null) {
+                context.setAttachment(ESBSTDKeys.GUID_KEY, esbcxt.getGuid());
+            }
 //            if (ESBThreadLocal.get(ESBSTDKeys.MOCK_FLAG_KEY) != null) {
 //                context.setAttachment(ESBSTDKeys.MOCK_FLAG_KEY, ESBThreadLocal.get(ESBSTDKeys.MOCK_FLAG_KEY));
 //            }
@@ -113,11 +116,13 @@ public class ESBRPCFilter implements Filter {
             ESBThreadLocal.put(ESBSTDKeys.UID_KEY,context.getAttachment(ESBSTDKeys.UID_KEY));
             ESBThreadLocal.put(ESBSTDKeys.ACCT_KEY,context.getAttachment(ESBSTDKeys.ACCT_KEY));
             ESBThreadLocal.put(ESBSTDKeys.PID_KEY,context.getAttachment(ESBSTDKeys.PID_KEY));
+            ESBThreadLocal.put(ESBSTDKeys.GUID_KEY,context.getAttachment(ESBSTDKeys.GUID_KEY));
             ESBMDC.put(ESBSTDKeys.AID_KEY,context.getAttachment(ESBSTDKeys.AID_KEY));
             ESBMDC.put(ESBSTDKeys.DID_KEY,context.getAttachment(ESBSTDKeys.DID_KEY));
             ESBMDC.put(ESBSTDKeys.UID_KEY,context.getAttachment(ESBSTDKeys.UID_KEY));
             ESBMDC.put(ESBSTDKeys.ACCT_KEY,context.getAttachment(ESBSTDKeys.ACCT_KEY));
             ESBMDC.put(ESBSTDKeys.PID_KEY,context.getAttachment(ESBSTDKeys.PID_KEY));
+            ESBMDC.put(ESBSTDKeys.GUID_KEY,context.getAttachment(ESBSTDKeys.GUID_KEY));
 
 //            ESBThreadLocal.put(ESBSTDKeys.MOCK_FLAG_KEY, context.getAttachment(ESBSTDKeys.MOCK_FLAG_KEY));
 
@@ -189,6 +194,7 @@ public class ESBRPCFilter implements Filter {
                 ESBMDC.remove(ESBSTDKeys.UID_KEY);
                 ESBMDC.remove(ESBSTDKeys.ACCT_KEY);
                 ESBMDC.remove(ESBSTDKeys.PID_KEY);
+                ESBMDC.remove(ESBSTDKeys.GUID_KEY);
 
                 ESBThreadLocal.remove(ESBSTDKeys.TID_KEY);//记录tid,继续透传
                 ESBThreadLocal.remove(ESBSTDKeys.AID_KEY);
@@ -196,6 +202,7 @@ public class ESBRPCFilter implements Filter {
                 ESBThreadLocal.remove(ESBSTDKeys.UID_KEY);
                 ESBThreadLocal.remove(ESBSTDKeys.ACCT_KEY);
                 ESBThreadLocal.remove(ESBSTDKeys.PID_KEY);
+                ESBThreadLocal.remove(ESBSTDKeys.GUID_KEY);
 
 //                ESBThreadLocal.remove(ESBSTDKeys.MOCK_FLAG_KEY);
 

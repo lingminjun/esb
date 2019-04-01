@@ -394,8 +394,11 @@ class APIGenerator extends Generator {
             writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, false, true);
 
             //主键批量查询
-            writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, false, false);
-            writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, false, true);
+            writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, false, false, false);
+            writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, false, true, false);
+
+            writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, false, false, true);
+            writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, false, true, true);
         }
 
         //查询，索引查询，翻页
@@ -406,8 +409,11 @@ class APIGenerator extends Generator {
             for (String methodName : methodNames) {
                 List<MybatisGenerator.Column> cols = queryMethods.get(methodName);
 
-                writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, false, false, false);
-                writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, false, true, false);
+                writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, false, false, false, false);
+                writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, false, true, false, false);
+
+                writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, false, false, true, false);
+                writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, false, true, true, false);
             }
         }
 
@@ -420,8 +426,8 @@ class APIGenerator extends Generator {
                 MybatisGenerator.SQLSelect sqlSelect = viewMethods.get(methodName);
                 List<MybatisGenerator.Column> cols = sqlSelect.getBinds();
 
-                writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, false, false, true);
-                writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, false, true, true);
+                writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, false, false, false, true);
+                writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, false, true, false, true);
             }
         }
 
@@ -719,16 +725,24 @@ class APIGenerator extends Generator {
 
     }
 
-    public static void writeQueryByIdsMethod(String tableModelName, String groupName, String pojoName, String theSecurity, StringBuilder serviceContent, MybatisGenerator.Table table, boolean implement, boolean hasCache) {
+    public static void writeQueryByIdsMethod(String tableModelName, String groupName, String pojoName, String theSecurity, StringBuilder serviceContent, MybatisGenerator.Table table, boolean implement, boolean hasCache, boolean hasSortKey) {
 
         //改名字，主键id
         String primaryKey = toHumpString(table.getPrimaryKeyName(),false);
 
         serviceContent.append("    /**\n");
         if (hasCache) {
-            serviceContent.append("     * backend query " + pojoName + " by " + primaryKey + "s\n");
+            if (hasSortKey) {
+                serviceContent.append("     * backend query " + pojoName + " by " + primaryKey + "s sorted\n");
+            } else {
+                serviceContent.append("     * backend query " + pojoName + " by " + primaryKey + "s\n");
+            }
         } else {
-            serviceContent.append("     * query " + pojoName + " by " + primaryKey + "s\n");
+            if (hasSortKey) {
+                serviceContent.append("     * query " + pojoName + " by " + primaryKey + "s sorted\n");
+            } else {
+                serviceContent.append("     * query " + pojoName + " by " + primaryKey + "s\n");
+            }
         }
         serviceContent.append("     * @return \n");
         serviceContent.append("     */\n");
@@ -738,20 +752,41 @@ class APIGenerator extends Generator {
         } else {
             findMethod = "query" + tableModelName + "By" + toHumpString(primaryKey,true) + "s";
         }
+        if (hasSortKey) {
+            findMethod += "Sorted";
+        }
         if (!implement) {
             serviceContent.append("    @ESBAPI(module = \"" + groupName + "\",name = \"" + findMethod + "\", desc = \"查找" + pojoName + "\", security = " + (hasCache ? "ESBSecurityLevel.integrated" : theSecurity) + ")\n");
         } else {
             serviceContent.append("    @Override\n");
-            if (hasCache) {
-                serviceContent.append("    //@AutoCache(key = \"BATCH_" + table.getAlias().toUpperCase() + "_#{" + primaryKey + "s}\", async = true, condition=\"!#{noCache}\")\n");
+            if (hasSortKey) {
+                if (hasCache) {
+                    serviceContent.append("    //@AutoCache(key = \"BATCH_" + table.getAlias().toUpperCase() + "_#{" + primaryKey + "s}_SORTED_BY_#{sortBy}_DESC_#{isDesc}\", async = true, condition=\"!#{noCache}\")\n");
+                } else {
+                    serviceContent.append("    //@AutoCache(key = \"BATCH_" + table.getAlias().toUpperCase() + "_#{" + primaryKey + "s}_SORTED_BY_#{sortBy}_DESC_#{isDesc}\", async = true)\n");
+                }
             } else {
-                serviceContent.append("    //@AutoCache(key = \"BATCH_" + table.getAlias().toUpperCase() + "_#{" + primaryKey + "s}\", async = true)\n");
+                if (hasCache) {
+                    serviceContent.append("    //@AutoCache(key = \"BATCH_" + table.getAlias().toUpperCase() + "_#{" + primaryKey + "s}\", async = true, condition=\"!#{noCache}\")\n");
+                } else {
+                    serviceContent.append("    //@AutoCache(key = \"BATCH_" + table.getAlias().toUpperCase() + "_#{" + primaryKey + "s}\", async = true)\n");
+                }
             }
         }
 
         String defineMethod = "    public " + table.getSimplePOJOResultsClassName() + " " + findMethod + "(@ESBParam(name = \"" + primaryKey + "s\", desc = \"对象id集合\", required = true) final long[] " + primaryKey + "s";
         serviceContent.append(defineMethod);
         String spacing = formatSpaceParam(defineMethod);
+
+        if (hasSortKey) {
+            serviceContent.append(",\n");
+            serviceContent.append(spacing);
+            serviceContent.append("@ESBParam(name = \"sortBy\", desc = \"排序key，注意：此处需要参照存储表字段\", required = false) final String sortBy");
+
+            serviceContent.append(",\n");
+            serviceContent.append(spacing);
+            serviceContent.append("@ESBParam(name = \"isDesc\", desc = \"对应sortBy参数，排序是否为降序，默认为否\", required = false) final boolean isDesc");
+        }
 
         //是否走缓存
         if (hasCache) {
@@ -776,11 +811,19 @@ class APIGenerator extends Generator {
         if (!hasCache) {
             serviceContent.append("        // If you wan't to use annotation caching automatically.\n");
             serviceContent.append("        // Please add the cached code here.\n");
-            serviceContent.append("        // String cackeKey = \"BATCH_" + table.getAlias().toUpperCase() + "_\" + " + primaryKey + "s.toString();\n\n");
+            if (hasSortKey) {
+                serviceContent.append("        // String cackeKey = \"BATCH_" + table.getAlias().toUpperCase() + "_\" + " + primaryKey + "s.toString() + \"_SORTED_BY_\" + sortBy + \"_DESC_\" + isDesc;\n\n");
+            } else {
+                serviceContent.append("        // String cackeKey = \"BATCH_" + table.getAlias().toUpperCase() + "_\" + " + primaryKey + "s.toString();\n\n");
+            }
             serviceContent.append("        return this.");
             serviceContent.append("raw");
             serviceContent.append(toUpperHeadString(findMethod));
-            serviceContent.append("(" + primaryKey + "s,false);\n");
+            if (hasSortKey) {
+                serviceContent.append("(" + primaryKey + "s,sortBy,isDesc,false);\n");
+            } else {
+                serviceContent.append("(" + primaryKey + "s,false);\n");
+            }
         } else {
 
             serviceContent.append("        if (" + primaryKey + "s == null || " + primaryKey + "s.length <= 0) {\n");
@@ -792,7 +835,11 @@ class APIGenerator extends Generator {
             serviceContent.append("            idList.add(id);\n");
             serviceContent.append("        }\n");
 
-            serviceContent.append("        List<" + dataObj + "> list = " + theDaoBean + ".queryByIds(idList);\n");
+            if (hasSortKey) {
+                serviceContent.append("        List<" + dataObj + "> list = " + theDaoBean + ".queryByIdsOnSort(idList,sortBy,isDesc);\n");
+            } else {
+                serviceContent.append("        List<" + dataObj + "> list = " + theDaoBean + ".queryByIds(idList);\n");
+            }
 
             serviceContent.append("        List<" + pojoName + "> rs = new ArrayList<" + pojoName + ">();\n");
             serviceContent.append("        for (" + dataObj + " dobj : list) {\n");
@@ -812,9 +859,14 @@ class APIGenerator extends Generator {
         serviceContent.append("    }\n\n");
     }
 
-    public static void writeQueryMethod(String tableModelName, String groupName, String pojoName, String queryMethodName, List<MybatisGenerator.Column> columns, String theSecurity, StringBuilder serviceContent, MybatisGenerator.Table table, boolean implement, boolean hasCache, boolean isViewQuery) {
+    public static void writeQueryMethod(String tableModelName, String groupName, String pojoName, String queryMethodName, List<MybatisGenerator.Column> columns, String theSecurity, StringBuilder serviceContent, MybatisGenerator.Table table, boolean implement, boolean hasCache, boolean hasSortKey, boolean isViewQuery) {
 
         String methodName = (hasCache ? "rawQuery" : "query") + tableModelName + queryMethodName.substring(5);//.replace("query", "query" + tableModelName);
+
+        // view query不支持定制排序
+        if (hasSortKey && !isViewQuery) {
+            methodName += "Sorted";
+        }
 
         String defineMethod = "    public " + table.getSimplePOJOResultsClassName() + " " + methodName + "(@ESBParam(name = \"pageIndex\", desc = \"页索引，从1开始，传入0或负数无数据返回\", required = true) final int pageIndex";
         String spacing = formatSpaceParam(defineMethod);
@@ -823,6 +875,7 @@ class APIGenerator extends Generator {
         StringBuilder methodParams = new StringBuilder();
         StringBuilder methodParamsDef = new StringBuilder();
         StringBuilder cacheKeyDef = new StringBuilder();
+        StringBuilder cacheKeyAuto = new StringBuilder();
         for (MybatisGenerator.Column column : columns) {
 
             String param = toHumpString(column.getName(),false);
@@ -842,10 +895,34 @@ class APIGenerator extends Generator {
             cacheKeyDef.append(":\" + ");
             cacheKeyDef.append(param);
             cacheKeyDef.append(" + \"");
+
+            if (cacheKeyAuto.length() > 0) {
+                cacheKeyAuto.append("_");
+            }
+            cacheKeyAuto.append(column.getName().toUpperCase());
+            cacheKeyAuto.append(":#{");
+            cacheKeyAuto.append(param);
+            cacheKeyAuto.append("}");
+        }
+
+        // 排序
+        if (hasSortKey && !isViewQuery) {
+
+            methodParamsDef.append(",\n");
+            methodParamsDef.append(spacing);
+            methodParamsDef.append("@ESBParam(name = \"sortBy\", desc = \"排序key，注意：此处需要参照存储表字段\", required = false) final String sortBy");
+
+            methodParamsDef.append(",\n");
+            methodParamsDef.append(spacing);
+            methodParamsDef.append("@ESBParam(name = \"isDesc\", desc = \"对应sortBy参数，排序是否为降序，默认为否\", required = false) final boolean isDesc");
+
+            cacheKeyDef.append("_SORTED_BY_\" + sortBy + \"_DESC_\" + isDesc + \"");
+            cacheKeyAuto.append("_SORTED_BY_#{sortBy}_DESC_#{isDesc}");
         }
 
         //添加分页信息
         cacheKeyDef.append("_PAGE:\" + pageIndex + \",\" + pageSize + \"");
+        cacheKeyAuto.append("_PAGE:#{pageIndex},#{pageSize}");
 
         // 判断是否有delete参数
         boolean hasDeleted = false;
@@ -861,6 +938,7 @@ class APIGenerator extends Generator {
                 methodParamsDef.append("@ESBParam(name = \"isDeleted\", desc = \"是否已经被标记删除的\", required = false) final boolean isDeleted");
 
                 cacheKeyDef.append("_DEL:\" + isDeleted + \"");
+                cacheKeyAuto.append("_DEL:#{isDeleted}");
                 if (theDelete.getDataType().equals("boolean")) {
                     delParamIn = "isDeleted";
                 } else {
@@ -871,10 +949,18 @@ class APIGenerator extends Generator {
 
         //开始编写函数代码
         serviceContent.append("    /**\n");
-        if (hasCache) {
-            serviceContent.append("     * backend query " + pojoName + "\n");
+        if (hasSortKey && !isViewQuery) {
+            if (hasCache) {
+                serviceContent.append("     * backend query " + pojoName + " on sort. \n");
+            } else {
+                serviceContent.append("     * query " + pojoName + " on sort. \n");
+            }
         } else {
-            serviceContent.append("     * query " + pojoName + "\n");
+            if (hasCache) {
+                serviceContent.append("     * backend query " + pojoName + "\n");
+            } else {
+                serviceContent.append("     * query " + pojoName + "\n");
+            }
         }
         serviceContent.append("     * @return \n");
         serviceContent.append("     */\n");
@@ -884,20 +970,18 @@ class APIGenerator extends Generator {
             serviceContent.append("    @Override\n");
             if (hasCache) {
                 if (hasDeleted) {
-                    serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + (isViewQuery ? "" : "_QUERY_BY_") + cacheKeyDef.toString() + "\", async = true, condition=\"!#{noCache} && !#{isDeleted}\")\n");
+                    serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + (isViewQuery ? "" : "_QUERY_BY_") + cacheKeyAuto.toString() + "\", async = true, condition=\"!#{noCache} && !#{isDeleted}\")\n");
                 } else {
-                    serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + (isViewQuery ? "" : "_QUERY_BY_") + cacheKeyDef.toString() + "\", async = true, condition=\"!#{noCache}\")\n");
+                    serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + (isViewQuery ? "" : "_QUERY_BY_") + cacheKeyAuto.toString() + "\", async = true, condition=\"!#{noCache}\")\n");
                 }
             } else {
                 if (hasDeleted) {
-                    serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + (isViewQuery ? "" : "_QUERY_BY_") + cacheKeyDef.toString() + "\", async = true, condition=\"!#{isDeleted}\")\n");
+                    serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + (isViewQuery ? "" : "_QUERY_BY_") + cacheKeyAuto.toString() + "\", async = true, condition=\"!#{isDeleted}\")\n");
                 } else {
-                    serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + (isViewQuery ? "" : "_QUERY_BY_") + cacheKeyDef.toString() + "\", async = true)\n");
+                    serviceContent.append("    //@AutoCache(key = \"" + table.getAlias().toUpperCase() + (isViewQuery ? "" : "_QUERY_BY_") + cacheKeyAuto.toString() + "\", async = true)\n");
                 }
             }
         }
-
-
 
         serviceContent.append(defineMethod);//首段写入
         serviceContent.append(",\n");
@@ -939,45 +1023,93 @@ class APIGenerator extends Generator {
             serviceContent.append(toUpperHeadString(methodName));
 
             serviceContent.append("(pageIndex,pageSize,");
+
+            // 普通参数
             serviceContent.append(methodParamsString);
+
+            // 排序参数
+            if (hasSortKey && !isViewQuery) {
+                serviceContent.append(",sortBy,isDesc");
+            }
+
+            // 已删除
             if (hasDeleted) {
                 serviceContent.append(",isDeleted");
             }
+
+            // 缓存参数
             serviceContent.append(",false);\n");
         } else {
 
-            serviceContent.append("        if (pageIndex <= 0 || pageSize <= 0) {\n");
-            serviceContent.append("            throw new ESBException(\"参数错误\",\"" + groupName + "\",-1,\"翻页参数传入错误\");\n");
-            serviceContent.append("        }\n");
-            serviceContent.append("        " + resultsName + " rlt = new " + resultsName + "();\n");
-            serviceContent.append("        rlt.setIndex(pageIndex);\n");
-            serviceContent.append("        rlt.setSize(pageSize);\n");
-            serviceContent.append("        rlt.setTotal(" + theDaoBean + "." + countMethodName + "(");
-            serviceContent.append(methodParamsString);
-            if (hasDeleted) {
-                serviceContent.append(",");
-                serviceContent.append(delParamIn);
+            if (isViewQuery || hasSortKey) {
+                serviceContent.append("        if (pageIndex <= 0 || pageSize <= 0) {\n");
+                serviceContent.append("            throw new ESBException(\"参数错误\",\"" + groupName + "\",-1,\"翻页参数传入错误\");\n");
+                serviceContent.append("        }\n");
+                serviceContent.append("        " + resultsName + " rlt = new " + resultsName + "();\n");
+                serviceContent.append("        rlt.setIndex(pageIndex);\n");
+                serviceContent.append("        rlt.setSize(pageSize);\n");
+                serviceContent.append("        rlt.setTotal(" + theDaoBean + "." + countMethodName + "(");
+                serviceContent.append(methodParamsString);
+                if (hasDeleted) {
+                    serviceContent.append(",");
+                    serviceContent.append(delParamIn);
+                }
+                serviceContent.append("));\n");
+                serviceContent.append("        List<" + dataObj + "> list = " + theDaoBean + "." + queryMethodName + "(");
+
+                // 普通参数
+                serviceContent.append(methodParamsString);
+
+                // 数据库已删除，放前面
+                if (hasDeleted) {
+                    serviceContent.append(",");
+                    serviceContent.append(delParamIn);
+                }
+
+                // 排序参数
+                if (hasSortKey && !isViewQuery) {
+                    serviceContent.append(",sortBy,isDesc");
+                }
+
+                if (isViewQuery) {
+                    serviceContent.append(",(pageSize * (pageIndex - 1)), pageSize);\n");
+                } else {
+                    if (hasSortKey) { // 参数已经传入
+                        serviceContent.append(",(pageSize * (pageIndex - 1)), pageSize);\n");
+                    } else {
+                        serviceContent.append(",null,false,(pageSize * (pageIndex - 1)), pageSize);\n");
+                    }
+                }
+                serviceContent.append("        List<" + pojoName + "> rs = new ArrayList<" + pojoName + ">();\n");
+                serviceContent.append("        for (" + dataObj + " dobj : list) {\n");
+                serviceContent.append("            " + pojoName + " pojo = new " + pojoName + "();\n");
+                serviceContent.append("            Injects.fill(dobj,pojo);\n");
+                serviceContent.append("            rs.add(pojo);\n");
+                serviceContent.append("        }\n");
+                serviceContent.append("        rlt.setResults(rs);\n");
+                serviceContent.append("        return rlt;\n");
+            } else {// 采用方法转调比较合适
+                serviceContent.append("        return this.");
+                serviceContent.append(methodName);
+                serviceContent.append("Sorted");
+
+                // 翻页参数
+                serviceContent.append("(pageIndex,pageSize,");
+
+                // 普通参数
+                serviceContent.append(methodParamsString);
+
+                // 排序参数
+                serviceContent.append(",null,false");
+
+                // 已删除
+                if (hasDeleted) {
+                    serviceContent.append(",isDeleted");
+                }
+
+                // 缓存参数
+                serviceContent.append(",false);\n");
             }
-            serviceContent.append("));\n");
-            serviceContent.append("        List<" + dataObj + "> list = " + theDaoBean + "." + queryMethodName + "(");
-            serviceContent.append(methodParamsString);
-            if (hasDeleted) {
-                serviceContent.append(",");
-                serviceContent.append(delParamIn);
-            }
-            if (isViewQuery) {
-                serviceContent.append(",(pageSize * (pageIndex - 1)), pageSize);\n");
-            } else {
-                serviceContent.append(",null,false,(pageSize * (pageIndex - 1)), pageSize);\n");
-            }
-            serviceContent.append("        List<" + pojoName + "> rs = new ArrayList<" + pojoName + ">();\n");
-            serviceContent.append("        for (" + dataObj + " dobj : list) {\n");
-            serviceContent.append("            " + pojoName + " pojo = new " + pojoName + "();\n");
-            serviceContent.append("            Injects.fill(dobj,pojo);\n");
-            serviceContent.append("            rs.add(pojo);\n");
-            serviceContent.append("        }\n");
-            serviceContent.append("        rlt.setResults(rs);\n");
-            serviceContent.append("        return rlt;\n");
         }
 
         serviceContent.append("    }\n\n");

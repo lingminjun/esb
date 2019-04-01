@@ -3,9 +3,11 @@ package com.venus.esb;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.annotation.JSONField;
 import com.venus.esb.annotation.ESBDesc;
+import com.venus.esb.config.ESBConfigCenter;
 import com.venus.esb.lang.*;
 import com.venus.esb.sign.ESBTokenSign;
 import com.venus.esb.sign.ESBUUID;
+import com.venus.esb.utils.MD5;
 
 import java.util.Map;
 
@@ -151,6 +153,9 @@ public final class ESBAPIContext extends ESBContext {
         ESBThreadLocal.put(ESBSTDKeys.ACCT_KEY,acct);
         ESBThreadLocal.put(ESBSTDKeys.PID_KEY,pid);
 
+        //记录会话标识
+        ESBThreadLocal.put(ESBSTDKeys.GUID_KEY,guid);
+
         //ESB机器可以记录一些客户端参数
         ESBThreadLocal.put(ESBSTDKeys.CH_KEY,ch);
         ESBThreadLocal.put(ESBSTDKeys.SRC_KEY,src);
@@ -180,6 +185,7 @@ public final class ESBAPIContext extends ESBContext {
         ESBMDC.put(ESBSTDKeys.VIA_KEY,via);
         ESBMDC.put(ESBSTDKeys.DNA_KEY,dna);
         ESBMDC.put(ESBSTDKeys.UA_KEY,ua);
+        ESBMDC.put(ESBSTDKeys.GUID_KEY,guid); // 会话标识
         ESBMDC.put(ESBSTDKeys.CIP_KEY,cip);
         ESBMDC.put(ESBSTDKeys.CVC_KEY,""+cvc);
         ESBMDC.put(ESBSTDKeys.CVN_KEY,cvn);
@@ -259,6 +265,8 @@ public final class ESBAPIContext extends ESBContext {
 
     public static void fill(ESBAPIContext context, Map<String,String> params, Map<String,String> header, Map<String,ESBCookie> cookies, String body) {
         context.aid = parseValue(ESBSTDKeys.AID_KEY,params,header,cookies);
+        context.tml = "" + (int)((0xff000000 & ESBT.integer(context.aid)) >>> 24);
+        context.app = "" + (int)(0x00ffffff & ESBT.integer(context.aid));
         context.did = parseValue(ESBSTDKeys.DID_KEY,context.aid,params,header,cookies);
 //        if (context.did == null) {//需要兼容获取gw1.0中did信息
 //            context.did = ESBCompatibility.getCookieDeviceId(cookies);
@@ -270,7 +278,8 @@ public final class ESBAPIContext extends ESBContext {
         context.ch = parseValue(ESBSTDKeys.CH_KEY,context.aid,params,header,cookies);
         context.src = parseValue(ESBSTDKeys.SRC_KEY,context.aid,params,header,cookies);
         context.spm = parseValue(ESBSTDKeys.SMP_KEY,context.aid,params,header,cookies);
-        context.dna = parseValue(ESBSTDKeys.DNA_KEY,context.aid,params,header,cookies);
+        // 必须从dtoken中获取
+//        context.dna = parseValue(ESBSTDKeys.DNA_KEY,context.aid,params,header,cookies);
         context.ua = parseValue(ESBSTDKeys.UA_KEY,context.aid,params,header,cookies);
 //        if (context.ua == null) {
 //            context.ua = ESBCompatibility.getParamsUserAgent(params);
@@ -466,22 +475,229 @@ public final class ESBAPIContext extends ESBContext {
         return null;//ESBCompatibility.getContextValue(this,key);
     }
 
-    public final String getCookieDomain() {
-        if (this.host == null || this.host.length() == 0) { return ""; }
+    public final void injectToken(ESBToken token) {
+        //登录失败,将数据清除
+        if (!token.success) {
+            token.token = null;
+            token.stoken = null;
+            token.refresh = null;
+            token.key = null;
+            token.expire = 0;
 
-        //只取主域名
-        String h = this.host;
-        int idx = h.lastIndexOf(":");
-        if (idx >= 0 && idx < h.length()) {
-            h = h.substring(0,idx);
-        }
-        String[] strs = h.split("\\.");
-        if (strs.length > 2) {
-            return "." + strs[strs.length - 2] + "." + strs[strs.length - 1];
-        } else if (strs.length == 2) {
-            return strs[strs.length - 2] + "." + strs[strs.length - 1];
+            //反向清除
+            this.utoken = null;
+            this.stoken = null;
+            this.rtoken = null;
+
+            this.usecur = null;
+            this.ssecur = null;
+            this.rsecur = null;
+
+            //清除cookie token
+            pushTokenCookie("","", "");
+
         } else {
-            return h;
+            //自动注入token
+            ESBTokenSign.injectDefaultToken(token,this);
+
+            //反向注入
+            this.utoken = token.token;
+            this.stoken = token.stoken;
+            this.rtoken = token.refresh;
+
+            //注入token到cookie
+            pushTokenCookie(token.token,token.stoken, token.user);
         }
+    }
+
+    public final void autoInjectDeviceToken() {
+        //自动注入did
+        if (!ESBT.isEmpty(this.did)) {
+            return;
+        }
+
+        this.did = "" + (-ESBUUID.genDID());
+        ESBDeviceToken token = new ESBDeviceToken();
+        token.scope = "device";
+        token.success = true;
+        injectDeviceToken(token);
+
+        //只有自动注入时添加dsecur
+        if (this.dtoken != null) {
+            this.dsecur = ESBTokenSign.parseDefaultToken(this.dtoken, this);
+        }
+    }
+
+    public final void injectDeviceToken(ESBDeviceToken token) {
+        //登录失败,将数据清除
+        if (!token.success) {
+            token.token = null;
+            token.key = null;
+            //注册设备失败，不清除原有token
+//            pushDeviceTokenCookie(context,"");
+        } else {
+            //替换后端返回的设备号
+            if (token.did != null && !token.did.equals(this.did)) {
+                this.did = token.did;
+            }
+
+            //自动注入token
+            ESBTokenSign.injectDeviceToken(token,this);
+
+            this.dtoken = token.token;//新的token
+
+            pushDeviceTokenCookie(token.token);
+        }
+    }
+
+    public final void pushTokenCookie(String utoken, String stoken, String user) {
+
+        String domain = this.getCookieDomain();
+        {
+            ESBCookie cookie = new ESBCookie();
+            cookie.domain = domain;
+            cookie.name = this.aid + ESBSTDKeys.TOKEN_KEY;
+            cookie.value = (utoken == null) ? ESBT.string(this.utoken,"") : utoken;
+            cookie.httpOnly = false; //js可读写，主要是方便客户端主动清除。每次请求带上来，验证有效性
+            cookie.secure = false;
+            this.putCookie(cookie.name, cookie);
+        }
+
+        {
+            ESBCookie cookie = new ESBCookie();
+            cookie.domain = domain;
+            cookie.name = this.aid + ESBSTDKeys.SECRET_TOKEN_KEY;
+            cookie.value = (stoken == null) ? ESBT.string(this.stoken,"") : stoken;
+            cookie.httpOnly = true; //js不可访问
+            cookie.secure = true;     //只在https下访问,sso必须走https
+            this.putCookie(cookie.name, cookie);
+        }
+
+        if (user != null && user.length() != 0) {
+            ESBCookie cookie = new ESBCookie();
+            cookie.domain = domain;
+            cookie.name = this.aid + ESBSTDKeys.USER_INFO_KEY;
+            cookie.value = user;
+            cookie.httpOnly = false; //
+            cookie.secure = false;     //
+            this.putCookie(cookie.name, cookie);
+        }
+    }
+
+    public final void pushDeviceTokenCookie(String dtoken) {
+        String domain = this.getCookieDomain();
+
+        if (this.did != null && this.did.length() > 0){
+            ESBCookie cookie = new ESBCookie();
+            cookie.domain = domain;
+            cookie.name = ESBSTDKeys.DID_KEY;
+            cookie.value = this.did;
+            cookie.httpOnly = false; //前段可读（sso需要读取），如果随意修改将会导致dtoken验证通不过
+            cookie.secure = false;
+            this.putCookie(cookie.name, cookie);
+        }
+
+        {
+            ESBCookie cookie = new ESBCookie();
+            cookie.domain = domain;
+            cookie.name = ESBSTDKeys.DEVICE_TOKEN_KEY;
+            cookie.value = (dtoken == null) ? ESBT.string(this.dtoken,"") : dtoken;
+            cookie.httpOnly = true; //客户端不对属性
+            cookie.secure = false;
+            this.putCookie(cookie.name, cookie);
+        }
+
+    }
+
+    public final void clearAllTokenCookie() {
+        String domain = this.getCookieDomain();
+
+        // did
+        {
+            ESBCookie cookie = new ESBCookie();
+            cookie.domain = domain;
+            cookie.name = ESBSTDKeys.DID_KEY;
+            cookie.value = "";
+            cookie.maxAge = 0;
+            cookie.httpOnly = false; //前段可读（sso需要读取），如果随意修改将会导致dtoken验证通不过
+            cookie.secure = false;
+            this.putCookie(cookie.name, cookie);
+        }
+
+        // dtoken
+        {
+            ESBCookie cookie = new ESBCookie();
+            cookie.domain = domain;
+            cookie.name = ESBSTDKeys.DEVICE_TOKEN_KEY;
+            cookie.value = "";
+            cookie.maxAge = 0;
+            cookie.httpOnly = true; //客户端不对属性
+            cookie.secure = false;
+            this.putCookie(cookie.name, cookie);
+        }
+
+        // utoken
+        {
+            ESBCookie cookie = new ESBCookie();
+            cookie.domain = domain;
+            cookie.name = this.aid + ESBSTDKeys.TOKEN_KEY;
+            cookie.value = "";
+            cookie.maxAge = 0;
+            cookie.httpOnly = false; //js可读写，主要是方便客户端主动清除。每次请求带上来，验证有效性
+            cookie.secure = false;
+            this.putCookie(cookie.name, cookie);
+        }
+
+        // stoken
+        {
+            ESBCookie cookie = new ESBCookie();
+            cookie.domain = domain;
+            cookie.name = this.aid + ESBSTDKeys.SECRET_TOKEN_KEY;
+            cookie.value = "";
+            cookie.maxAge = 0;
+            cookie.httpOnly = true; //js不可访问
+            cookie.secure = true;     //只在https下访问,sso必须走https
+            this.putCookie(cookie.name, cookie);
+        }
+    }
+
+    private static final String DEFAULT_SALT    = "m.captcha.123";
+    private static final long CODE_VALIDITY     = 15 * 60 * 1000; //15分钟有效
+    /**
+     * 验证验证码
+     *
+     * @param salt    加盐
+     * @param code    用户输入的验证码
+     * @param session tupiansessuib
+     * @return 是否正确
+     */
+    public static boolean verifyCaptcha(String salt, String code, String session) throws ESBException {
+        if (ESBT.isEmpty(salt)) {
+            salt = DEFAULT_SALT;
+        }
+
+        // 验证验证码有效性
+        String ssn = session.trim();
+        if (!ESBT.isEmpty(code) && !ESBT.isEmpty(ssn) && ssn.length() > 32) {
+            String coreSession = ssn.substring(0,32);
+            String timeString = ssn.substring(32);
+            long time = ESBT.longInteger(timeString) + ESBConsts.TIME_2018_01_01;
+            // 简单过期判断，防止反复使用同一个session和code，
+            // 没有加签，是否存在安全隐患？？？实际无所谓，主要防止已经验证通过的code和session
+            if (time > System.currentTimeMillis()) {
+                String sign = MD5.md5(salt + code.trim() + ESBConfigCenter.instance().getAesKey());
+                return coreSession.toLowerCase().equals(sign);
+            } else {
+                throw ESBExceptionCodes.CAPTCHA_INVALID("验证过期");
+            }
+        }
+
+        return false;
+    }
+
+    public static String captchaSession(String salt, String code) {
+        String session = MD5.md5(salt + code + ESBConfigCenter.instance().getAesKey());
+        session += (System.currentTimeMillis() - ESBConsts.TIME_2018_01_01 + CODE_VALIDITY);
+        return session;
     }
 }

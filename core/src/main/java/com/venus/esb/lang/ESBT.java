@@ -30,6 +30,13 @@ public final class ESBT {
         return value == null || value.length() == 0;
     }
 
+    public static String dense(final CharSequence value) {
+        if (value == null) {
+            return null;
+        }
+        return value.toString().replaceAll("\\s*", "");
+    }
+
     public static String string(final CharSequence value) {
         return string(value,"");
     }
@@ -1471,6 +1478,19 @@ public final class ESBT {
                 return false;
             }
         }
+    }
+
+    //判断是纯数字，空字符串将返回false
+    public static boolean isDigit(CharSequence string) {
+        if (ESBT.isEmpty(string)) {
+            return false;
+        }
+        for (int idx = 0; idx < string.length(); idx++) {
+            if (!Character.isDigit(string.charAt(idx))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static final String THIS_PREFIX = "this";

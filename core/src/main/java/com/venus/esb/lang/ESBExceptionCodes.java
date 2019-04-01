@@ -114,6 +114,17 @@ public final class ESBExceptionCodes {
         return new ESBException("检查到访问异常",ESB_EXCEPTION_DOMAIN,NEED_CAPTCHA_CODE,reason);
     }
 
+    public final static int CAPTCHA_INVALID_CODE = -164;//人机验证,可以采用多个手段,图片或者滑块
+    public static ESBException CAPTCHA_INVALID(String reason) {
+        return new ESBException("验证过期",ESB_EXCEPTION_DOMAIN,CAPTCHA_INVALID_CODE,reason);
+    }
+
+    public final static int CAPTCHA_ERROR_CODE = -166;//人机验证,可以采用多个手段,图片或者滑块
+    public static ESBException CAPTCHA_ERROR(String reason) {
+        return new ESBException("验证错误",ESB_EXCEPTION_DOMAIN,CAPTCHA_ERROR_CODE,reason);
+    }
+
+
     public final static int SIGNATURE_ERROR_CODE = -180;
     public static ESBException SIGNATURE_ERROR(String reason) {
         return new ESBException("签名错误",ESB_EXCEPTION_DOMAIN,SIGNATURE_ERROR_CODE,reason);

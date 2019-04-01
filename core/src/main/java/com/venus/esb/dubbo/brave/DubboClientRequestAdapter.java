@@ -99,6 +99,7 @@ public class DubboClientRequestAdapter implements ClientRequestAdapter {
         excepts.add(ESBSTDKeys.SECRET_TOKEN_KEY);//敏感信息不应该记录
         excepts.add(ESBSTDKeys.DEVICE_TOKEN_KEY);//敏感信息不应该记录
 //        excepts.add("_context");//上下文信息
+        excepts.add(ESBSTDKeys.GUID_KEY);//会在record中单独记录
         excepts.add(ESBSTDKeys.CID_KEY);
         excepts.add(ESBSTDKeys.TID_KEY);
         excepts.add(ESBSTDKeys.CH_KEY);
@@ -261,6 +262,10 @@ public class DubboClientRequestAdapter implements ClientRequestAdapter {
         v = ESBThreadLocal.get(ESBSTDKeys.UA_KEY);
         if (v != null) {
             annotations.add(KeyValueAnnotation.create(ESBSTDKeys.UA_KEY, v));
+        }
+        v = ESBThreadLocal.get(ESBSTDKeys.GUID_KEY);
+        if (v != null) {
+            annotations.add(KeyValueAnnotation.create(ESBSTDKeys.GUID_KEY, v));
         }
         v = ESBThreadLocal.get(ESBSTDKeys.CIP_KEY);
         if (v != null) {

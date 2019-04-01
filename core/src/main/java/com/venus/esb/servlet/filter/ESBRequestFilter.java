@@ -224,7 +224,7 @@ public class ESBRequestFilter implements Filter {
             String ctxstr = request.getHeader(ESBConsts.HTTP_ESB_CONTEXT_HEADER);
             if (ctxstr != null) {
                 String[] strs = ctxstr.split(ESBConsts.HTTP_ESB_SPLIT, -1);//防止尾部丢失
-                if (strs.length == 6) {
+                if (strs.length == 7) {
                     ESBThreadLocal.put(ESBSTDKeys.L10N_KEY,strs[0]);//保留上一次的
                     //必要的业务数据传递
                     ESBThreadLocal.put(ESBSTDKeys.AID_KEY,strs[1]);
@@ -232,11 +232,13 @@ public class ESBRequestFilter implements Filter {
                     ESBThreadLocal.put(ESBSTDKeys.UID_KEY,strs[3]);
                     ESBThreadLocal.put(ESBSTDKeys.ACCT_KEY,strs[4]);
                     ESBThreadLocal.put(ESBSTDKeys.PID_KEY,strs[5]);
+                    ESBThreadLocal.put(ESBSTDKeys.GUID_KEY,strs[6]);
                     ESBMDC.put(ESBSTDKeys.AID_KEY,strs[1]);
                     ESBMDC.put(ESBSTDKeys.DID_KEY,strs[2]);
                     ESBMDC.put(ESBSTDKeys.UID_KEY,strs[3]);
                     ESBMDC.put(ESBSTDKeys.ACCT_KEY,strs[4]);
                     ESBMDC.put(ESBSTDKeys.PID_KEY,strs[5]);
+                    ESBMDC.put(ESBSTDKeys.GUID_KEY,strs[6]);
                 }
             }
 

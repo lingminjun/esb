@@ -1,7 +1,9 @@
 package com.venus.esb;
 
 
+import com.venus.esb.config.ESBConfigCenter;
 import com.venus.esb.lang.*;
+import com.venus.esb.utils.MD5;
 
 import java.io.*;
 import java.util.HashMap;
@@ -24,14 +26,42 @@ public class ESBAPIRisky implements ESB.APIRisky {
     private static final long FILE_CACHE_DURATION = 30000;
     private static final String SPLIT_STRING = ", ";
 
+
     @Override
     public ESB.APIRiskyLevel sniffer(ESB esb, ESBAPIInfo info, ESBAPIContext context, Map<String, String> params, Map<String, ESBCookie> cookies) throws ESBException {
+
+        // 自动验证(说明提交了验证码)
+        if (!ESBT.isEmpty(context.captcha)) {
+            String salt = context.dtoken;
+            if (ESBT.isEmpty(salt)) {
+                if (ESBT.isEmpty(context.did)) {
+                    salt = context.did;
+                } else {
+                    salt = context.did + context.ua;
+                }
+            }
+            String code = context.captcha;
+            String session = context.getRightValue(ESBSTDKeys.CAPTCHA_SESSION_KEY,params,cookies,-1);
+
+            boolean result = context.verifyCaptcha(salt,code,session);
+            if (result) {
+
+                // FIXME: 清除风控记录（ip或did或uid）
+
+                return ESB.APIRiskyLevel.SAFETY;
+            } else {
+                throw ESBExceptionCodes.CAPTCHA_ERROR("验证错误");
+            }
+        }
+
+
         //5分钟启动一次检查
 
         //非None的权限,后面都有对应的权限验证,所以不受此风控影响
         if (!ESBSecurityLevel.isNone(info.api.security)) {
             return ESB.APIRiskyLevel.SAFETY;
         }
+
 
         //开始检查黑白名单
         //http://zhensheng.im/2013/11/16/2050/MIAO_LE_GE_MI

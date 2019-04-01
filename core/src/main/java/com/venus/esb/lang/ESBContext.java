@@ -40,6 +40,11 @@ public class ESBContext implements Serializable {
 
     @ESBDesc("application id")
     public String aid;//应用id
+    @ESBDesc("app")
+    public String app;//应用编号
+    @ESBDesc("Terminal 终端编号：pc端1, h5端2, iOS客户端3, android客户端4, 微信小程序5, 支付宝小程序6, 等等后续定义，客户单必须保留，未来根据user agent强校验")
+    public String tml;//终端
+
     @ESBDesc("call id MDC支持")
     public String cid;//用于日志追踪
     @ESBDesc("device id")
@@ -72,6 +77,8 @@ public class ESBContext implements Serializable {
     public String cvn;
     @ESBDesc("客户端版本号 version code")
     public int cvc;
+    @ESBDesc("grant session id 又或者是 GUID，用于授权权限记录，全局唯一")
+    public String guid;//user id
 //    @ESBDesc("客户端请求scheme")
 //    public String scheme;
     @ESBDesc("客户端请求host")
@@ -132,6 +139,8 @@ public class ESBContext implements Serializable {
         String _aid = ESBThreadLocal.get(ESBSTDKeys.AID_KEY);
         if (_aid != null) {
             this.aid = _aid;
+            this.tml = "" + (int)((0xff000000 & ESBT.integer(_aid)) >>> 24);
+            this.app = "" + (int)(0x00ffffff & ESBT.integer(_aid));
         }
         String _did = ESBThreadLocal.get(ESBSTDKeys.DID_KEY);
         if (_did != null) {
@@ -148,6 +157,10 @@ public class ESBContext implements Serializable {
         String _pid = ESBThreadLocal.get(ESBSTDKeys.PID_KEY);
         if (_pid != null) {
             this.pid = _pid;
+        }
+        String _guid = ESBThreadLocal.get(ESBSTDKeys.GUID_KEY);
+        if (_guid != null) {
+            this.guid = _guid;
         }
     }
 
@@ -176,6 +189,14 @@ public class ESBContext implements Serializable {
         return aid;
     }
 
+    public String getApp() {
+        return app;
+    }
+
+    public String getTml() {
+        return tml;
+    }
+
     public String getCid() {
         return cid;
     }
@@ -190,6 +211,10 @@ public class ESBContext implements Serializable {
 
     public String getUid() {
         return uid;
+    }
+
+    public String getGuid() {
+        return guid;
     }
 
     public String getAcct() {
@@ -335,12 +360,15 @@ public class ESBContext implements Serializable {
         client.acct = ESBT.longInteger(getAcct());
         if (client.uid > 0) {
             client.securityLevel = ESBSecurityLevel.deviceAuth.authorize(ESBSecurityLevel.userAuth.authorize(0));
+            client.dna = getGuid();
         } else if (client.acct > 0) {
             client.securityLevel = ESBSecurityLevel.deviceAuth.authorize(ESBSecurityLevel.accountAuth.authorize(0));
+            client.dna = getGuid();
         } else {
             client.securityLevel = ESBSecurityLevel.deviceAuth.authorize(0);
+            client.dna = getDna();
         }
-        client.dna = getDna();
+
         return client;
     }
 
@@ -394,6 +422,7 @@ public class ESBContext implements Serializable {
         addElementInBuilder("cip",cip,builder,flag);
         addElementInBuilder("cvn",cvn,builder,flag);
         addElementInBuilder("cvc",""+cvc,builder,flag);
+        addElementInBuilder("guid",guid,builder,flag);
         addElementInBuilder("host",host,builder,flag);
 //        addElementInBuilder("scheme",scheme,builder,flag);
         addElementInBuilder("referer",referer,builder,flag);
@@ -498,6 +527,10 @@ public class ESBContext implements Serializable {
     public String getValue(String key) {
         if (ESBSTDKeys.AID_KEY.equals(key)) {
             return this.getAid();
+        } else if (ESBSTDKeys.APP_KEY.equals(key)) {
+            return this.getApp();
+        } else if (ESBSTDKeys.TERMINAL_KEY.equals(key)) {
+            return this.getTml();
         } else if (ESBSTDKeys.CID_KEY.equals(key)) {
             return this.getCid();
         } else if (ESBSTDKeys.DID_KEY.equals(key)) {
@@ -506,6 +539,8 @@ public class ESBContext implements Serializable {
             return this.getPid();
         } else if (ESBSTDKeys.UID_KEY.equals(key)) {
             return this.getUid();
+        } else if (ESBSTDKeys.GUID_KEY.equals(key)) {
+            return this.getGuid();
         } else if (ESBSTDKeys.ACCT_KEY.equals(key)) {
             return this.getAcct();
         } else if (ESBSTDKeys.TID_KEY.equals(key)) {
@@ -561,6 +596,8 @@ public class ESBContext implements Serializable {
 
     public void clear() {
         this.aid = null;
+        this.tml = null;
+        this.app = null;
         this.cid = null;
         this.did = null;
         this.pid = null;
@@ -572,6 +609,7 @@ public class ESBContext implements Serializable {
         this.src = null;
         this.spm = null;
         this.via = null;
+        this.guid = null;
         this.dna = null;
         this.ua = null;
         this.cip = null;
@@ -727,10 +765,34 @@ public class ESBContext implements Serializable {
         return rpc;
     }
 
+    public final String getCookieDomain() {
+        if (this.host == null || this.host.length() == 0) { return ""; }
+
+        //只取主域名
+        String h = this.host;
+        int idx = h.lastIndexOf(":");
+        if (idx >= 0 && idx < h.length()) {
+            h = h.substring(0,idx);
+        }
+        String[] strs = h.split("\\.");
+        // 是ip，必须保留ip
+        if (strs.length == 4 && ESBT.isDigit(strs[0]) && ESBT.isDigit(strs[1]) && ESBT.isDigit(strs[2]) && ESBT.isDigit(strs[3])) {
+            return h;
+        } else if (strs.length > 2) {//取主域名
+            return "." + strs[strs.length - 2] + "." + strs[strs.length - 1];
+        } else if (strs.length == 2) {
+            return strs[strs.length - 2] + "." + strs[strs.length - 1];
+        } else {
+            return h;
+        }
+    }
+
     // spring mvc 数据注入必须
 
     public void setAid(String aid) {
         this.aid = aid;
+        this.tml = "" + (int)((0xff000000 & ESBT.integer(aid)) >>> 24);
+        this.app = "" + (int)(0x00ffffff & ESBT.integer(aid));
     }
 
     public void setCid(String cid) {

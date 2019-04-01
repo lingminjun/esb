@@ -75,4 +75,15 @@ public interface TableDAO<DO extends Serializable> extends ViewDAO<DO> {
      */
     public List<DO> queryByIds(List<Long> pks);
 
+
+    /**
+     * 根据主键集返回指定的实体对象集
+     *
+     * @param pks
+     * @param sortField
+     * @param isDesc
+     * @return
+     */
+    public List<DO> queryByIdsOnSort(List<Long> pks, String sortField, Boolean isDesc);
+
 }

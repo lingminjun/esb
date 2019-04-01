@@ -30,12 +30,16 @@ public final class ESBSecur implements Serializable {
     public long   acct;//account id
     @ESBDesc("设备公钥(下发客服端),夹带在token中")
     public String key;                      // 设备身份公钥
+
+//    @ESBDesc("grant session id，会话唯一id")
+//    public String guid;
+
     /*
     @Deprecated
     @ESBDesc(value = "三方id,完全可以忽略了,仅仅兼容老版本",ignore = true)
     public String oauthid;                  //三方给予的code
     */
-    @ESBDesc("设备指纹")
+    @ESBDesc("设备指纹 或者 guid（grant session id，会话唯一id）")
     public String dna;//设备指纹信息 genetic fingerprint
 
     public void setAid(int aid) {

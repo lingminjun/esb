@@ -2110,6 +2110,22 @@ public class MybatisGenerator extends Generator {
             content.append("        </foreach>  \n");
             content.append("    </select>\n\n");
 
+            //public List<DO> queryByIdsOnSort(List<Long> pks, String sortField, Boolean isDesc);
+            content.append("    <select id=\"queryByIdsOnSort\" resultMap=\"" + resultEntity + "\">\n");
+            content.append("        select " + cols.toString() + " \n");
+            content.append("        from `" + table.name + "` \n");
+            content.append("        where " + primaryKey + " in \n");
+            content.append("        <foreach collection=\"#{0}\" item=\"theId\" index=\"index\" \n");
+            content.append("             open=\"(\" close=\")\" separator=\",\"> \n");
+            content.append("             #{theId}  \n");
+            content.append("        </foreach>  \n");
+            content.append("        <if test=\"#{1} != null and #{1} != ''\">\n");
+            content.append("            order by `${1}` ");//注意参数为字符替换，而不是"?"掩码
+            //MySQL中默认排序是acs(可省略)：从小到大 ; desc ：从大到小，也叫倒序排列。
+            content.append("<if test=\"#{2}\"> desc </if> \n");
+            content.append("        </if>\n");
+            content.append("    </select>\n\n");
+
         }
 
         if (table.hasIndexQuery()) {

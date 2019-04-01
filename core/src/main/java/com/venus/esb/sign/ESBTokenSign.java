@@ -79,11 +79,6 @@ public final class ESBTokenSign {
                 client.key = HexStringUtil.toHexString(bys);
             }
 
-            //对于10版本,不能增加任何信息了
-//            if (dis.available() > 0 && tokenVersion != TOKEN_VERSION_1_0) {
-//                return null;
-//            }
-
             if (dis.available() > 0) {//非必填
                 len = dis.readShort();
                 if (len > 0) {
@@ -141,17 +136,8 @@ public final class ESBTokenSign {
             dos.writeShort(bys.length);
             dos.write(bys);
 
-//            byte[] oauthid = client.oauthid == null ? null : client.oauthid.getBytes(ESBConsts.UTF8);
-//            if (oauthid != null) {
-//                dos.writeShort(oauthid.length);
-//                dos.write(oauthid);
-//            }
-
-            //写入设备指纹
+            // 写入设备指纹
             if (!ESBT.isEmpty(client.dna)) {
-//                if (oauthid == null) {//需要留一个读取位
-//                    dos.writeShort(0);
-//                }
                 byte[] dna = client.dna.getBytes(ESBConsts.UTF8);
                 dos.writeShort(dna.length);
                 dos.write(dna);
@@ -285,6 +271,11 @@ public final class ESBTokenSign {
         token.expire = expire;
 
         client.key = csrfToken;
+        //产生最新的会话id, 刷新token，会话id保持不变
+        if (ESBT.isEmpty(context.guid)) {
+            client.dna = ESBUUID.genSimplifyCID();
+            context.guid = client.dna;
+        }
         token.token = ESBTokenSign.defaultSign().generateStringToken(client);
 
         // cookie保存或者客户端保存，用sso
@@ -371,6 +362,8 @@ public final class ESBTokenSign {
             }
         } else if (context != null) {
             context.aid = "" + client.aid;
+            context.tml = "" + (int)((0xff000000 & client.aid) >>> 24);
+            context.app = "" + (int)(0x00ffffff & client.aid);
         }
 
         //did也需要对应上
@@ -405,7 +398,7 @@ public final class ESBTokenSign {
             }
         }
 
-        //DNA界定,是否做强校验
+        //DNA界定,是否做强校验，参考 injectDeviceToken 和 injectDefaultToken 方法
         // 有三类情况，
         //      1、device token, 签署user agent，将于context.dna一致
         //      2、user and account token, 签署did 故不需要做dna比较
@@ -413,21 +406,30 @@ public final class ESBTokenSign {
         //      4、其他token，不做校验
 
         if (!ESBT.isEmpty(client.dna)) {
-            //第1种情况
-            if (client.securityLevel == ESBSecurityLevel.userAuth.getCode()) {
-                if (context != null && !ESBT.isEmpty(context.dna) && context.dna.equals(client.dna)) {
-                    return null;
+            // 第1种情况，injectDeviceToken
+            if (client.securityLevel == ESBSecurityLevel.deviceAuth.getCode()) {
+                // 说明此处user agent被串改
+                if (context != null &&
+                        !ESBT.isEmpty(context.ua)
+                        && !client.dna.equals(MD5.md5(context.ua))) {
+
+                    // 暂时不校验 context.ua 发现android小程序 ua每次变化
+//                    return null;
                 }
+                //覆盖dna
                 if (context != null) {
                     context.dna = client.dna;
                 }
-            } else if (client.securityLevel == ESBSecurityLevel.userAuth.getCode()
+            }
+            // 第2种情况 不需要验证dna，此处只需记录会话id
+            else if (client.securityLevel == ESBSecurityLevel.userAuth.getCode()
                     || client.securityLevel == ESBSecurityLevel.accountAuth.getCode()) {
-                // 依靠did签署
+                // 依靠did签署，顾只要验证dtoken是合法，此处utoken肯定合法
                 /*
                 if (dtoken != null && dtoken.length() > 0) {
 
                 }*/
+                context.guid = client.dna;
             } else if (client.securityLevel == ESBSecurityLevel.secretAuth.getCode()
                     || client.securityLevel == ESBSecurityLevel.extend.getCode()) {
                 // 业务ESB同样会验证

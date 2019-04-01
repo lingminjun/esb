@@ -215,6 +215,12 @@ public final class ESB {
         try {
             result = _call(params,header,cookies,body);
         } catch (ESBException e) {
+            // 此时需要清除token
+            if (ESBExceptionCodes.ESB_EXCEPTION_DOMAIN.equals(e.getDomain())
+                  &&  e.getCode() == ESBExceptionCodes.TOKEN_INVALID_CODE) {
+                // 清除token
+                ESBAPIContext.context().clearAllTokenCookie();
+            }
             logback.error("ESB call error!",e);
             exception = e;
             throw e;
@@ -250,10 +256,9 @@ public final class ESB {
 
         //将数据填充到context中
         ESBAPIContext.fill(context,params,header,cookies,body);
+
         //自动注入did
-        if (context.did == null || context.did.length() == 0) {
-            autoInjectDeviceTokenResult(context);
-        }
+        context.autoInjectDeviceToken();
 
         //将数据设置日志预置信息
         context.seed();
@@ -289,7 +294,7 @@ public final class ESB {
 
         // token有效性判断（内部验证token），不验证时效性
         if (isTokenInvalid(context,header,cookies)) {
-            throw ESBExceptionCodes.TOKEN_ERROR("token解析错误");
+            throw ESBExceptionCodes.TOKEN_INVALID("token解析错误，存在非法token");
         }
 
         // token的时效性判断
@@ -392,9 +397,9 @@ public final class ESB {
         if (!context.isTransmit() && ESBT.isBaseType(obj.getClass())) {
             obj = wrapperResult(api, obj);
         } else if (obj instanceof ESBToken) {
-            injectTokenResult((ESBToken) obj, context);
+            context.injectToken((ESBToken) obj);
         } else if (obj instanceof ESBDeviceToken) {
-            injectDeviceTokenResult((ESBDeviceToken) obj, context);
+            context.injectDeviceToken((ESBDeviceToken) obj);
         } //坑，dubbo泛型调用，不知道类型是 ESBToken
         else if (ESBToken.class.getName().equals(api.api.returned.type)) {
             obj = injectGenericTokenResult(obj, context);
@@ -733,46 +738,49 @@ public final class ESB {
     }
 
     //判断所有token的有效性
-    private boolean isTokenInvalid(ESBAPIContext context, Map<String,String> header, Map<String,ESBCookie> cookies) {
+    private boolean isTokenInvalid(ESBAPIContext context, Map<String,String> header, Map<String,ESBCookie> cookies) throws ESBException {
         if (!ESBT.isEmpty(context.dtoken) && context.dsecur == null) {
-            return true;
+            throw ESBExceptionCodes.TOKEN_INVALID("device token无法解析");
         }
 
-        if (!ESBT.isEmpty(context.utoken) && context.usecur == null) {
-            return true;
+        // 要求有设备验证
+        if (!ESBT.isEmpty(context.utoken) && (context.usecur == null || context.dsecur == null)) {
+            throw ESBExceptionCodes.TOKEN_INVALID("user token无法解析");
         }
 
-        if (!ESBT.isEmpty(context.stoken) && context.ssecur == null) {
-            return true;
+        // 要求有user token
+        if (!ESBT.isEmpty(context.stoken) && (context.ssecur == null || context.usecur == null)) {
+            throw ESBExceptionCodes.TOKEN_INVALID("secret token无法解析");
         }
 
-        if (!ESBT.isEmpty(context.rtoken) && context.rsecur == null) {
-            return true;
+        // 要求有user token
+        if (!ESBT.isEmpty(context.rtoken) && (context.rsecur == null || context.usecur == null)) {
+            throw ESBExceptionCodes.TOKEN_INVALID("refresh token无法解析");
         }
 
         if (!ESBT.isEmpty(context.ttoken) && context.tsecur == null) {
-            return true;
+            throw ESBExceptionCodes.TOKEN_INVALID("temporary token无法解析");
         }
 
         if (!ESBT.isEmpty(context.ssoToken) && context.ssoSecur == null) {
-            return true;
+            throw ESBExceptionCodes.TOKEN_INVALID("sso token无法解析");
         }
 
         // 以下几个特殊场景的教研
         // dtoken与cookie中的不相符合(说明有人恶意修改cookie的did)
         ESBCookie didCookie = cookies.get(ESBSTDKeys.DID_KEY);
-        if (context.dsecur != null && didCookie != null && context.dsecur.did != ESBT.integer(didCookie.value)) {
-            return true;
+        if (context.dsecur != null && didCookie != null && context.dsecur.did != ESBT.longInteger(didCookie.value)) {
+            throw ESBExceptionCodes.TOKEN_INVALID("检查到cookie中的did与device token不一致");
         }
 
         // stoken验证utoken
         if (context.ssecur != null && !MD5.md5(context.utoken).equals(context.ssecur.dna)) {
-            return true;
+            throw ESBExceptionCodes.TOKEN_INVALID("user token与secret token不匹配");
         }
 
         // rtoken验证utoken
         if (context.rsecur != null && !MD5.md5(context.utoken).equals(context.rsecur.dna)) {
-            return true;
+            throw ESBExceptionCodes.TOKEN_INVALID("refresh token与secret token不匹配");
         }
 
         // ssoToken中的参数验证，已经在后面验证了
@@ -827,7 +835,7 @@ public final class ESB {
         if (token instanceof Map) {
             ESBToken tk = new ESBToken();
             Injects.fill(token,tk);
-            injectTokenResult(tk,context);
+            context.injectToken(tk);
             return tk;
         }
         return token;
@@ -837,85 +845,10 @@ public final class ESB {
         if (token instanceof Map) {
             ESBDeviceToken tk = new ESBDeviceToken();
             Injects.fill(token,tk);
-            injectDeviceTokenResult(tk,context);
+            context.injectDeviceToken(tk);
             return tk;
         }
         return token;
-    }
-
-    private void injectTokenResult(ESBToken token, ESBAPIContext context) {
-        //登录失败,将数据清除
-        if (!token.success) {
-            token.token = null;
-            token.stoken = null;
-            token.refresh = null;
-            token.key = null;
-            token.expire = 0;
-
-            //反向清除
-            context.utoken = null;
-            context.stoken = null;
-            context.rtoken = null;
-
-            context.usecur = null;
-            context.ssecur = null;
-            context.rsecur = null;
-
-            //清除cookie token
-            pushTokenCookie(context,"","", "");
-
-        } else {
-            //自动注入token
-            ESBTokenSign.injectDefaultToken(token,context);
-
-            //反向注入
-            context.utoken = token.token;
-            context.stoken = token.stoken;
-            context.rtoken = token.refresh;
-
-            //注入token到cookie
-            pushTokenCookie(context,token.token,token.stoken, token.user);
-        }
-    }
-
-    private void autoInjectDeviceTokenResult(ESBAPIContext context) {
-        //自动注入did
-        if (context.did != null && context.did.length() > 0) {
-            return;
-        }
-
-        context.did = "" + (-ESBUUID.genDID());
-        ESBDeviceToken token = new ESBDeviceToken();
-        token.scope = "device";
-        token.success = true;
-        injectDeviceTokenResult(token,context);
-
-        //只有自动注入时添加dsecur
-        if (context.dtoken != null) {
-            context.dsecur = ESBTokenSign.parseDefaultToken(context.dtoken, context);
-        }
-    }
-
-    private void injectDeviceTokenResult(ESBDeviceToken token, ESBAPIContext context) {
-        //登录失败,将数据清除
-        if (!token.success) {
-            token.token = null;
-            token.key = null;
-            //注册设备失败，不清楚原有token
-//            pushDeviceTokenCookie(context,"");
-        } else {
-            //替换后端返回的设备号
-            if (token.did != null && !token.did.equals(context.did)) {
-                context.did = token.did;
-            }
-
-            //自动注入token
-            ESBTokenSign.injectDeviceToken(token,context);
-
-            context.dtoken = token.token;//新的token
-
-            pushDeviceTokenCookie(context,"");
-        }
     }
 
     private Object wrapperResult(ESBAPIInfo api, Object value) throws ESBException {
@@ -1199,7 +1132,7 @@ public final class ESB {
             context.rtoken = token.refresh;
 
             //注入token到cookie
-            pushTokenCookie(context,token.token,token.stoken, token.user);
+            context.pushTokenCookie(token.token,token.stoken, token.user);
 
             ESBResponse res = new ESBResponse();
             res.result = serializer.serialized(token);
@@ -1208,6 +1141,7 @@ public final class ESB {
 
         //反向清除
         context.utoken = null;
+        context.guid = null;
         context.stoken = null;
         context.rtoken = null;
 
@@ -1216,7 +1150,7 @@ public final class ESB {
         context.rsecur = null;
 
         //清除cookie token
-        pushTokenCookie(context,"","", "");
+        context.pushTokenCookie("","", "");
 
         ESBResponse res = new ESBResponse();
         res.result = "{\"success\":false}";
@@ -1290,6 +1224,10 @@ public final class ESB {
                     && ESBT.integer(context.aid) == context.ssoSecur.taid
                     && context.host != null
                     && context.host.toLowerCase().contains(context.ssoSecur.tdomain.toLowerCase())) {
+
+                // 刷新会话id，标识一个新的会话开始
+                context.guid = ESBUUID.genSimplifyCID();
+
                 //只有可能是user的token(sso只允许在user权限下进行，account下不行)
                 ESBToken token = ESBTokenSign.injectDefaultToken(null,context);
 
@@ -1305,7 +1243,7 @@ public final class ESB {
                 context.rtoken = token.refresh;
 
                 //注入token到cookie
-                pushTokenCookie(context,token.token,token.stoken,token.user);
+                context.pushTokenCookie(token.token,token.stoken,token.user);
 
                 ESBResponse res = new ESBResponse();
                 res.result = serializer.serialized(token);
@@ -1314,6 +1252,7 @@ public final class ESB {
 
             //反向清除
             context.utoken = null;
+            context.guid = null;
             context.stoken = null;
             context.rtoken = null;
 
@@ -1322,71 +1261,12 @@ public final class ESB {
             context.rsecur = null;
 
             //清除cookie token
-            pushTokenCookie(context,"","", "");
+            context.pushTokenCookie("","", "");
         }
 
         ESBResponse res = new ESBResponse();
         res.result =  "{\"success\":false}";
         return res;
-    }
-
-    private static void pushTokenCookie(ESBAPIContext context,String utoken, String stoken, String user) {
-
-        String domain = context.getCookieDomain();
-        {
-            ESBCookie cookie = new ESBCookie();
-            cookie.domain = domain;
-            cookie.name = context.aid + ESBSTDKeys.TOKEN_KEY;
-            cookie.value = (utoken == null || utoken.length() == 0) ? "" : utoken;
-            cookie.httpOnly = false; //js可读写，主要是方便客户端主动清除。每次请求带上来，验证有效性
-            cookie.secure = false;
-            context.putCookie(cookie.name, cookie);
-        }
-
-        {
-            ESBCookie cookie = new ESBCookie();
-            cookie.domain = domain;
-            cookie.name = context.aid + ESBSTDKeys.SECRET_TOKEN_KEY;
-            cookie.value = (stoken == null || stoken.length() == 0) ? "" : stoken;
-            cookie.httpOnly = true; //js不可访问
-            cookie.secure = true;     //只在https下访问,sso必须走https
-            context.putCookie(cookie.name, cookie);
-        }
-
-        if (user != null && user.length() != 0) {
-            ESBCookie cookie = new ESBCookie();
-            cookie.domain = domain;
-            cookie.name = context.aid + ESBSTDKeys.USER_INFO_KEY;
-            cookie.value = user;
-            cookie.httpOnly = false; //
-            cookie.secure = false;     //
-            context.putCookie(cookie.name, cookie);
-        }
-    }
-
-    private static void pushDeviceTokenCookie(ESBAPIContext context,String dtoken) {
-        String domain = context.getCookieDomain();
-
-        if (context.did != null && context.did.length() > 0){
-            ESBCookie cookie = new ESBCookie();
-            cookie.domain = domain;
-            cookie.name = ESBSTDKeys.DID_KEY;
-            cookie.value = context.did;
-            cookie.httpOnly = false; //前段可读（sso需要读取），如果随意修改将会导致dtoken验证通不过
-            cookie.secure = false;
-            context.putCookie(cookie.name, cookie);
-        }
-
-        {
-            ESBCookie cookie = new ESBCookie();
-            cookie.domain = domain;
-            cookie.name = ESBSTDKeys.DEVICE_TOKEN_KEY;
-            cookie.value = (dtoken == null || dtoken.length() == 0) ? "" : dtoken;
-            cookie.httpOnly = true; //客户端不对属性
-            cookie.secure = false;
-            context.putCookie(cookie.name, cookie);
-        }
-
     }
 
     private static class SingletonHolder {

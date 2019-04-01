@@ -21,7 +21,7 @@ public class ESBCookie implements Serializable {
     public String value;
     @ESBDesc("所属域名")
     public String domain;
-    @ESBDesc("有效期")
+    @ESBDesc("有效期，单位为秒。如果没有设置有效期，则默认为-1（或者说小于0的值），表示在浏览器关闭时就删除Cookie内容；设置为0，则表示通知浏览器立即删除这个Cookie")
     public int maxAge = -1;
     @ESBDesc("只支持https")
     public boolean secure;

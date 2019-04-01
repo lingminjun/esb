@@ -22,7 +22,22 @@ public final class ESBSTDKeys {
     private static Set<String> _nkeys = new HashSet<>(); //不允许放到cookie中
 
     //esb上下文中通用的key,且以下key是支持auto write的参数
-    @ESBDesc("application id 应用编号, 以XXX应用为例：pc端1, h5端2, iOS客户端3, android客户端4, 微信小程序5, 等等")
+    @ESBDesc("非客户端参数。Terminal终端编号：pc端1, h5端2, iOS客户端3, android客户端4, 微信小程序5, 支付宝小程序6, 等等后续定义，客户单必须保留，未来根据user agent强校验")
+    public static final String TERMINAL_KEY = "_tml";
+    static {
+        _keys.add(TERMINAL_KEY);
+        _nkeys.add(TERMINAL_KEY);
+    }
+
+    //esb上下文中通用的key,且以下key是支持auto write的参数
+    @ESBDesc("非客户端参数。APP应用标识：建议后台配置，按照产品切分，如淘宝、天猫、一淘等等")
+    public static final String APP_KEY = "_app";
+    static {
+        _keys.add(APP_KEY);
+        _nkeys.add(APP_KEY);
+    }
+
+    @ESBDesc("application id 端应用编号：_aid = (0xff000000 & (_tmnl << 24)) + (0x00ffffff & _app) ；举例，淘宝iOS、天猫PC端，等等")
     public static final String AID_KEY = "_aid";
     static {
         _keys.add(AID_KEY);
@@ -193,6 +208,13 @@ public final class ESBSTDKeys {
         _akeys.add(TOKEN_KEY);
     }
 
+    @ESBDesc("grant session id，授权会话id，用于授权场景，此id全局唯一，也叫GUID")
+    public static final String GUID_KEY = "_guid";
+    static {
+        _keys.add(GUID_KEY);
+        _nkeys.add(GUID_KEY);
+    }
+
     @ESBDesc("user token 中的exts数据,将会被在必要的场景传输,oss时参数传递")
     public static final String TOKEN_EXTS_KEY = "_tk_exts";
     static {
@@ -253,11 +275,17 @@ public final class ESBSTDKeys {
         _nkeys.add(SIGN_KEY);
     }
 
-    @ESBDesc("CAPTCHA:人机是被参数,需要以此来界定是否问人操作,而非机器")
+    @ESBDesc("CAPTCHA:人机识别参数,需要以此来界定是否问人操作,而非机器,操作值不允许存储在cookie中")
     public static final String CAPTCHA_KEY = "_captcha";
     static {
         _keys.add(CAPTCHA_KEY);
         _nkeys.add(CAPTCHA_KEY);
+    }
+
+    @ESBDesc("人机识别，与CAPTCHA对应，一般下发到cookie中")
+    public static final String CAPTCHA_SESSION_KEY = "_captcha_session";
+    static {
+        _keys.add(CAPTCHA_SESSION_KEY);
     }
 
 //    @ESBDesc("business id 业务流水号, 用于做幂等判断, 风控等. 支持通过Cookie注入获取url中的值")

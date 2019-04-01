@@ -508,8 +508,11 @@ public class ServiceGenerator extends Generator {
             APIGenerator.writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, true);
 
             //主键批量查询
-            APIGenerator.writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, false);
-            APIGenerator.writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, true);
+            APIGenerator.writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, false, false);
+            APIGenerator.writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, true, false);
+
+            APIGenerator.writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, false, true);
+            APIGenerator.writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, true, true);
         }
 
         //查询，索引查询，翻页
@@ -520,8 +523,11 @@ public class ServiceGenerator extends Generator {
             for (String methodName : methodNames) {
                 List<MybatisGenerator.Column> cols = queryMethods.get(methodName);
 
-                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, false, false);
-                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, true, false);
+                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, false, false, false);
+                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, true, false, false);
+
+                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, false, true, false);
+                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, true, true, false);
             }
         }
 
@@ -534,8 +540,8 @@ public class ServiceGenerator extends Generator {
                 MybatisGenerator.SQLSelect sqlSelect = viewMethods.get(methodName);
                 List<MybatisGenerator.Column> cols = sqlSelect.getBinds();
 
-                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, false, true);
-                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, true, true);
+                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, false, false, true);
+                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, true, false, true);
             }
         }
 

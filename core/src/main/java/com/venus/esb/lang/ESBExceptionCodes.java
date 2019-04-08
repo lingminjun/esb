@@ -130,6 +130,11 @@ public final class ESBExceptionCodes {
         return new ESBException("签名错误",ESB_EXCEPTION_DOMAIN,SIGNATURE_ERROR_CODE,reason);
     }
 
+    public final static int NO_RIGHT_ACCESS_ERROR_CODE = -183;
+    public static ESBException NO_RIGHT_ACCESS_ERROR(String reason) {
+        return new ESBException("无权访问",ESB_EXCEPTION_DOMAIN,NO_RIGHT_ACCESS_ERROR_CODE,reason);
+    }
+
     public final static int ILLEGAL_MULTIAPI_ASSEMBLY_CODE = -190;
     public static ESBException ILLEGAL_MULTIAPI_ASSEMBLY(String reason) {
         return new ESBException("非法的请求组合",ESB_EXCEPTION_DOMAIN,ILLEGAL_MULTIAPI_ASSEMBLY_CODE,reason);

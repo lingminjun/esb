@@ -553,6 +553,16 @@ public final class ESB {
             list.add(queue.submit(new Callable<TaskResponse>() {
                 @Override
                 public TaskResponse call() throws Exception {
+                    // 注意，此处context穿越线程，注意其context生命周期一定大于子任务，故可以安全使用
+                    // 补全重要的上下文信息(日志分析必要) 因ESBDispatchQueue部分上下文丢失
+                    ESBAPIContext.context().referer = context.referer;
+                    ESBAPIContext.context().cvc = context.cvc;
+                    ESBAPIContext.context().cvn = context.cvn;
+                    ESBAPIContext.context().cip = context.cip;
+                    ESBAPIContext.context().ch = context.ch;
+                    ESBAPIContext.context().src = context.src;
+                    ESBAPIContext.context().spm = context.spm;
+
                     TaskResponse response = new TaskResponse();
                     response.path = keyPath;
                     try {
@@ -998,6 +1008,8 @@ public final class ESB {
         boolean result = false;
         try {
             result = verify.verify(this, info,context,params,cookies);
+        } catch (ESBException e) {//不拦截内部异常
+            throw e;
         } catch (Throwable e) {
             throw ESBExceptionCodes.SIGNATURE_ERROR("验签异常").setCoreCause(e);
         }

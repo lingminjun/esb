@@ -137,7 +137,7 @@ public final class ESBT {
 
     public static int integer(final Integer value, final int defaultValue) {
         if (value == null) {
-            return value;
+            return defaultValue;
         }
         return value.intValue();
     }

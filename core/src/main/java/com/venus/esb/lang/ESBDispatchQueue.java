@@ -253,7 +253,7 @@ public final class ESBDispatchQueue implements Closeable {
     private <T> Future<T> _submit(Callable<T> r) {
         SaftyCallable<T> rr = new SaftyCallable<T>(r);
         if (pool != null) {
-            return pool.submit(r);
+            return pool.submit(rr);
         }
         return null;
     }

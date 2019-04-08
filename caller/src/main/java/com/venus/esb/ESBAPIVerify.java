@@ -94,14 +94,14 @@ public class ESBAPIVerify implements ESB.APIVerify {
             if (ESBSecurityLevel.userAuth.check(info.api.security)) {
                 secur = context.usecur;
                 if (secur.uid == 0) {//可能是account token
-                    throw ESBExceptionCodes.SIGNATURE_ERROR("签名失败，没有有效token");
+                    throw ESBExceptionCodes.NO_RIGHT_ACCESS_ERROR("签名失败，没有有效token");
                 }
             }
             // 登录账号权限
             else if (ESBSecurityLevel.accountAuth.check(info.api.security)) {
                 secur = context.usecur;
                 if (secur.acct == 0) {
-                    throw ESBExceptionCodes.SIGNATURE_ERROR("签名失败，没有有效token");
+                    throw ESBExceptionCodes.NO_RIGHT_ACCESS_ERROR("签名失败，没有有效token");
                 }
             }
             // 设备权限
@@ -115,13 +115,13 @@ public class ESBAPIVerify implements ESB.APIVerify {
 
             //用户权限不对
             if (secur == null) {
-                throw ESBExceptionCodes.SIGNATURE_ERROR("没有找到对应的验权token");
+                throw ESBExceptionCodes.NO_RIGHT_ACCESS_ERROR("没有找到对应的验权token");
             }
 
             Signable signature = ESBAPISignature.getSignable(sm, secur.key,null);
             return signature.verify(sig,sb.toString().getBytes(ESBConsts.UTF8));
         } else {
-            throw ESBExceptionCodes.SIGNATURE_ERROR("签名失败，没有有效token");
+            throw ESBExceptionCodes.NO_RIGHT_ACCESS_ERROR("签名失败，没有有效token");
         }
 
     }

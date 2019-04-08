@@ -303,7 +303,11 @@ public final class ESBAPIContext extends ESBContext {
             if (context.host == null) {
                 context.host = header.get("host");
             }
+        }
 
+        // 为了支持小程序无法设置referer的特殊情况，先从cookie取自行设置的referer
+        context.referer = parseValue(ESBSTDKeys.REFERER_KEY,null,null,cookies);
+        if (context.referer == null && header != null) {
             context.referer = header.get("Referer");
             if (context.referer == null) {
                 context.referer = header.get("referer");

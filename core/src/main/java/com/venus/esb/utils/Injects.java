@@ -4,16 +4,14 @@ package com.venus.esb.utils;
 import com.venus.esb.lang.ESBT;
 import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
 
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.Type;
+import java.lang.reflect.*;
 import java.util.*;
 
 /**
  * Created by lingminjun on 2017/12/28.
  * 支持基础类型互相转换
  * 支持枚举和字符串转换
+ * 并非完全深拷贝
  */
 
 public final class Injects {
@@ -44,9 +42,23 @@ public final class Injects {
      * @param root
      */
     public static void fill(Object source, Object target, boolean implicit, Class root) {
+        fill(source,target,implicit,root,new HashMap<>());
+    }
+    private static void fill(Object source, Object target, boolean implicit, Class root, Map<Object,Object> history) {
         if (source == null){
             return;
         }
+        // 自己填充，不要闹着玩
+        if (source == target) {
+            return;
+        }
+
+        // 记录正在处理的对象，防止循环引用填充
+        Object o = history.get(source);
+        if (o != null) {
+            return;
+        }
+        history.put(source, target);
 
         Class<?> objC = null;//
 
@@ -452,7 +464,7 @@ public final class Injects {
 
                 Object tobj = null;
                 try {
-                    tobj = eleType.newInstance();
+                    tobj = ESBT.forceNewInstance(eleType);
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
@@ -479,6 +491,11 @@ public final class Injects {
     public static void fillCollection(Object source, Collection<?> target, Class<?> targetElementClass, boolean implicit, Class root) {
         //无法实例化出来，无意义
         if (targetElementClass == null) {
+            return;
+        }
+
+        // 自己填充，不要闹着玩
+        if (source == target) {
             return;
         }
 
@@ -569,7 +586,7 @@ public final class Injects {
             } else {//都是复杂结构体
                 Object tobj = null;
                 try {
-                    tobj = targetElementClass.newInstance();
+                    tobj = ESBT.forceNewInstance(targetElementClass);
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
@@ -588,12 +605,12 @@ public final class Injects {
             return;
         }
 
-        Field fieldToSet1 = getDeclaredField(target, fieldName, root);
+        Field fieldToSet1 = ESBT.getDeclaredField(target, fieldName, root);
         Field fieldToSet2 = null;
 
         if (fieldToSet1 == null && implicit && !fieldName.startsWith("_")) {
             try {
-                fieldToSet2 = getDeclaredField(target, "_" + fieldName, root);
+                fieldToSet2 = ESBT.getDeclaredField(target, "_" + fieldName, root);
             } catch (Throwable e) { }
         }
 
@@ -755,7 +772,7 @@ public final class Injects {
                 } catch (Throwable e) {}
             } else if (set.getType() == boolean.class || set.getType() == Boolean.class) {
                 try {
-                    Boolean b = bool(string);
+                    Boolean b = ESBT.bool(string);
                     if (b != null) {
                         set.setAccessible(true);
                         if (set.getType() == Boolean.class) {
@@ -812,7 +829,7 @@ public final class Injects {
         if (set.getGenericType() == set.getType()) {
             Object tvalue = null;
             try {
-                tvalue = set.getType().newInstance();
+                tvalue = ESBT.forceNewInstance(set.getType());
             } catch (Throwable e) {e.printStackTrace();}
 
             if (tvalue != null) {
@@ -1026,55 +1043,5 @@ public final class Injects {
         }
 
         return false;
-    }
-
-    /**
-     * 循环向上转型, 获取对象的 DeclaredField
-     * @param object : 子类对象
-     * @param fieldName : 父类中的属性名
-     * @return 父类中的属性对象
-     */
-
-    public static Field getDeclaredField(Object object, String fieldName, Class root){
-
-        Class<?> clazz = object.getClass() ;
-        for(; clazz != Object.class; clazz = clazz.getSuperclass()) {
-
-            if (clazz == root || clazz == Object.class) {//若到了基类则直接返回
-                return null;
-            }
-
-            try {
-                Field field = clazz.getDeclaredField(fieldName);
-                if ((field.getModifiers() & Modifier.STATIC) == Modifier.STATIC) {
-                    return null;
-                }
-                return field;
-            } catch (Throwable e) {
-                //这里甚么都不要做！并且这里的异常必须这样写，不能抛出去。
-                //如果这里的异常打印或者往外抛，则就不会执行clazz = clazz.getSuperclass(),最后就不会进入到父类中了
-            }
-        }
-        return null;
-    }
-
-    private final static Boolean bool(String v) {
-        if (v == null || v.length() == 0) {return null;}
-        if ("1".equalsIgnoreCase(v)
-                || "yes".equalsIgnoreCase(v)
-                || "true".equalsIgnoreCase(v)
-                || "on".equalsIgnoreCase(v)
-                || "y".equalsIgnoreCase(v)
-                || "t".equalsIgnoreCase(v)) {
-            return true;
-        } else if ("0".equalsIgnoreCase(v)
-                || "no".equalsIgnoreCase(v)
-                || "false".equalsIgnoreCase(v)
-                || "off".equalsIgnoreCase(v)
-                || "n".equalsIgnoreCase(v)
-                || "f".equalsIgnoreCase(v)) {
-            return false;
-        }
-        return null;
     }
 }

@@ -159,7 +159,7 @@ public final class ESBGenericCaller {
             if (e instanceof GenericException) {
                 GenericException ge = (GenericException)e;
                 String eclz = ge.getExceptionClass();
-                if (eclz.equals(ESBRuntimeException.class.getName()) || eclz.equals(ESBException.class.getName())) {
+                if (eclz != null && (eclz.equals(ESBRuntimeException.class.getName()) || eclz.equals(ESBException.class.getName()))) {
                     ESBException ee = parseServerException(ge);
                     if (ee != null) {
                         throw ee;
@@ -338,12 +338,12 @@ public final class ESBGenericCaller {
             int idx = clazz.indexOf("<");
             if (idx >= 0 && idx < clazz.length()) {
                 typs[index] = clazz.substring(0,idx);
-                String t = clazz.substring(idx+1,clazz.length() - 1);
-                if (value instanceof Map) {
-                    if (!((Map) value).containsKey("class")) {
-                        ((Map) value).put("class",t);
-                    }
-                }
+//                String t = clazz.substring(idx+1,clazz.length() - 1);
+//                if (value instanceof Map) {
+//                    if (!((Map) value).containsKey("class")) {
+//                        ((Map) value).put("class",t);
+//                    }
+//                }
             } else {
                 typs[index] = clazz;
             }

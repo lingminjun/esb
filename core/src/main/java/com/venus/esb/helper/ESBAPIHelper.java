@@ -166,7 +166,12 @@ public class ESBAPIHelper {
         fillAPIInfo(apiName, group, esbapi, esbapiInfo.api);
 
         //异常码部分【文档需要,不影响接口调用,所以未找到则忽略】
-        parseCodes(apiDomain, group, method.getAnnotation(ESBError.class), esbapiInfo);
+        ESBError[] errors = method.getAnnotationsByType(ESBError.class);
+        if (errors != null && errors.length > 0) {
+            for (ESBError error : errors) {
+                parseCodes(group, error, esbapiInfo.api);
+            }
+        }
 
         //返回值处理
         parseReturnType(method,serverProvider,esbapiInfo);
@@ -460,36 +465,44 @@ public class ESBAPIHelper {
      * 此处小范围的缓存,以免不断的反射错误码定义类
      * @param group
      * @param error
-     * @param esbapiInfo
      */
-    private static void parseCodes(String apiDomain, ESBGroup group, ESBError error, ESBAPIInfo esbapiInfo) {
+    private static void parseCodes(ESBGroup group, ESBError error, ESBAPIDef apiDef) {
         if (error == null || error.value() == null || error.value().length == 0) {
             return;
         }
 
-        if (group == null || group.codeDefine() == null) {
+        Class<?> from = error.from();
+
+        // 兼容老版本
+        if (from == null) {
+            if (group != null) {
+                from = group.codeDefine();
+            }
+        }
+
+        if (from == null) {
             return;
         }
 
-        Class<?> codeDefineClazz = group.codeDefine();
+        Class<?> codeDefineClazz = from;
         Map<Integer,ESBAPICode> map = loadCodes(error.value(),codeDefineClazz);
-        if (map.size() > 0 && esbapiInfo.api.codes == null) {
-            esbapiInfo.api.codes = new HashMap<String, ESBAPICode>();
+        if (map.size() > 0 && apiDef.codes == null) {
+            apiDef.codes = new HashMap<String, ESBAPICode>();
         }
 
         for (ESBAPICode code : map.values()) {
-            esbapiInfo.api.codes.put(code.getCodeId(),code);
+            apiDef.codes.put(code.getCodeId(),code);
         }
 
-        //其他的错误码
+        // 兼容其他的错误码
         for (int i = 0; i < error.codes().length; i++ ) {
             ESBCode extCode = error.codes()[i];
             Map<Integer,ESBAPICode> extMap = loadCodes(extCode.value(),extCode.codeDefine());
-            if (extMap.size() > 0 && esbapiInfo.api.codes == null) {
-                esbapiInfo.api.codes = new HashMap<String, ESBAPICode>();
+            if (extMap.size() > 0 && apiDef.codes == null) {
+                apiDef.codes = new HashMap<String, ESBAPICode>();
             }
             for (ESBAPICode code : extMap.values()) {
-                esbapiInfo.api.codes.put(code.getCodeId(),code);
+                apiDef.codes.put(code.getCodeId(),code);
             }
         }
     }
@@ -543,6 +556,13 @@ public class ESBAPIHelper {
                 apiDef.security = securityLevel.authorize(0);
             }
             apiDef.needVerify = esbapi.needVerify();
+        }
+
+        //异常部分
+        if (esbapi.codes() != null && esbapi.codes().length > 0) {
+            for (ESBError error : esbapi.codes()) {
+                parseCodes(group, error, apiDef);
+            }
         }
     }
 
@@ -621,26 +641,27 @@ public class ESBAPIHelper {
      * @param clazz
      * @param structs 必传参数
      */
-    public static void parseObjectType(Class<?> clazz, Map<String, ESBAPIStruct> structs) {
+    public static void parseObjectType(Class<?> clazz, Set<String> structs) {
         //基础类型忽略,不要再放进来
         if (isBaseType(clazz)) {
             return;
         }
 
+        //将解析过的对象记录下来(必须提前放入,因为要防止属性递归依赖本身类)
         ESBPOJOWrapper tempPojo = new ESBPOJOWrapper();
         ESBDesc desc = clazz.getAnnotation(ESBDesc.class);
         if (desc != null) {
             tempPojo.desc = desc.value();
         }
-
         tempPojo.setTypeClass(clazz);
-
-        //将解析过的对象记录下来(必须提前放入,因为要防止属性递归依赖本身类)
         String coreType = tempPojo.getCoreType();
+
+        // 防止重复构建
         ESBPOJOWrapper pojo = pojos.get(coreType);
         if (pojo == null) {
             pojo = tempPojo;
             pojos.put(tempPojo.getCoreType(),pojo);
+
             //从类型遍历所有属性
             parsePOJOFields(pojo, pojo.getTypeClass(), structs);
         }
@@ -738,6 +759,7 @@ public class ESBAPIHelper {
 
         //
         Map<String,ESBAPIStruct> structs = new HashMap<>();
+        Set<String> sets = new HashSet<>();
         if (esbapiInfo != null && esbapiInfo.api != null) {
             //防止重复装载
             if (esbapiInfo.api.structs != null) {
@@ -756,7 +778,7 @@ public class ESBAPIHelper {
 
             //从类型遍历所有属性
 
-            parsePOJOFields(tempReturnedPOJO, tempReturnedPOJO.getTypeClass(), structs);
+            parsePOJOFields(tempReturnedPOJO, tempReturnedPOJO.getTypeClass(), sets);
         }
 
         //记录到esbapiInfo中
@@ -767,7 +789,15 @@ public class ESBAPIHelper {
 //        esbapiInfo.rules.put("this",new ESBRuleNode());
 
         //将pojos转struct
-        savePojoToAPI(returned,structs);
+        savePojoToAPI(returned,sets);
+
+        //最后将扫描完的结构，填充到API
+        for (String structName : sets) {
+            ESBPOJOWrapper wrapper = pojos.get(structName);
+            if (wrapper != null) {
+                structs.put(structName, wrapper.convertStruct());
+            }
+        }
     }
 
     private static void parseParameterTypes(ESBAPIInfo esbapiInfo, List<ESBField> methodParams, Method method, Class service, boolean isServlet) {
@@ -786,6 +816,7 @@ public class ESBAPIHelper {
 
         //记录所有数据结构
         Map<String,ESBAPIStruct> structs = new HashMap<>();
+        Set<String> sets = new HashSet<>();
         if (esbapiInfo != null && esbapiInfo.api != null) {
             //防止重复装载
             if (esbapiInfo.api.structs != null) {
@@ -859,7 +890,7 @@ public class ESBAPIHelper {
                     field.required = p.required();
                     field.isQuiet = false;
                     field.name = p.name() != null && p.name().length() > 0 ? p.name() : p.value();
-                    field.defaultValue = p.defaultValue().trim();
+                    field.defaultValue = ESBFieldDesc.rationalDefaultValue(p.defaultValue().trim(),field.type,field.isArray || field.isList);
                     break;
                 } else if (n.annotationType() == RequestAttribute.class) {
                     ignore = true;
@@ -900,7 +931,7 @@ public class ESBAPIHelper {
                     field.isQuiet = p.quiet();
                     field.name = p.name();
                     field.autoInjected = p.autoInjected();
-                    field.defaultValue = p.defaultValue();
+                    field.defaultValue = ESBFieldDesc.rationalDefaultValue(p.defaultValue(),field.type,field.isArray || field.isList);
                     break;
                 }
             }
@@ -952,7 +983,7 @@ public class ESBAPIHelper {
             invocationParams.add(field);
 
             //开始解析对象
-            parseObjectType(field.getTypeClass(),structs);
+            parseObjectType(field.getTypeClass(),sets);
         }
 
         //转
@@ -961,6 +992,14 @@ public class ESBAPIHelper {
 
         //转参数记录
         esbapiInfo.api.params = convertAPIParams(params);
+
+        //扫描的结果填充过来
+        for (String structName : sets) {
+            ESBPOJOWrapper wrapper = pojos.get(structName);
+            if (wrapper != null) {
+                structs.put(structName,wrapper.convertStruct());
+            }
+        }
     }
 
     //平铺参数获取
@@ -1014,8 +1053,8 @@ public class ESBAPIHelper {
                     paths.add(desc.getField());
                 }
 
-            } else {
-                params.add(desc.getField());
+            } else { // 此处为参数，需要保留一些特性
+                params.add(desc.getField(true));
             }
         }
 
@@ -1228,7 +1267,7 @@ public class ESBAPIHelper {
      * @param pojo
      * @param clazz
      */
-    private static void parsePOJOFields(ESBPOJOWrapper pojo, Class clazz, Map<String,ESBAPIStruct> structs) {
+    private static void parsePOJOFields(ESBPOJOWrapper pojo, Class clazz, Set<String> structs) {
         Field[] fields = ESBT.getClassDeclaredFields(clazz);
 
         for (Field field : fields) {
@@ -1284,10 +1323,10 @@ public class ESBAPIHelper {
         }
     }
 
-    private static void savePojoToAPI(ESBPOJOWrapper wrapper, Map<String, ESBAPIStruct> structs) {
+    private static void savePojoToAPI(ESBPOJOWrapper wrapper, Set<String> structs) {
         if (structs != null && wrapper != null) {
-            if (!structs.containsKey(wrapper.getCoreType())) {
-                structs.put(wrapper.getCoreType(),wrapper.convertStruct());
+            if (!structs.contains(wrapper.getCoreType())) {
+                structs.add(wrapper.getCoreType());
 
                 //需要将其依赖的所有类型都依赖进来
                 if (wrapper.fields != null) {

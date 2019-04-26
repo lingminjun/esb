@@ -120,6 +120,7 @@ public final class SpringXMLConst {
             "\n" +
             "    <bean id=\"dubboProtocolConfig\" class=\"com.alibaba.dubbo.config.ProtocolConfig\">\n" +
             "        <property name=\"port\" value=\"-1\"/>\n" +
+            "        <property name=\"serialization\" value=\"fastjson\"/>\n" +
             "    </bean>\n" +
             "\n" +
             "    <import resource=\"classpath*:@ApplicationName@-application-persistence.xml\"/>\n" +
@@ -167,6 +168,7 @@ public final class SpringXMLConst {
             "\n" +
             "    <bean id=\"dubboProtocolConfig\" class=\"com.alibaba.dubbo.config.ProtocolConfig\">\n" +
             "        <property name=\"port\" value=\"-1\"/>\n" +
+            "        <property name=\"serialization\" value=\"fastjson\"/>\n" +
             "    </bean>\n" +
             "\n" +
             "    <import resource=\"classpath*:@ApplicationName@-application-persistence.xml\"/>\n" +
@@ -344,6 +346,7 @@ public final class SpringXMLConst {
 
     public static final String DUBBO_PROTOCOL_CONFIG = "<bean id=\"dubboProtocolConfig\" class=\"com.alibaba.dubbo.config.ProtocolConfig\">\n" +
             "        <property name=\"port\" value=\"-1\"/>\n" +
+            "        <property name=\"serialization\" value=\"fastjson\"/>\n" +
             "    </bean>\n\n    ";
 
 

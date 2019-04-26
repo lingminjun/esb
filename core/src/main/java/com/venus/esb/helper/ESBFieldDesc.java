@@ -88,12 +88,15 @@ public final class ESBFieldDesc implements Serializable {
             param.isArray = true;
         }
         param.required = this.required;
-        param.defaultValue = this.defaultValue;
+        param.defaultValue = rationalDefaultValue(this.defaultValue,this.type,this.isArray || this.isList);
         return param;
     }
 
     //转化为ESBField,java对象feild描述
     public ESBField getField() {
+        return getField(false);
+    }
+    public ESBField getField(boolean isParam) {
         ESBField field = new ESBField();
         field.type = this.type;
         field.name = this.name;
@@ -101,9 +104,23 @@ public final class ESBFieldDesc implements Serializable {
         field.isArray = this.isArray;
         field.isList = this.isList;
 //        field.typeClass = this.typeClass;
-//        field.defaultValue = this.defaultValue;
+        if (isParam) {
+            field.defaultValue = rationalDefaultValue(this.defaultValue,this.type,this.isArray || this.isList);
+        }
 //        field.isRequestBody = this.isRequestBody;
         return field;
+    }
+
+    public static String rationalDefaultValue(String value, String type, boolean isArray) {
+        if (value != null) {
+            // 字符串有空字符的默认值，但是其他情况都没有
+            if ("java.lang.String".equals(type) && !isArray) {
+                return value;
+            } else if (!ESBT.isEmpty(value)){
+                return value;
+            }
+        }
+        return null;
     }
 
 //    @Override

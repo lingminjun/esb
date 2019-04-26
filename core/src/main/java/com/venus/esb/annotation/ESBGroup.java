@@ -40,6 +40,9 @@ public @interface ESBGroup {
      * 错误码定义类,定义格式如 @see ESBExceptionCodes
      *
      * @return
+     *
+     * @Deprecated 错误码文件将被迁移到ESBError中定义
      */
+    @Deprecated
     Class<?> codeDefine() default ESBExceptionCodes.class;
 }

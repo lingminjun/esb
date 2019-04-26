@@ -1,6 +1,8 @@
 package com.venus.esb.lang;
 
 import com.alibaba.dubbo.config.ApplicationConfig;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.TypeReference;
 import com.venus.esb.factory.ESBBeanFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
@@ -16,6 +18,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.*;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -64,6 +69,17 @@ public final class ESBT {
             return defaultValue;
         }
 
+        if (isTrueAlias(b)) {
+            return true;
+        } else if (isFalseAlias(b)) {
+            return false;
+        }
+
+        return defaultValue;
+    }
+
+    private static boolean isTrueAlias(String b) {
+        if (b == null) {return false;}
         if (b.equalsIgnoreCase("yes")
                 || b.equalsIgnoreCase("on")
                 || b.equalsIgnoreCase("1")
@@ -71,16 +87,21 @@ public final class ESBT {
                 || b.equalsIgnoreCase("y")
                 || b.equalsIgnoreCase("t")) {
             return true;
-        } else if (b.equalsIgnoreCase("no")
+        }
+        return false;
+    }
+
+    private static boolean isFalseAlias(String b) {
+        if (b == null) {return false;}
+        if (b.equalsIgnoreCase("no")
                 || b.equalsIgnoreCase("off")
                 || b.equalsIgnoreCase("0")
                 || b.equalsIgnoreCase("false")
                 || b.equalsIgnoreCase("n")
                 || b.equalsIgnoreCase("f")) {
-            return false;
+            return true;
         }
-
-        return defaultValue;
+        return false;
     }
 
     /**
@@ -117,6 +138,12 @@ public final class ESBT {
         String b = value.toString().trim();
         if (b == null || b.length() == 0) {
             return defaultValue;
+        }
+
+        if (isTrueAlias(b)) {
+            return 1;
+        } else if (isFalseAlias(b)) {
+            return 0;
         }
 
         try {
@@ -157,6 +184,12 @@ public final class ESBT {
         String b = value.toString().trim();
         if (b == null || b.length() == 0) {
             return defaultValue;
+        }
+
+        if (isTrueAlias(b)) {
+            return 1;
+        } else if (isFalseAlias(b)) {
+            return 0;
         }
 
         try {
@@ -200,6 +233,12 @@ public final class ESBT {
             return defaultValue;
         }
 
+        if (isTrueAlias(b)) {
+            return 1l;
+        } else if (isFalseAlias(b)) {
+            return 0l;
+        }
+
         try {
             return Long.parseLong(b);
         } catch (Throwable e) {}
@@ -238,7 +277,14 @@ public final class ESBT {
         if (value == null) {return defaultValue;}
 
         String b = value.toString().trim();
-        if (b == null || b.length() != 0) {
+        if (isTrueAlias(b)) {
+            return 1;
+        } else if (isFalseAlias(b)) {
+            return 0;
+        }
+
+        // 只取字符
+        if (b == null || b.length() != 1) {
             return defaultValue;
         }
 
@@ -289,6 +335,12 @@ public final class ESBT {
             return defaultValue;
         }
 
+        if (isTrueAlias(b)) {
+            return  1.0f;
+        } else if (isFalseAlias(b)) {
+            return  0.0f;
+        }
+
         try {
             return Float.parseFloat(b);
         } catch (Throwable e) {}
@@ -333,6 +385,12 @@ public final class ESBT {
         String b = value.toString().trim();
         if (b == null || b.length() == 0) {
             return defaultValue;
+        }
+
+        if (isTrueAlias(b)) {
+            return  1.0d;
+        } else if (isFalseAlias(b)) {
+            return  0.0d;
         }
 
         try {
@@ -381,6 +439,43 @@ public final class ESBT {
      */
     public static double doubleDecimal(final Float value) {
         return doubleDecimal(value,(double) 0);
+    }
+
+
+    /**
+     * value不合法时,返回defaultValue
+     * 主要以short来解析byte
+     * @param value
+     * @return
+     */
+    public static byte byteNumber(final CharSequence value) {
+        return byteNumber(value,(byte) 0);
+    }
+    public static byte byteNumber(final CharSequence value, final byte defaultValue) {
+        if (value == null) {return defaultValue;}
+
+
+        String string = value.toString();
+        Short st = null;
+        if (isTrueAlias(string)) {
+            st = 1;
+        } else if (isFalseAlias(string)) {
+            st = 0;
+        } else {
+            try {
+                st = Short.valueOf(string);
+            } catch (Throwable e) { }
+        }
+
+        if (st != null && -128 <= st && st <= 127) {
+            return st.byteValue();
+        } else {
+            byte[] bytes = string.getBytes();
+            if (bytes.length == 1) {
+                return bytes[0];
+            }
+            return defaultValue;
+        }
     }
 
     public static byte byteNumber(final Byte value, final byte defaultValue) {
@@ -826,6 +921,668 @@ public final class ESBT {
     }
 
     /**
+     * 类型转换
+     * 注意：若异常情况值类型一律返回0,非值类型一律返回null
+     * 此条部分场景已修复（注意：对象转换参照fastjson，故fastjson不支持情况一律不支持，主要表现在字符串形式boolean，不能转数值，如"true" to int）
+     *      容器 to array非属性情况，已经做了bool字符串兼容，如["true","false"] to int[]
+     * @param value
+     * @param type
+     * @param <T>
+     * @return
+     */
+    @SuppressWarnings({"unchecked", "raTwtypes"})
+    public static <T extends Object> T convert(Object value, Class<T> type, Type genericType) {
+
+        // 值类型，必须返回非空数字
+        if (type != null && type.isPrimitive() && value == null) {
+            return (T)defaultValue(type);
+        }
+
+        // 同类型或继承关系
+        if (value == null || type == null || (genericType == null && (value.getClass() == type || type.isAssignableFrom(value.getClass())))) {
+            return (T)value;
+        }
+
+        // 一、可字符化的数据处理
+        if (value instanceof CharSequence) {
+            return stringConvert((CharSequence)value,type,genericType);
+        }
+
+        // 二、数据类型的数据处理
+        if (value instanceof Number
+                || value instanceof Boolean
+                || value instanceof Character
+                || value.getClass().isPrimitive()) {
+            return stringConvert(value.toString(), type, genericType);
+        }
+
+        // 三、枚举类型
+        if (value.getClass().isEnum()) {
+            return stringConvert(((Enum)value).name(), type, genericType);
+        }
+
+        // 四、日期
+        if (value instanceof Date) {
+            return stringConvert(new SimpleDateFormat(DATE2_FORMAT).format((Date)value), type, genericType);
+        }
+        if (value instanceof java.sql.Date) {
+            long time = ((java.sql.Date) value).getTime();
+            return stringConvert(new SimpleDateFormat(DATE2_FORMAT).format(new Date(time)), type, genericType);
+        }
+        if (value instanceof java.sql.Timestamp) {
+            long time = ((java.sql.Timestamp) value).getTime();
+            return stringConvert(new SimpleDateFormat(DATE2_FORMAT).format(new Date(time)), type, genericType);
+        }
+        if (value instanceof java.sql.Time) {
+            long time = ((java.sql.Time) value).getTime();
+            return stringConvert(new SimpleDateFormat(DATE2_FORMAT).format(new Date(time)), type, genericType);
+        }
+
+        // 五、其他一律交给Fastjson处理，fastjson对属性容器的兼容并没有上面这么强大
+        String json = JSON.toJSONString(value,ESBConsts.FASTJSON_SERIALIZER_FEATURES);
+        //考虑fastjson无法兼容容器内字符"true","on",等，一下做兼容
+        json = fixFastJsonBoolToConvert(json);
+        return stringConvert(json,type,genericType);
+    }
+
+    private static Type getGenericClassByIndex(Type genericType, int index) {
+        Type clazz = null;
+        if (genericType instanceof ParameterizedType) {
+            ParameterizedType t = (ParameterizedType)genericType;
+            Type[] types = t.getActualTypeArguments();
+            clazz = types[index];
+        }
+
+        return clazz;
+    }
+
+    //考虑fastjson无法兼容容器内字符"true","false",等，一下做兼容
+    //若输入大写TRUE,FALSE,此处无法兼容
+    private static String fixFastJsonBoolToConvert(String json) {
+        if (ESBT.isEmpty(json)) {return json;}
+
+        json = json.replaceAll("\\:\\\"true\\\"\\}", ":true}");
+        json = json.replaceAll("\\:\\\"true\\\",", ":true,");
+        json = json.replaceAll("\\[\\\"true\\\"\\]", "[true]");
+        json = json.replaceAll("\\[\\\"true\\\",", "[true,");
+        json = json.replaceAll(",\\\"true\\\"\\]", ",true]");
+        json = json.replaceAll(",\\\"true\\\",", ",true,");
+
+        json = json.replaceAll("\\:\\\"false\\\"\\}", ":false}");
+        json = json.replaceAll("\\:\\\"false\\\",", ":false,");
+        json = json.replaceAll("\\[\\\"false\\\"\\]", "[false]");
+        json = json.replaceAll("\\[\\\"false\\\",", "[false,");
+        json = json.replaceAll(",\\\"false\\\"\\]", ",false]");
+        json = json.replaceAll(",\\\"false\\\",", ",false,");
+
+        return json;
+    }
+
+    private static final String DATE1_FORMAT = "yyyy-MM-dd HH:mm:ss";
+    private static final String DATE2_FORMAT = "yyyy-MM-dd HH:mm:ss SSS";
+
+
+    // 字符串转换
+    public static <T extends Object> T stringConvert(CharSequence str, Class<T> type, Type genericType) {
+        // 值类型，必须返回非空数字
+        if (type != null && type.isPrimitive() && str == null) {
+            return (T)defaultValue(type);
+        }
+
+        String string = str.toString();
+        if (type == String.class) {
+            return (T)string;
+        } else {
+            string = string.trim();
+        }
+
+        //1、基础类型无法返回null
+        if (type.isPrimitive()) {
+            if (char.class == type) {
+                return (T)(Character)character(string);
+            } else if (short.class == type) {
+                return (T)(Short)shortInteger(string);
+            } else if (int.class == type) {
+                return (T)(Integer)integer(string);
+            } else if (long.class == type) {
+                return (T)(Long)longInteger(string);
+            } else if (double.class == type) {
+                return (T)(Double)doubleDecimal(string);
+            } else if (float.class == type) {
+                return (T)(Float)floatDecimal(string);
+            } else if (byte.class == type) {
+                return (T)(Byte)byteNumber(string);
+            } else if (boolean.class == type) {
+                return (T)(Boolean)bool(string);
+            }
+
+            return null;
+        }
+
+        //2、枚举
+        if (type.isEnum()) {
+            try {
+                return (T)Enum.valueOf((Class<Enum>) type, string);
+            } catch (Throwable e) {}
+            return null;
+        }
+
+        //3、日期
+        if (type == Date.class || type == java.sql.Date.class || type == java.sql.Timestamp.class || type == java.sql.Time.class) {
+            if (isNumeric(string)) {
+                //1555471783
+                long s = longInteger(string);
+                if (string.length() < 13) {//转毫秒
+                    s = s * 1000;
+                }
+
+                if (type == Date.class) {
+                    return (T)(new Date(s));
+                } else if (type == java.sql.Date.class) {
+                    return (T)(new java.sql.Date(s));
+                } else if (type == java.sql.Timestamp.class) {
+                    return (T)(new java.sql.Timestamp(s));
+                } else if (type == java.sql.Time.class) {
+                    return (T)(new java.sql.Time(s));
+                }
+                return null;
+            }
+
+            // just support "yyyy-MM-dd HH:mm:ss" and "yyyy-MM-dd HH:mm:ss SSS"
+            Date date = null;
+            try {
+                if (string.length() > DATE1_FORMAT.length()) {
+                    date = new SimpleDateFormat(DATE2_FORMAT).parse(string);
+                } else {
+                    date = new SimpleDateFormat(DATE1_FORMAT).parse(string);
+                }
+            } catch (Throwable e) { }
+
+            if (date == null) {
+                return null;
+            }
+
+            if (type == java.sql.Date.class) {
+                return (T)(new java.sql.Date(date.getTime()));
+            } else if (type == java.sql.Timestamp.class) {
+                return (T)(new java.sql.Timestamp(date.getTime()));
+            } else if (type == java.sql.Time.class) {
+                return (T)(new java.sql.Time(date.getTime()));
+            }
+
+            return (T)date;
+        }
+
+        //4、 包装类型，无法解析是返回null与基础类型分开
+        if (Character.class == type) {//只取第一个字符
+            if (string.length() != 1) {
+                if (isTrueAlias(string)) {
+                    return (T)Character.valueOf((char) 1);
+                } else if (isFalseAlias(string)) {
+                    return (T)Character.valueOf((char) 0);
+                }
+                return null;
+            }
+            return (T)((Character)(string.charAt(0)));
+        } else if (type == BigInteger.class) {
+            try {
+                return (T)(new BigInteger(string));
+            } catch (Throwable e) {
+                if (isTrueAlias(string)) {
+                    return (T)Character.valueOf((char) 1);
+                } else if (isFalseAlias(string)) {
+                    return (T)Character.valueOf((char) 0);
+                }
+                return null;
+            }
+        } else if (type == BigDecimal.class) {
+            try {
+                return (T)(new BigDecimal(string));
+            } catch (Throwable e) {
+                if (isTrueAlias(string)) {
+                    return (T)Character.valueOf((char) 1);
+                } else if (isFalseAlias(string)) {
+                    return (T)Character.valueOf((char) 0);
+                }
+                return null;
+            }
+        } else if (type == Short.class) {
+            if (isTrueAlias(string)) {
+                return (T)Short.valueOf((short) 1);
+            } else if (isFalseAlias(string)) {
+                return (T)Short.valueOf((short) 0);
+            }
+            try {
+                return (T)Short.valueOf(string);
+            } catch (Throwable e) {
+                return null;
+            }
+        } else if (type == Integer.class) {
+            if (isTrueAlias(string)) {
+                return (T)Integer.valueOf((int) 1);
+            } else if (isFalseAlias(string)) {
+                return (T)Integer.valueOf((int) 0);
+            }
+            try {
+                return (T)Integer.valueOf(string);
+            } catch (Throwable e) {
+                return null;
+            }
+        } else if (type == Long.class) {
+            if (isTrueAlias(string)) {
+                return (T)Long.valueOf((int) 1);
+            } else if (isFalseAlias(string)) {
+                return (T)Long.valueOf((int) 0);
+            }
+            try {
+                return (T)Long.valueOf(string);
+            } catch (Throwable e) {
+                return null;
+            }
+        } else if (type == Double.class) {
+            if (isTrueAlias(string)) {
+                return (T)Double.valueOf(1.0d);
+            } else if (isFalseAlias(string)) {
+                return (T)Double.valueOf(0.0d);
+            }
+            try {
+                return (T)Double.valueOf(string);
+            } catch (Throwable e) {
+                return null;
+            }
+        } else if (type == Float.class) {
+            if (isTrueAlias(string)) {
+                return (T)Float.valueOf(1.0f);
+            } else if (isFalseAlias(string)) {
+                return (T)Float.valueOf(0.0f);
+            }
+            try {
+                return (T)Float.valueOf(string);
+            } catch (Throwable e) {
+                return null;
+            }
+        } else if (type == Byte.class) {// byte 字符转数值，或者byte
+            Short st = null;
+            if (isTrueAlias(string)) {
+                st = 1;
+            } else if (isFalseAlias(string)) {
+                st = 0;
+            } else {
+                try {
+                    st = Short.valueOf(string);
+                } catch (Throwable e) { }
+            }
+
+            if (st != null && -128 <= st && st <= 127) {
+                return (T)Byte.valueOf(st.byteValue());
+            } else {
+                byte[] bytes = string.getBytes();
+                if (bytes.length == 1) {
+                    return (T)Byte.valueOf(bytes[0]);
+                }
+                return null;
+            }
+        } else if (type == Boolean.class) {//需要支持各种类型
+            if (isTrueAlias(string)) {
+                return (T)Boolean.valueOf(true);
+            } else if (isFalseAlias(string)) {
+                return (T)Boolean.valueOf(false);
+            }
+            try {
+                return (T)Boolean.valueOf(string);
+            } catch (Throwable e) {}
+            return null;
+        }
+
+        //5、类
+        if (type == Class.class) {
+            try {
+                return (T)classForName(string);
+            } catch (Throwable e) {}
+            return null;
+        }
+
+        //6、容器结构
+        if (type.isArray() || Collection.class.isAssignableFrom(type)) {
+            Class<?> eleType = null;
+            if (type.isArray()) {
+                eleType = classForName(convertCoreType(type.getName()));
+            } else {
+                eleType = (Class<?>)getGenericClassByIndex(genericType, 0);
+            }
+
+            if (eleType == null) {
+                return null;
+            }
+
+            // 是数组才可以，否则无法转换
+            if (string.startsWith("[") && string.endsWith("]")) {
+               // 直接使用fastjson转基础类型，存在类型无法转换问题，此处还需特殊处理
+                List list = null;
+                if (isTypeCompatibility(eleType,false)) {//进一步强化兼容
+                    List temp = null;
+                    try {
+                        temp = JSON.parseArray(string, String.class);
+                    } catch (Throwable e) { }
+
+                    if (temp != null) {
+                        list = new ArrayList();
+                        for (Object obj : temp) {
+                            list.add(convert(obj,eleType,null));
+                        }
+                    }
+                } else {
+                    try {
+                        if (genericType != null) {//直接采用泛型参数解析
+                            list = JSON.parseObject(string, genericType);
+                        } else {
+                            list = JSON.parseArray(string, eleType);
+                        }
+                    } catch (Throwable e) { }
+                }
+
+                if (list != null) {
+                    if (type == int[].class) {
+                        return (T)integers(list);
+                    } else if (type == short[].class) {
+                        return (T)shorts(list);
+                    } else if (type == long[].class) {
+                        return (T)longs(list);
+                    } else if (type == float[].class) {
+                        return (T)floats(list);
+                    } else if (type == double[].class) {
+                        return (T)doubles(list);
+                    } else if (type == char[].class) {
+                        return (T)chars(list);
+                    } else if (type == byte[].class) {
+                        return (T)bytes(list);
+                    } else if (type == Integer[].class) {
+                        return (T)list.toArray(new Integer[0]);
+                    } else if (type == Short[].class) {
+                        return (T)list.toArray(new Short[0]);
+                    } else if (type == Long[].class) {
+                        return (T)list.toArray(new Long[0]);
+                    } else if (type == Float[].class) {
+                        return (T)list.toArray(new Float[0]);
+                    } else if (type == Double[].class) {
+                        return (T)list.toArray(new Double[0]);
+                    } else if (type == Character[].class) {
+                        return (T)list.toArray(new Character[0]);
+                    } else if (type == Byte[].class) {
+                        return (T)list.toArray(new Byte[0]);
+                    } else if (type == String[].class) {
+                        return (T)list.toArray(new String[0]);
+                    } else if (type == Object[].class) {
+                        return (T)list.toArray(new Object[0]);
+                    } else if (type.isArray()) {//转换
+                        Object array = null;
+                        try {
+                            array = Array.newInstance(eleType,list.size());
+                        } catch (Throwable e) {}
+                        return (T)array;
+                    } else if (type == LinkedList.class) {
+                        return (T)(new LinkedList(list));
+                    } else if (type == ArrayDeque.class) {
+                        return (T)(new ArrayDeque(list));
+                    } else if (type == Stack.class) {
+                        Stack stack = new Stack();
+                        for (Object o : list) {
+                            stack.push(o);
+                        }
+                        return (T)stack;
+                    } else if (type == Vector.class) {
+                        return (T)(new Vector(list));
+                    } else if (type == ArrayList.class || type == List.class) {
+                        return (T)(new ArrayList(list));
+                    } else if (type == HashSet.class || type == Set.class) {
+                        return (T)(new HashSet<>(list));
+                    } else {
+                        return (T)list;
+                    }
+                }
+            }
+
+            // 一下是特殊情况，发现传入非json格式
+            if (char[].class == type) {
+                int len = string.length();
+                char[] chars = new char[len];
+                try {
+                    string.getChars(0, len, chars, 0);
+                } catch (Throwable e) {
+                    return null;
+                }
+                return (T)chars;
+            } else if (byte[].class == type) {
+                return (T)string.getBytes();
+            } else if (Character[].class == type) {
+                int len = string.length();
+                Character[] chars = new Character[len];
+                for(int i = 0; i < len; i++) {
+                    chars[i] = string.charAt(i);
+                }
+                return (T)chars;
+            } else if (Byte[].class == type) {
+                byte[] bytes = string.getBytes();
+                int len = bytes.length;
+                Byte[] chars = new Byte[len];
+                for(int i = 0; i < len; i++) {
+                    chars[i] = bytes[i];
+                }
+                return (T)chars;
+            }
+
+            return null;
+        }
+
+        //7 其他结构数据，fastjson无法解决属性容器兼容，如属性的是Integer[]
+        Object obj = null;
+        try {
+            if (genericType != null) {// 泛型对象处理
+                obj = JSON.parseObject(string, genericType);
+            } else {
+                obj = JSON.parseObject(string, type);
+            }
+        } catch (Throwable e) {}
+
+        return (T)obj;
+    }
+
+//    // 数组转换
+//    public static int[] convertArray(Integer[] array) {
+//        if (array == null) {
+//            return null;
+//        }
+//        int[] ary = new int[array.length];
+//        for (int i = 0; i < array.length; i++) {
+//            Integer v = array[i];
+//            if (v != null) {
+//                ary[i] = v.intValue();
+//            }
+//        }
+//        return ary;
+//    }
+//
+//    public static short[] convertArray(Short[] array) {
+//        if (array == null) {
+//            return null;
+//        }
+//        short[] ary = new short[array.length];
+//        for (int i = 0; i < array.length; i++) {
+//            Short v = array[i];
+//            if (v != null) {
+//                ary[i] = v.shortValue();
+//            }
+//        }
+//        return ary;
+//    }
+//
+//
+//    public static long[] convertArray(Long[] array) {
+//        if (array == null) {
+//            return null;
+//        }
+//        long[] ary = new long[array.length];
+//        for (int i = 0; i < array.length; i++) {
+//            Long v = array[i];
+//            if (v != null) {
+//                ary[i] = v.longValue();
+//            }
+//        }
+//        return ary;
+//    }
+//
+//
+//    public static float[] convertArray(Float[] array) {
+//        if (array == null) {
+//            return null;
+//        }
+//        float[] ary = new float[array.length];
+//        for (int i = 0; i < array.length; i++) {
+//            Float v = array[i];
+//            if (v != null) {
+//                ary[i] = v.floatValue();
+//            }
+//        }
+//        return ary;
+//    }
+//
+//    public static double[] convertArray(Double[] array) {
+//        if (array == null) {
+//            return null;
+//        }
+//        double[] ary = new double[array.length];
+//        for (int i = 0; i < array.length; i++) {
+//            Double v = array[i];
+//            if (v != null) {
+//                ary[i] = v.doubleValue();
+//            }
+//        }
+//        return ary;
+//    }
+//
+//
+//    public static boolean[] convertArray(Boolean[] array) {
+//        if (array == null) {
+//            return null;
+//        }
+//        boolean[] ary = new boolean[array.length];
+//        for (int i = 0; i < array.length; i++) {
+//            Boolean v = array[i];
+//            if (v != null) {
+//                ary[i] = v.booleanValue();
+//            }
+//        }
+//        return ary;
+//    }
+//
+//
+//    public static char[] convertArray(Character[] array) {
+//        if (array == null) {
+//            return null;
+//        }
+//        char[] ary = new char[array.length];
+//        for (int i = 0; i < array.length; i++) {
+//            Character v = array[i];
+//            if (v != null) {
+//                ary[i] = v.charValue();
+//            }
+//        }
+//        return ary;
+//    }
+//
+//
+//    public static byte[] convertArray(Byte[] array) {
+//        if (array == null) {
+//            return null;
+//        }
+//        byte[] ary = new byte[array.length];
+//        for (int i = 0; i < array.length; i++) {
+//            Byte v = array[i];
+//            if (v != null) {
+//                ary[i] = v.byteValue();
+//            }
+//        }
+//        return ary;
+//    }
+
+
+    public static boolean isTypeCompatibility(Class<?> type, boolean array) {
+        if (type == Character.class
+                || type == char.class
+                || type == Boolean.class
+                || type == boolean.class
+                || type == Byte.class
+                || type == byte.class
+                || type == Integer.class
+                || type == int.class
+                || type == Short.class
+                || type == short.class
+                || type == Long.class
+                || type == long.class
+                || type == Float.class
+                || type == float.class
+                || type == Double.class
+                || type == double.class
+                || type == String.class
+                || type == BigInteger.class
+                || type == BigDecimal.class
+                || type == Date.class
+                || type == java.sql.Date.class
+                || type == java.sql.Timestamp.class
+                || type == java.sql.Time.class) {
+            return true;
+        }
+
+        if (type.isEnum()) {
+            return true;
+        }
+
+        if (!array) {
+            return false;
+        }
+
+        if (type == Character[].class
+                || type == char[].class
+                || type == Boolean[].class
+                || type == boolean[].class
+                || type == Byte[].class
+                || type == byte[].class
+                || type == Integer[].class
+                || type == int[].class
+                || type == Short[].class
+                || type == short[].class
+                || type == Long[].class
+                || type == long[].class
+                || type == Float[].class
+                || type == float[].class
+                || type == Double[].class
+                || type == double[].class
+                || type == String[].class
+                || type == BigInteger[].class
+                || type == BigDecimal[].class
+                || type == Date[].class
+                || type == java.sql.Date[].class
+                || type == java.sql.Timestamp[].class
+                || type == java.sql.Time[].class
+                ) {
+            return true;
+        }
+
+        return false;
+    }
+
+
+    /**
+     * 判断是数字，传入时自行trim
+     * @param str
+     * @return
+     */
+    public static boolean isNumeric(String str){
+        if (str == null || str.length() == 0) {return false;}
+        Pattern pattern = Pattern.compile("[0-9]*");
+        return pattern.matcher(str).matches();
+    }
+    /**
      * 基础类型
      *
      * @see     java.lang.Boolean#TYPE
@@ -1000,6 +1757,35 @@ public final class ESBT {
         else {return null;}
     }
 
+    /**
+     * 初始值设置
+     * @param clazz
+     * @return
+     */
+    public static Object defaultValue(Class<?> clazz) {
+        if (clazz == null) {
+            return null;
+        } else if (clazz == Boolean.TYPE) {
+            return Boolean.valueOf(false);
+        } else if (clazz == Character.TYPE) {
+            return Character.valueOf((char) 0);
+        } else if (clazz == Byte.TYPE) {
+            return Byte.valueOf((byte)0);
+        } else if (clazz == Short.TYPE) {
+            return Short.valueOf((short)0);
+        } else if (clazz == Integer.TYPE) {
+            return Integer.valueOf(0);
+        } else if (clazz == Long.TYPE) {
+            return Long.valueOf(0l);
+        } else if (clazz == Float.TYPE) {
+            return Float.valueOf(0.0f);
+        } else if (clazz == Double.TYPE) {
+            return Double.valueOf(0.0d);
+        } else {
+            return null;
+        }
+    }
+
 
     /**
      * 包装成Array类型 , 若已经是array则不发生变化,若list将拆包
@@ -1104,14 +1890,54 @@ public final class ESBT {
      */
     public static <T extends Object> T createObject(String className, Class<T> type) {
         if (!ESBT.isEmpty(className)) {
+            Class<?> clazz = ESBT.classForName(className);
+            if (clazz == null || !type.isAssignableFrom(clazz)) {
+                return null;
+            }
             try {
-                Class<?> clazz = ESBT.classForName(className);
-                if (clazz != null && type.isAssignableFrom(clazz)) {
-                    return (T)clazz.newInstance();
-                }
-            } catch (Throwable e) {}
+                return (T)forceNewInstance(clazz);
+            } catch (Throwable e) {
+               // nothing
+            }
         }
         return null;
+    }
+
+    /**
+     * 强行创建对象，非默认构造函数将抛出异常
+     * @param cls
+     * @return
+     */
+    public static Object forceNewInstance(Class<?> cls) {
+        try {
+            return cls.newInstance();
+        } catch (Throwable t) {
+            try {
+                Constructor<?>[] constructors = cls.getDeclaredConstructors();
+                if (constructors != null && constructors.length == 0) {
+                    throw new RuntimeException("Illegal constructor: " + cls.getName());
+                }
+                Constructor<?> constructor = constructors[0];
+                if (constructor.getParameterTypes().length > 0) {
+                    for (Constructor<?> c : constructors) {
+                        if (c.getParameterTypes().length < constructor.getParameterTypes().length) {
+                            constructor = c;
+                            if (constructor.getParameterTypes().length == 0) {
+                                break;
+                            }
+                        }
+                    }
+                }
+                constructor.setAccessible(true);
+                return constructor.newInstance(new Object[constructor.getParameterTypes().length]);
+            } catch (InstantiationException e) {
+                throw new RuntimeException(e.getMessage(), e);
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e.getMessage(), e);
+            } catch (InvocationTargetException e) {
+                throw new RuntimeException(e.getMessage(), e);
+            }
+        }
     }
 
     /**
@@ -1258,6 +2084,27 @@ public final class ESBT {
         }
     }
 
+    public static Object realize(Object pojo, Class<?> type, Type genericType) {
+        return convert(pojo, type, genericType);
+    }
+
+    /**
+     * 返回对应类型的数据
+     * @param objs
+     * @param types
+     * @param gtypes
+     * @return
+     */
+    public static Object[] realize(Object[] objs, Class<?>[] types, Type[] gtypes) {
+        if (objs.length != types.length || objs.length != gtypes.length)
+            throw new IllegalArgumentException("args.length != types.length");
+        Object[] dests = new Object[objs.length];
+        for (int i = 0; i < objs.length; i++) {
+            dests[i] = realize(objs[i], types[i], gtypes[i]);
+        }
+        return dests;
+    }
+
     /**
      * 循环向上转型, 获取对象的 DeclaredField
      * 包含所有属性 private、protected、default、public
@@ -1321,18 +2168,32 @@ public final class ESBT {
      * @param fieldName
      * @return
      */
-    public static Field getObjectDeclaredField(Object object, String fieldName){
+    public static Field getDeclaredField(Object object, String fieldName){
+        return getDeclaredField(object,fieldName,null);
+    }
+
+    public static Field getDeclaredField(Object object, String fieldName, Class root){
 
         Class<?> clazz = object.getClass() ;
         for(; clazz != Object.class; clazz = clazz.getSuperclass()) {
+
+            if (clazz == root || clazz == Object.class) {//若到了基类则直接返回
+                return null;
+            }
+
             try {
-                return clazz.getDeclaredField(fieldName) ;
+                Field field = clazz.getDeclaredField(fieldName);
+                if (field !=  null) {
+                    if ((field.getModifiers() & Modifier.STATIC) == Modifier.STATIC) {
+                        return null;
+                    }
+                    return field;
+                }
             } catch (Throwable e) {
                 //这里甚么都不要做！并且这里的异常必须这样写，不能抛出去。
                 //如果这里的异常打印或者往外抛，则就不会执行clazz = clazz.getSuperclass(),最后就不会进入到父类中了
             }
         }
-
         return null;
     }
 
@@ -1378,7 +2239,7 @@ public final class ESBT {
             if (value instanceof Map) {
                 value = ((Map) value).get(fieldName);
             } else {//对于一般类型
-                Field field = getObjectDeclaredField(value,fieldName);
+                Field field = getDeclaredField(value,fieldName);
                 if (field == null) {
                     return null;
                 }
@@ -1465,7 +2326,7 @@ public final class ESBT {
             ((Map) obj).put(fieldName, value);
             return true;
         } else {//对于一般类型
-            Field field = getObjectDeclaredField(obj,fieldName);
+            Field field = getDeclaredField(obj,fieldName);
             if (field == null) {
                 return false;
             }

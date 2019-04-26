@@ -47,9 +47,9 @@ public final class ESBAPIJsonSerializer extends ESBAPISerializer {
         }
 
         Object obj = JSON.parse(data);
-        if (obj instanceof JSONObject && type != null) {
-            ((JSONObject) obj).put("class",type);
-        }
+//        if (obj instanceof JSONObject && type != null) {
+//            ((JSONObject) obj).put("class",type);
+//        }
 
         if (isList && !(obj instanceof JSONArray)) {
             ArrayList list =  new ArrayList();

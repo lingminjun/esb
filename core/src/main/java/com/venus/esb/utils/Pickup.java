@@ -1,5 +1,7 @@
 package com.venus.esb.utils;
 
+import com.venus.esb.lang.ESBT;
+
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.List;
@@ -54,7 +56,7 @@ public final class Pickup {
                 return get(Array.get(source,i),nextPath);
             }
         } else {//采用反射的方式取值
-            Field field = Injects.getDeclaredField(source,fieldPath,Object.class);
+            Field field = ESBT.getDeclaredField(source,fieldPath);
             if (field != null) {
                 Object obj = null;
                 try {

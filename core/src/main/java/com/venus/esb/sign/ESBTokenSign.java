@@ -239,12 +239,20 @@ public final class ESBTokenSign {
 
         if (token == null) {
             token = new ESBToken();
-            if (context.uid != null && context.uid.length() > 0) {
+            token.did = context.did;
+            if (!ESBT.isEmpty(context.uid)) {
                 token.scope = "user";
-            } else if (context.acct != null && context.acct.length() > 0) {
+            } else if (!ESBT.isEmpty(context.acct)) {
                 token.scope = "account";
             } else {
-                token.scope = "user";
+                token.scope = "temporary";
+            }
+            // 补充参数
+            if (!ESBT.isEmpty(context.uid)) {
+                token.uid = context.uid;
+            }
+            if (!ESBT.isEmpty(context.acct)) {
+                token.acct = context.acct;
             }
         } else {//反向注入uid和acct--(重要)
             if (token.uid != null && context.uid == null) {

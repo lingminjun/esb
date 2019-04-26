@@ -59,4 +59,17 @@ public @interface ESBAPI {
      */
     @Deprecated
     boolean needVerify() default false;
+
+    /**
+     * 接口相关错误码
+     * @return
+     */
+    ESBError[] codes() default {};
+
+    /**
+     * 操作权限，只在api.security == accountAuth和api.security == userAuth时有效
+     * 表示账号或者用户当前是否有权调用此接口，网关可以接入权限控制服务，以帮助控制访问许可
+     */
+    boolean permit() default false;
+
 }

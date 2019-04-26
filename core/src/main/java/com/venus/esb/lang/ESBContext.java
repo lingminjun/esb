@@ -702,7 +702,8 @@ public class ESBContext implements Serializable {
             }
         }
 
-        if (cookies != null) {
+        // 只要标准参数可以放到cookie，非标准参数，一律不允许放大cookie
+        if (cookies != null && ESBSTDKeys.isSTDKey(key)) {
             // 特殊cookie处理
             ESBCookie c = null;
             if (ESBT.integer(context.aid) > 0 && (ESBSTDKeys.isApplicationCookieKey(key))) {

@@ -1,6 +1,7 @@
 package com.venus.esb;
 
 
+import com.alibaba.fastjson.parser.ParserConfig;
 import com.venus.esb.config.ESBConfigCenter;
 import com.venus.esb.factory.ESBBeanFactory;
 import com.venus.esb.idl.ESBAPIDef;
@@ -65,6 +66,12 @@ public final class ESB {
         // 100以内: 表示要验证【图片验证码】,
         // 100以上: 直接拒绝
         APIRiskyLevel sniffer(ESB esb, ESBAPIInfo info,ESBAPIContext context,Map<String,String> params, Map<String,ESBCookie> cookies) throws ESBException;
+    }
+
+    // fastjson白名单
+    static {
+        ESBFastJsonSupport.initialize();
+        ParserConfig.getGlobalInstance().addAccept("com.venus.esb.ESBAPIContext");
     }
 
     public static enum APIRiskyLevel {
@@ -415,12 +422,12 @@ public final class ESB {
 
         //最后转文本
         String rst = serializer.serialized(obj);
-        if (rst != null) {//过滤掉dubbo解析数据的class
-            //"class":"com.venus.scm.entities.ScmSkuImagePOJO",
-            rst = rst.replaceAll("\\{\"class\":\"[a-zA-Z_\\$]+[\\w\\$\\.]*\"\\}", "{}");
-            rst = rst.replaceAll("\\{\"class\":\"[a-zA-_\\$]+[\\w\\$\\.]*\",", "{");
-            rst = rst.replaceAll(",\"class\":\"[a-zA-_\\$]+[\\w\\$\\.]*\"", "");
-        }
+//        if (rst != null) {//过滤掉dubbo解析数据的class，采用fasjson后不需要此配置
+//            //"class":"com.venus.scm.entities.ScmSkuImagePOJO",
+//            rst = rst.replaceAll("\\{\"class\":\"[a-zA-Z_\\$]+[\\w\\$\\.]*\"\\}", "{}");
+//            rst = rst.replaceAll("\\{\"class\":\"[a-zA-_\\$]+[\\w\\$\\.]*\",", "{");
+//            rst = rst.replaceAll(",\"class\":\"[a-zA-_\\$]+[\\w\\$\\.]*\"", "");
+//        }
         return rst;
     }
 

@@ -669,6 +669,19 @@ public class ESBAPIHelper {
         savePojoToAPI(pojo, structs);
     }
 
+    public static List<ESBAPIStruct> getStructs(Set<String> structNames) {
+        if (structNames == null && structNames.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<ESBAPIStruct> list  = new ArrayList<>();
+        for (String name : structNames) {
+            ESBPOJOWrapper pojo = pojos.get(name);
+            if (pojo != null) {
+                list.add(pojo.convertStruct());
+            }
+        }
+        return list;
+    }
 
     private static void parseReturnType(Method method, Class dubboServiceClazz, ESBAPIInfo esbapiInfo) {
         ESBPOJOWrapper tempReturnedPOJO = new ESBPOJOWrapper();

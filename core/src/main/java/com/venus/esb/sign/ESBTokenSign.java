@@ -414,6 +414,11 @@ public final class ESBTokenSign {
         //      4、其他token，不做校验
 
         if (!ESBT.isEmpty(client.dna)) {
+
+            // 参照contex.generateClient()来定义auth
+            int userAuth = ESBSecurityLevel.deviceAuth.authorize(ESBSecurityLevel.userAuth.authorize(0));
+            int acctAuth = ESBSecurityLevel.deviceAuth.authorize(ESBSecurityLevel.accountAuth.authorize(0));
+
             // 第1种情况，injectDeviceToken
             if (client.securityLevel == ESBSecurityLevel.deviceAuth.getCode()) {
                 // 说明此处user agent被串改
@@ -430,8 +435,8 @@ public final class ESBTokenSign {
                 }
             }
             // 第2种情况 不需要验证dna，此处只需记录会话id
-            else if (client.securityLevel == ESBSecurityLevel.userAuth.getCode()
-                    || client.securityLevel == ESBSecurityLevel.accountAuth.getCode()) {
+            else if (client.securityLevel == userAuth
+                    || client.securityLevel == acctAuth) {
                 // 依靠did签署，顾只要验证dtoken是合法，此处utoken肯定合法
                 /*
                 if (dtoken != null && dtoken.length() > 0) {

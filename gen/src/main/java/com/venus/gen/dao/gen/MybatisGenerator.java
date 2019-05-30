@@ -5,6 +5,7 @@ import com.venus.esb.lang.ESBConsts;
 import com.venus.esb.lang.ESBT;
 import com.venus.esb.utils.FileUtils;
 import com.venus.gen.SpringXMLConst;
+import com.venus.gen.ai.OptimizeSQL;
 import com.venus.gen.dao.SQL;
 import com.venus.gen.dao.TableDAO;
 import com.venus.gen.dao.ViewDAO;
@@ -105,6 +106,10 @@ public class MybatisGenerator extends Generator {
 
         public String getType() {
             return type;
+        }
+
+        public boolean isStringType() {
+            return MybatisGenerator.MYSQL_STRING_TYPE.contains(type);
         }
 
         public String getCmmt() {
@@ -271,8 +276,23 @@ public class MybatisGenerator extends Generator {
             HashMap<String,List<Column>> methods = new HashMap<String, List<Column>>();
             for (ColumnIndex column : indexs) {
                 if (column.isPrimary) { continue; }
+                // 未来不再需要，因为唯一所以已经有findBy方法
+                //if (column.isUnique) { continue; }
 
                 buildMethods(column.columns,"queryBy",methods,true);
+            }
+
+            return methods;
+        }
+
+        // 唯一索引方法
+        public Map<String,List<Column>> allUniqueIndexQueryMethod(boolean containPrimary) {
+
+            HashMap<String,List<Column>> methods = new HashMap<String, List<Column>>();
+            for (ColumnIndex column : indexs) {
+                if (!column.isUnique) { continue; }
+                if (!containPrimary && column.isPrimary) {continue;}
+                buildMethods(column.columns,"findBy",methods,false);
             }
 
             return methods;
@@ -449,6 +469,21 @@ public class MybatisGenerator extends Generator {
             return queryWhere.toString();
         }
 
+        public String flatAllColumns(String alias) {
+            StringBuilder cols = new StringBuilder();
+            for (MybatisGenerator.Column cl : columns) {
+
+                if (cols.length() > 0) {
+                    cols.append(",");
+                }
+
+                if (!ESBT.isEmpty(alias)) {
+                    cols.append("`" + alias + "`.");
+                }
+                cols.append("`" + cl.name + "`");
+            }
+            return cols.toString();
+        }
 
     }
 
@@ -692,7 +727,7 @@ public class MybatisGenerator extends Generator {
         this.sqlsSourcePath = sqlsSourcePath;
         this.mapperSettingName = relativeMapperPath;
         this.tablePrefix = tablePrefix;
-        this.tables = parseSqlTables(sqlsSourcePath,tablePrefix);//解析sqls中的tables
+        this.tables = parseSqlFileTables(sqlsSourcePath,tablePrefix);//解析sqls中的tables
     }
 
     public MybatisGenerator(ProjectModule rootProject, ProjectModule project,  String sqlsSourcePath, String tablePrefix,String relativeMapperPath) {
@@ -714,7 +749,7 @@ public class MybatisGenerator extends Generator {
         this.sqlsSourcePath = sqlsSourcePath;
         this.mapperSettingName = relativeMapperPath;
         this.tablePrefix = tablePrefix;
-        this.tables = parseSqlTables(sqlsSourcePath,tablePrefix);//解析sqls中的tables
+        this.tables = parseSqlFileTables(sqlsSourcePath,tablePrefix);//解析sqls中的tables
     }
 
 
@@ -743,7 +778,7 @@ public class MybatisGenerator extends Generator {
 
         List<MapperInfo> mappers = new ArrayList<MapperInfo>();
         for (Table table : tables) {
-            MapperInfo mapperInfo = genTheTable(table,this.packageName(),dobjDir,daoDir,mapDir);
+            MapperInfo mapperInfo = genTheTable(table,this.packageName(),dobjDir,daoDir,mapDir, tables);
             if (mapperInfo != null) {
                 mappers.add(mapperInfo);
             }
@@ -800,10 +835,14 @@ public class MybatisGenerator extends Generator {
         return builder.toString();
     }
 
-    private static List<Table> parseSqlTables(String sqlsSourcePath, String tablePrefix) {
-
+    public static List<Table> parseSqlFileTables(String sqlsSourcePath, String tablePrefix) {
         //读取sql文件
         String sqlsContent = getSqlsContent(sqlsSourcePath);
+        return parseSqlTables(sqlsContent,tablePrefix);
+
+    }
+
+    public static List<Table> parseSqlTables(String sqlsContent, String tablePrefix) {
 
         List<Table> tables = new ArrayList<Table>();
         List<ViewTable> viewTables = new ArrayList<ViewTable>();
@@ -1350,7 +1389,7 @@ public class MybatisGenerator extends Generator {
         String sql;//对应的sql
     }
 
-    private static MapperInfo genTheTable(Table table,String packName, String dobjDir,String daoDir,String mapDir) {
+    private static MapperInfo genTheTable(Table table,String packName, String dobjDir,String daoDir,String mapDir, List<Table> allTables) {
         if (table == null || table.columns.size() == 0) {
             return null;
         }
@@ -1373,7 +1412,7 @@ public class MybatisGenerator extends Generator {
 
         writeDObject(dobjFile,name,packName,table);
         List<MapperMethod> methods = writeDAObject(daoFile,name,packName,table);
-        writeMapper(dmapFile,name,packName,table, methods);
+        writeMapper(dmapFile,name,packName,table, methods, allTables);
 
         //记录mapper信息
         mapperInfo.daoClassName = packName + ".dao." + name + "DAO";
@@ -1678,6 +1717,27 @@ public class MybatisGenerator extends Generator {
         //类定义
         content.append("public interface " + className + "IndexQueryDAO extends TableDAO<" + className + "DO> { \n");
 
+        //唯一索引查找方法
+        Map<String,List<Column>> findMethods = table.allUniqueIndexQueryMethod(true);
+        List<String> findMethodNames = new ArrayList<String>(findMethods.keySet());
+        Collections.sort(findMethodNames);
+        for (String methodName : findMethodNames) {
+
+            List<Column> cols = findMethods.get(methodName);
+
+            content.append("    /**\n");
+            content.append("     * 根据以下唯一索引字段查询实体对象集\n");
+
+            StringBuilder params = new StringBuilder();
+            buildMethodParams(cols,table,content,params,true);
+
+            content.append("     * @return\n");
+            content.append("     */\n");
+            content.append("    public " + className + "DO " + methodName + "(");
+            content.append(params.toString());
+            content.append(");\n\r\n\r");
+        }
+
         //查询方法
         Map<String,List<Column>> queryMethods = table.allIndexQueryMethod();
         List<String> methodNames = new ArrayList<String>(queryMethods.keySet());
@@ -1881,7 +1941,7 @@ public class MybatisGenerator extends Generator {
         }
     }
 
-    private static void writeMapper(File file, String className, String packageName, Table table, List<MapperMethod> methods) {
+    private static void writeMapper(File file, String className, String packageName, Table table, List<MapperMethod> methods, List<Table> allTables) {
 
         String doName = table.getDObjectClassName(packageName); //
         String daoName = table.getDAOClassName(packageName);    //
@@ -2129,6 +2189,22 @@ public class MybatisGenerator extends Generator {
         }
 
         if (table.hasIndexQuery()) {
+            // 针对唯一索引建查询语句
+            Map<String, List<Column>> findMethods = table.allUniqueIndexQueryMethod(true);
+            List<String> findMethodNames = new ArrayList<String>(findMethods.keySet());
+            Collections.sort(findMethodNames);
+            for (String methodName : findMethodNames) {
+                List<Column> tcols = findMethods.get(methodName);
+                String queryWhere = Table.getSqlWhereFragment(tcols, table);
+                content.append("    <select id=\"" + methodName + "\" resultMap=\"" + resultEntity + "\">\n");
+                content.append("        select " + cols.toString() + " \n");
+                content.append("        from `" + table.name + "` \n");
+                content.append("        where ");
+                content.append(queryWhere);
+                content.append("        limit 1\n");
+                content.append("    </select>\n\n");
+            }
+
             // 针对索引建查询语句
             Map<String, List<Column>> queryMethods = table.allIndexQueryMethod();
             List<String> methodNames = new ArrayList<String>(queryMethods.keySet());
@@ -2199,6 +2275,7 @@ public class MybatisGenerator extends Generator {
             content.append("    <!-- Custom sqls mapper -->\n");
             for (MapperMethod mapperMethod : methods) {
                 String sql = mapperMethod.sql.trim();//.toLowerCase();
+                sql = OptimizeSQL.tidy(sql,allTables); // 增加sql优化逻辑
 
                 //处理特殊字符
                 sql = sql.replaceAll("<\\!\\[((?i)cdata)\\[\\s+<>\\s+\\]\\]>"," <> ");

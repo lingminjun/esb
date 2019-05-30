@@ -11,12 +11,8 @@ import com.alibaba.dubbo.rpc.service.GenericException;
 import com.alibaba.dubbo.rpc.service.GenericService;
 import com.venus.esb.config.ESBConfigCenter;
 import com.venus.esb.dubbo.filter.ESBEchoFilter;
-import com.venus.esb.lang.ESBException;
-import com.venus.esb.lang.ESBExceptionCodes;
-import com.venus.esb.lang.ESBRuntimeException;
-import com.venus.esb.lang.ESBT;
+import com.venus.esb.lang.*;
 
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -24,6 +20,11 @@ import java.util.regex.Pattern;
  * Created by lingminjun on 17/2/8.
  */
 public final class ESBGenericCaller {
+
+    // fastjson白名单
+    static {
+        ESBFastJsonSupport.initialize();
+    }
 
 //    private static final Integer RPC_TIME_OUT = 3000;
 

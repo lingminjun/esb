@@ -2,6 +2,7 @@ package com.venus.gen.service.gen;
 
 import com.venus.esb.ESBSecurityLevel;
 import com.venus.esb.lang.ESBConsts;
+import com.venus.esb.lang.ESBT;
 import com.venus.esb.utils.FileUtils;
 import com.venus.gen.Generator;
 import com.venus.gen.SpringXMLConst;
@@ -10,6 +11,8 @@ import com.venus.gen.dao.gen.MybatisGenerator;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created with IntelliJ IDEA.
@@ -418,13 +421,21 @@ public class ServiceGenerator extends Generator {
         return true;
     }
 
+
+
     private static void writeServiceImpl(File file, String projectName, String currentPackageName,String daoPackageName,String apiPackageName,  String sqlsSourcePath, String groupName, Class exceptionClass, ESBSecurityLevel security, MybatisGenerator.Table table, boolean isDubboProject, boolean genXmlConfig) {
         String theSecurity = "ESBSecurityLevel." + security.toString();
 
+        // 由于auto cache引入，需要提前检查原有文件是否包含auto cache
+        HashMap<String,Set<String>> AI = new HashMap<String, Set<String>>();
+        scanUsingAutoCache(file.getAbsolutePath(),AI);
+
         StringBuilder serviceContent = new StringBuilder();
         serviceContent.append("package " + currentPackageName + ".service;\n\r\n\r");
-//        serviceContent.append("import com.lmj.stone.cache.AutoCache;\n");
         serviceContent.append("import com.venus.esb.utils.Injects;\n");
+        if (hasUsingAutoCache(AI)) {
+            serviceContent.append("import com.venus.foundation.cache.AutoCache;");
+        }
         serviceContent.append("import org.slf4j.LoggerFactory;\n");
 //        serviceContent.append("import com.lmj.stone.service.BlockUtil;\n");
         serviceContent.append("import org.springframework.jdbc.datasource.DataSourceTransactionManager;\n");
@@ -488,31 +499,46 @@ public class ServiceGenerator extends Generator {
         String tableModelName = toHumpString(table.getAlias(), true);
 
         String pojoName = table.getSimplePOJOClassName();
-        //所有基本的增删修查
 
+        //所有基本的增删修查
         if (!table.justViewTable()) {
             //增加单个
-            APIGenerator.writeCreateMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true);
+            APIGenerator.writeCreateMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, AI);
 
             //批量增加
-            APIGenerator.writeBatchCreateMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true);
+            APIGenerator.writeBatchCreateMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, AI);
 
             //删，单个删除
-            APIGenerator.writeDeleteMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true);
+            APIGenerator.writeDeleteMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, AI);
 
             //更新某个数据，拆开每个字段
-            APIGenerator.writeUpdateMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true);
+            APIGenerator.writeUpdatePojoMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, AI);
+            APIGenerator.writeUpdateMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, AI);
 
             //主键查询
-            APIGenerator.writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, false);
-            APIGenerator.writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, true);
+            APIGenerator.writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, false, AI);
+            APIGenerator.writeFindByIdMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, true, AI);
 
             //主键批量查询
-            APIGenerator.writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, false, false);
-            APIGenerator.writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, true, false);
+            APIGenerator.writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, false, false, AI);
+            APIGenerator.writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, true, false, AI);
 
-            APIGenerator.writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, false, true);
-            APIGenerator.writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, true, true);
+            APIGenerator.writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, false, true, AI);
+            APIGenerator.writeQueryByIdsMethod(tableModelName, groupName, pojoName, theSecurity, serviceContent, table, true, true, true, AI);
+        }
+
+        //查询唯一索引查询
+        {
+            // 与前面findBy冲突
+            Map<String, List<MybatisGenerator.Column>> queryMethods = table.allUniqueIndexQueryMethod(false);
+            List<String> methodNames = new ArrayList<String>(queryMethods.keySet());
+            Collections.sort(methodNames);
+            for (String methodName : methodNames) {
+                List<MybatisGenerator.Column> cols = queryMethods.get(methodName);
+
+                APIGenerator.writeFindMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, false, null);
+                APIGenerator.writeFindMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, true, null);
+            }
         }
 
         //查询，索引查询，翻页
@@ -523,11 +549,11 @@ public class ServiceGenerator extends Generator {
             for (String methodName : methodNames) {
                 List<MybatisGenerator.Column> cols = queryMethods.get(methodName);
 
-                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, false, false, false);
-                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, true, false, false);
+                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, false, false, false, AI);
+                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, true, false, false, AI);
 
-                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, false, true, false);
-                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, true, true, false);
+                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, false, true, false, AI);
+                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, true, true, false, AI);
             }
         }
 
@@ -540,8 +566,8 @@ public class ServiceGenerator extends Generator {
                 MybatisGenerator.SQLSelect sqlSelect = viewMethods.get(methodName);
                 List<MybatisGenerator.Column> cols = sqlSelect.getBinds();
 
-                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, false, false, true);
-                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, true, false, true);
+                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, false, false, true, AI);
+                APIGenerator.writeQueryMethod(tableModelName, groupName, pojoName, methodName, cols, theSecurity, serviceContent, table, true, true, false, true, AI);
             }
         }
 

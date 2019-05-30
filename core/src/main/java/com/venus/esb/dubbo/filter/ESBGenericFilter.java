@@ -19,12 +19,11 @@ import com.alibaba.dubbo.rpc.*;
 import com.alibaba.dubbo.rpc.service.GenericException;
 import com.alibaba.dubbo.rpc.service.GenericService;
 import com.alibaba.dubbo.rpc.support.ProtocolUtils;
+import com.venus.esb.lang.ESBFastJsonSupport;
 import com.venus.esb.lang.ESBT;
-import com.venus.esb.utils.Injects;
 import com.venus.esb.utils.Pickup;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 /**
@@ -36,6 +35,11 @@ import java.lang.reflect.Method;
  */
 @Activate(group = Constants.PROVIDER, order = -20001)
 public class ESBGenericFilter implements Filter {
+
+    // fastjson白名单
+    static {
+        ESBFastJsonSupport.initialize();
+    }
 
     @Override
     public Result invoke(Invoker<?> invoker, Invocation inv) throws RpcException {

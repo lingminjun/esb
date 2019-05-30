@@ -3,13 +3,11 @@ package com.venus.gen;
 import com.venus.esb.lang.ESBConsts;
 import com.venus.esb.lang.ESBT;
 import com.venus.esb.utils.FileUtils;
+import com.venus.gen.ai.ScanAutoCache;
 
 import java.io.*;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Created with IntelliJ IDEA.
@@ -539,16 +537,20 @@ public abstract class Generator {
     }
 
     protected static String readFile(String path) throws IOException {
+        return readFile(new File(path));
+    }
+
+    protected static String readFile(File file) throws IOException {
         InputStream in = null;
         try {
-            if (!(new File(path).exists())) {
+            if (!(file.exists())) {
                 return null;
             }
 //            System.out.println("以字节为单位读取文件内容，一次读多个字节：");
             // 一次读多个字节
             byte[] tempbytes = new byte[1024];
             int byteread = 0;
-            in = new FileInputStream(path);
+            in = new FileInputStream(file.getAbsolutePath());
             ByteArrayOutputStream out = new ByteArrayOutputStream();
 //            ReadFromFile.showAvailableBytes(in);
             // 读入多个字节到字节数组中，byteread为一次读入的字节数
@@ -616,4 +618,28 @@ public abstract class Generator {
         return builder.toString();
     }
 
+    // 扩展智能检查模块，以后一些智能设置，都将在以下完成
+    private static final String USING_AUTO_CACHE = "using auto cache";
+    protected static void scanUsingAutoCache(String path, Map<String,Set<String>> AI) {
+        String content = null;
+        try {
+            content = readFile(path);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        Set<String> methods = ScanAutoCache.scanAutoCache(content);
+        if (AI != null) {
+            AI.put(USING_AUTO_CACHE,methods);
+        }
+    }
+
+    protected static boolean hasUsingAutoCache(String methodName, Map<String,Set<String>> AI) {
+        Set<String> methods = AI != null ? AI.get(USING_AUTO_CACHE) : null;
+        return methods != null ? methods.contains(methodName) : false;
+    }
+
+    protected static boolean hasUsingAutoCache(Map<String,Set<String>> AI) {
+        Set<String> methods = AI != null ? AI.get(USING_AUTO_CACHE) : null;
+        return methods != null ? !methods.isEmpty() : false;
+    }
 }

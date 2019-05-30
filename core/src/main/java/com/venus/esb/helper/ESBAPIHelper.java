@@ -32,6 +32,10 @@ public class ESBAPIHelper {
     static HashMap<String,ESBPOJOWrapper> pojos = new HashMap<String, ESBPOJOWrapper>();
 
     public static List<ESBAPIInfo> generate(Class<?> serverProvider, String baseUrl, boolean ignoreError) {
+        return generate(serverProvider,baseUrl,ignoreError,true);
+    }
+
+    public static List<ESBAPIInfo> generate(Class<?> serverProvider, String baseUrl, boolean ignoreError, boolean strict) {
         if (serverProvider == null ) {
             throw new RuntimeException("请务必输入正确的serverProvider和methodName");
         }
@@ -55,7 +59,7 @@ public class ESBAPIHelper {
             }
             ESBAPIInfo info = null;
             try {
-                info = generate(serverProvider,method,null,null,null,null,null,null,isServlet,baseUrl);
+                info = generate(serverProvider,method,null,null,null,null,null,null,isServlet,baseUrl,strict);
             } catch (Throwable e) {
                 e.printStackTrace();
                 if (!ignoreError) {
@@ -79,7 +83,8 @@ public class ESBAPIHelper {
                                       String apiDesc,
                                       String apiOwner,
                                       String apiDetail,
-                                      String baseUrl) {
+                                      String baseUrl,
+                                      boolean strict) {
         if (serverProvider == null || ESBT.isEmpty(methodName)) {
             throw new RuntimeException("请务必输入正确的serverProvider和methodName");
         }
@@ -106,7 +111,7 @@ public class ESBAPIHelper {
             RequestMapping mapping = serverProvider.getAnnotation(RequestMapping.class);
             baseUrl = togetherUrlPath(baseUrl,getPathFromRequestMapping(mapping,null,null,null,null));
         }
-        return generate(serverProvider,theMethod,apiDomain,apiModule,apiName,apiDesc,apiOwner,apiDetail,isServlet,baseUrl);
+        return generate(serverProvider,theMethod,apiDomain,apiModule,apiName,apiDesc,apiOwner,apiDetail,isServlet,baseUrl,strict);
     }
 
     private static ESBAPIInfo generate(Class<?> serverProvider,
@@ -118,7 +123,8 @@ public class ESBAPIHelper {
                                        String apiOwner,
                                        String apiDetail,
                                        boolean isServlet,
-                                       String baseUrl) {
+                                       String baseUrl,
+                                       boolean strict) {
         if (serverProvider == null || method == null) {
             throw new RuntimeException("请务必输入正确的serverProvider和methodName");
         }
@@ -138,6 +144,9 @@ public class ESBAPIHelper {
 
         ESBGroup group = serverProvider.getAnnotation(ESBGroup.class);
         ESBAPI esbapi = method.getAnnotation(ESBAPI.class);
+        if (!isServlet && strict && esbapi == null) {// dubbo必须定义被定义
+            return null;
+        }
 
         //必要参数整理
         apiDomain = tidyDomainString(serverProvider, apiDomain, group);

@@ -16,7 +16,7 @@ public final class ESBSecur implements Serializable {
     private static final long serialVersionUID = 2604737085290383159L;
 
     // 参与token计算
-    @ESBDesc("application id")
+    @ESBDesc("application id， 注意：device token时仅仅保留tml部分，不验证app")
     public int    aid;//应用id
     @ESBDesc("认证方式")
     public int    securityLevel;

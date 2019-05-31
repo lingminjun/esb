@@ -223,10 +223,14 @@ public final class ESB {
             result = _call(params,header,cookies,body);
         } catch (ESBException e) {
             // 此时需要清除token
-            if (ESBExceptionCodes.ESB_EXCEPTION_DOMAIN.equals(e.getDomain())
-                  &&  e.getCode() == ESBExceptionCodes.TOKEN_INVALID_CODE) {
-                // 清除token
-                ESBAPIContext.context().clearAllTokenCookie();
+            if (ESBExceptionCodes.ESB_EXCEPTION_DOMAIN.equals(e.getDomain())) {
+                if (e.getCode() == ESBExceptionCodes.TOKEN_INVALID_CODE) {
+                    // 清除token
+                    ESBAPIContext.context().clearAllTokenCookie(false);
+                } else if (e.getCode() == ESBExceptionCodes.DEVICE_DISTORT_CODE) {
+                    // 清除token
+                    ESBAPIContext.context().clearAllTokenCookie(true);
+                }
             }
             logback.error("ESB call error!",e);
             exception = e;
@@ -757,7 +761,7 @@ public final class ESB {
     //判断所有token的有效性
     private boolean isTokenInvalid(ESBAPIContext context, Map<String,String> header, Map<String,ESBCookie> cookies) throws ESBException {
         if (!ESBT.isEmpty(context.dtoken) && context.dsecur == null) {
-            throw ESBExceptionCodes.TOKEN_INVALID("device token无法解析");
+            throw ESBExceptionCodes.DEVICE_DISTORT("device token无法解析，表示设备被篡改");
         }
 
         // 要求有设备验证
@@ -786,8 +790,10 @@ public final class ESB {
         // 以下几个特殊场景的教研
         // dtoken与cookie中的不相符合(说明有人恶意修改cookie的did)
         ESBCookie didCookie = cookies.get(ESBSTDKeys.DID_KEY);
-        if (context.dsecur != null && didCookie != null && context.dsecur.did != ESBT.longInteger(didCookie.value)) {
-            throw ESBExceptionCodes.TOKEN_INVALID("检查到cookie中的did与device token不一致");
+        if (context.dsecur != null
+                && didCookie != null
+                && context.dsecur.did != ESBT.longInteger(didCookie.value)) {
+            throw ESBExceptionCodes.DEVICE_DISTORT("检查到cookie中的did与device token不一致");
         }
 
         // stoken验证utoken

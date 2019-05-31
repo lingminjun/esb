@@ -139,8 +139,8 @@ public class ESBContext implements Serializable {
         String _aid = ESBThreadLocal.get(ESBSTDKeys.AID_KEY);
         if (_aid != null) {
             this.aid = _aid;
-            this.tml = "" + (int)((0xff000000 & ESBT.integer(_aid)) >>> 24);
-            this.app = "" + (int)(0x00ffffff & ESBT.integer(_aid));
+            this.tml = "" + ESBContext.resolveTerminal(ESBT.integer(_aid));
+            this.app = "" + ESBContext.resolveApplication(ESBT.integer(_aid));
         }
         String _did = ESBThreadLocal.get(ESBSTDKeys.DID_KEY);
         if (_did != null) {
@@ -183,6 +183,18 @@ public class ESBContext implements Serializable {
         if (context != null) {
             LOCAL.set(context);
         }
+    }
+
+    public static int resolveTerminal(int aid) {
+        return ((0xff000000 & aid) >>> 24);
+    }
+
+    public static int resolveApplication(int aid) {
+        return (0x00ffffff & aid);
+    }
+
+    public static int combinationApplicationID(int tml, int app) {
+        return ((0xff & tml) << 24) + (0xffffff & app);
     }
 
     public String getAid() {
@@ -792,8 +804,8 @@ public class ESBContext implements Serializable {
 
     public void setAid(String aid) {
         this.aid = aid;
-        this.tml = "" + (int)((0xff000000 & ESBT.integer(aid)) >>> 24);
-        this.app = "" + (int)(0x00ffffff & ESBT.integer(aid));
+        this.tml = "" + ESBContext.resolveTerminal(ESBT.integer(aid));
+        this.app = "" + ESBContext.resolveApplication(ESBT.integer(aid));
     }
 
     public void setCid(String cid) {

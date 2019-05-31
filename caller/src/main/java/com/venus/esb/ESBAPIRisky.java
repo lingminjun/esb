@@ -34,11 +34,11 @@ public class ESBAPIRisky implements ESB.APIRisky {
         if (!ESBT.isEmpty(context.captcha)) {
             String salt = context.dtoken;
             if (ESBT.isEmpty(salt)) {
-                if (ESBT.isEmpty(context.did)) {
-                    salt = context.did;
-                } else {
+//                if (ESBT.isEmpty(context.did)) {
+//                    salt = context.did;
+//                } else {
                     salt = context.did + context.ua;
-                }
+//                }
             }
             String code = context.captcha;
             String session = context.getRightValue(ESBSTDKeys.CAPTCHA_SESSION_KEY,params,cookies,-1);

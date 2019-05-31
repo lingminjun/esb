@@ -37,7 +37,7 @@ public final class ESBSTDKeys {
         _nkeys.add(APP_KEY);
     }
 
-    @ESBDesc("application id 端应用编号：_aid = (0xff000000 & (_tmnl << 24)) + (0x00ffffff & _app) ；举例，淘宝iOS、天猫PC端，等等")
+    @ESBDesc("application id 端应用编号：_aid = (0xff000000 & (_tml << 24)) + (0x00ffffff & _app) ；举例，淘宝iOS、天猫PC端，等等")
     public static final String AID_KEY = "_aid";
     static {
         _keys.add(AID_KEY);

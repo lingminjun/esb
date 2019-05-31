@@ -264,10 +264,10 @@ public final class ESBAPIContext extends ESBContext {
     }
 
     public static void fill(ESBAPIContext context, Map<String,String> params, Map<String,String> header, Map<String,ESBCookie> cookies, String body) {
-        context.aid = parseValue(ESBSTDKeys.AID_KEY,params,header,cookies);
-        context.tml = "" + (int)((0xff000000 & ESBT.integer(context.aid)) >>> 24);
-        context.app = "" + (int)(0x00ffffff & ESBT.integer(context.aid));
-        context.did = parseValue(ESBSTDKeys.DID_KEY,context.aid,params,header,cookies);
+        context.aid = parseValue(ESBSTDKeys.AID_KEY,params,null,cookies);// 必须参数传递，客户端必传参数
+        context.tml = "" + ESBContext.resolveTerminal(ESBT.integer(context.aid));
+        context.app = "" + ESBContext.resolveApplication(ESBT.integer(context.aid));
+        context.did = parseValue(ESBSTDKeys.DID_KEY,context.aid,params,null,cookies);
 //        if (context.did == null) {//需要兼容获取gw1.0中did信息
 //            context.did = ESBCompatibility.getCookieDeviceId(cookies);
 //        }
@@ -329,16 +329,18 @@ public final class ESBAPIContext extends ESBContext {
                 context.l10n = header.get("accept-language");
             }
         }
+
+        // 注意不能从head和cookie中获取，以防串改签名
         context.selector = parseValue(ESBSTDKeys.SELECTOR_KEY,params,null,null);
         context.signature = parseValue(ESBSTDKeys.SIGN_KEY,params,null,null);
         context.captcha = parseValue(ESBSTDKeys.CAPTCHA_KEY,params,null,null);
         context.arithmetic = parseValue(ESBSTDKeys.SIGNATURE_METHOD_KEY,params,null,null);
         context.jsonpCallback = parseValue(ESBSTDKeys.JSONP_CALLBACK_KEY,params,null,null);
 
-        context.dtoken = parseValue(ESBSTDKeys.DEVICE_TOKEN_KEY,context.aid,params,header,cookies);
+        context.dtoken = parseValue(ESBSTDKeys.DEVICE_TOKEN_KEY,context.aid,params,null,cookies);
         context.dsecur = ESBTokenSign.parseDefaultToken(context.dtoken,context);
 
-        context.utoken = parseValue(ESBSTDKeys.TOKEN_KEY,context.aid,params,header,cookies);
+        context.utoken = parseValue(ESBSTDKeys.TOKEN_KEY,context.aid,params,null,cookies);
         if (context.utoken == null && header != null) {//支持Authorization
             //Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==
             String hd = header.get("Authorization");//
@@ -357,29 +359,29 @@ public final class ESBAPIContext extends ESBContext {
 
         }
         context.usecur = ESBTokenSign.parseDefaultToken(context.utoken,context);
-        context.stoken = parseValue(ESBSTDKeys.SECRET_TOKEN_KEY,context.aid,params,header,cookies);
+        context.stoken = parseValue(ESBSTDKeys.SECRET_TOKEN_KEY,context.aid,params,null,cookies);
         context.ssecur = ESBTokenSign.parseDefaultToken(context.stoken,context);
 
-        context.rtoken = parseValue(ESBSTDKeys.REFRESH_TOKEN_KEY,context.aid,params,header,cookies);
+        context.rtoken = parseValue(ESBSTDKeys.REFRESH_TOKEN_KEY,context.aid,params,null,cookies);
         context.rsecur = ESBTokenSign.parseDefaultToken(context.rtoken,context);
 
 //        context.otoken = null;
 //        context.osecur = null;
-        context.ttoken = parseValue(ESBSTDKeys.TEMP_TOKEN_KEY,context.aid,params,header,cookies);
+        context.ttoken = parseValue(ESBSTDKeys.TEMP_TOKEN_KEY,context.aid,params,null,cookies);
         context.tsecur = ESBTokenSign.parseDefaultToken(context.ttoken,null);
 
         //sso部分解析
-        context.ssoToDid = ESBT.longInteger(parseValue(ESBSTDKeys.SSO_TO_DID_KEY,context.aid,params,header,cookies));
+        context.ssoToDid = ESBT.longInteger(parseValue(ESBSTDKeys.SSO_TO_DID_KEY,context.aid,params,null,cookies));
 //        context.ssoFromAid = ESBT.integer(parseValue(ESBSTDKeys.SSO_FROM_AID_KEY,context.aid,params,header,cookies));
-        context.ssoToAid = ESBT.integer(parseValue(ESBSTDKeys.SSO_TO_AID_KEY,context.aid,params,header,cookies));
-        context.ssoToDomain = parseValue(ESBSTDKeys.SSO_TO_DOMAIN_KEY,context.aid,params,header,cookies);
-        context.extsString = parseValue(ESBSTDKeys.TOKEN_EXTS_KEY,context.aid,params,header,cookies);
+        context.ssoToAid = ESBT.integer(parseValue(ESBSTDKeys.SSO_TO_AID_KEY,context.aid,params,null,cookies));
+        context.ssoToDomain = parseValue(ESBSTDKeys.SSO_TO_DOMAIN_KEY,context.aid,params,null,cookies);
+        context.extsString = parseValue(ESBSTDKeys.TOKEN_EXTS_KEY,context.aid,params,null,cookies);
         if (!ESBT.isEmpty(context.extsString)) {//直接覆盖不是很好，最好是merge
             try {
                 context.exts = JSON.parseObject(context.extsString, ESBExts.class);
             } catch (Throwable e) {}
         }
-        context.ssoToken = parseValue(ESBSTDKeys.SSO_TOKEN_KEY,context.aid,params,header,cookies);
+        context.ssoToken = parseValue(ESBSTDKeys.SSO_TOKEN_KEY,context.aid,params,null,cookies);
         context.ssoSecur = ESBTokenSign.parseSSOToken(context.ssoToken,context);
         if (context.ssoSecur != null) {
             context.ssoToDid = context.ssoSecur.tdid;
@@ -591,10 +593,11 @@ public final class ESBAPIContext extends ESBContext {
     public final void pushDeviceTokenCookie(String dtoken) {
         String domain = this.getCookieDomain();
 
+        // 共享域名存储
         if (this.did != null && this.did.length() > 0){
             ESBCookie cookie = new ESBCookie();
             cookie.domain = domain;
-            cookie.name = ESBSTDKeys.DID_KEY;
+            cookie.name = ESBSTDKeys.DID_KEY;// 共享域名存储
             cookie.value = this.did;
             cookie.httpOnly = false; //前段可读（sso需要读取），如果随意修改将会导致dtoken验证通不过
             cookie.secure = false;
@@ -604,7 +607,7 @@ public final class ESBAPIContext extends ESBContext {
         {
             ESBCookie cookie = new ESBCookie();
             cookie.domain = domain;
-            cookie.name = ESBSTDKeys.DEVICE_TOKEN_KEY;
+            cookie.name = ESBSTDKeys.DEVICE_TOKEN_KEY;// 共享域名存储
             cookie.value = (dtoken == null) ? ESBT.string(this.dtoken,"") : dtoken;
             cookie.httpOnly = true; //客户端不对属性
             cookie.secure = false;
@@ -613,31 +616,33 @@ public final class ESBAPIContext extends ESBContext {
 
     }
 
-    public final void clearAllTokenCookie() {
+    public final void clearAllTokenCookie(boolean device) {
         String domain = this.getCookieDomain();
 
         // did
-        {
-            ESBCookie cookie = new ESBCookie();
-            cookie.domain = domain;
-            cookie.name = ESBSTDKeys.DID_KEY;
-            cookie.value = "";
-            cookie.maxAge = 0;
-            cookie.httpOnly = false; //前段可读（sso需要读取），如果随意修改将会导致dtoken验证通不过
-            cookie.secure = false;
-            this.putCookie(cookie.name, cookie);
-        }
+        if (device) {// 需要清除设备token
+            {
+                ESBCookie cookie = new ESBCookie();
+                cookie.domain = domain;
+                cookie.name = ESBSTDKeys.DID_KEY;
+                cookie.value = "";
+                cookie.maxAge = 0;
+                cookie.httpOnly = false; //前段可读（sso需要读取），如果随意修改将会导致dtoken验证通不过
+                cookie.secure = false;
+                this.putCookie(cookie.name, cookie);
+            }
 
-        // dtoken
-        {
-            ESBCookie cookie = new ESBCookie();
-            cookie.domain = domain;
-            cookie.name = ESBSTDKeys.DEVICE_TOKEN_KEY;
-            cookie.value = "";
-            cookie.maxAge = 0;
-            cookie.httpOnly = true; //客户端不对属性
-            cookie.secure = false;
-            this.putCookie(cookie.name, cookie);
+            // dtoken
+            {
+                ESBCookie cookie = new ESBCookie();
+                cookie.domain = domain;
+                cookie.name = ESBSTDKeys.DEVICE_TOKEN_KEY;
+                cookie.value = "";
+                cookie.maxAge = 0;
+                cookie.httpOnly = true; //客户端不对属性
+                cookie.secure = false;
+                this.putCookie(cookie.name, cookie);
+            }
         }
 
         // utoken

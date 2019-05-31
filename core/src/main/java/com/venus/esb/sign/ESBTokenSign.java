@@ -362,16 +362,21 @@ public final class ESBTokenSign {
             return client;
         }
 
-        //aid一定要对应上
+        // 必须验证 aid，此处分情况
         if (context != null && !ESBT.isEmpty(context.aid)) {
-            //校验合法性,不允许有变化,跨域采用跨域手段完成
-            if (!context.aid.equals(""+client.aid)) {
-                return null;
+            if (client.uid != 0 || client.acct != 0) { //user(account) token 校验合法性，必须对应aid
+                if (!context.aid.equals(""+client.aid)) {
+                    return null;
+                }
+            } else {//device token 校验合法性,不允许脱离设备
+                if (ESBContext.resolveTerminal(ESBT.integer(context.aid)) != ESBContext.resolveTerminal(client.aid)) {
+                    return null;
+                }
             }
         } else if (context != null) {
             context.aid = "" + client.aid;
-            context.tml = "" + (int)((0xff000000 & client.aid) >>> 24);
-            context.app = "" + (int)(0x00ffffff & client.aid);
+            context.tml = "" + ESBContext.resolveTerminal(client.aid);
+            context.app = "" + ESBContext.resolveApplication(client.aid);
         }
 
         //did也需要对应上

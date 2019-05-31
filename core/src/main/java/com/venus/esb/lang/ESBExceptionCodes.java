@@ -150,6 +150,11 @@ public final class ESBExceptionCodes {
         return new ESBException("token已过期",ESB_EXCEPTION_DOMAIN,TOKEN_EXPIRED_CODE,reason);
     }
 
+    public final static int DEVICE_DISTORT_CODE = -320;
+    public static ESBException DEVICE_DISTORT(String reason) {
+        return new ESBException("设备篡改，非法请求",ESB_EXCEPTION_DOMAIN,DEVICE_DISTORT_CODE,reason);
+    }
+
     public final static int TOKEN_INVALID_CODE = -310;
     public static ESBException TOKEN_INVALID(String reason) {
         return new ESBException("token已失效",ESB_EXCEPTION_DOMAIN,TOKEN_INVALID_CODE,reason);

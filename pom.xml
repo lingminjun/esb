@@ -24,7 +24,7 @@
         <esb.rpc.version.root>1.0.0-SNAPSHOT</esb.rpc.version.root>
 
         <!-- spring版本 -->
-        <spring.version>4.3.6.RELEASE</spring.version>
+        <spring.version>5.2.20.RELEASE</spring.version>
 
 
         <!-- 注意dubbo若要支持tomcat 8.5.31以上版本，必须升级到2.6.3 -->
